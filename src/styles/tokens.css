@@ -1,0 +1,58 @@
+/* ===== DESIGN TOKENS. Change here only. Keep in sync with the public site. ===== */
+:root {
+  --page: #0B0A09;
+  --bg: #000;
+  --surface: #111010;
+  --line: #2B2622;
+  --text: #F7F4F0;
+  --muted: #A89F96;
+  --a1: #FF9F0A;
+  --a2: #F0191B;
+  --ink: #140E0A;
+  --grad: linear-gradient(90deg, var(--a1), var(--a2));
+  --ok: #52D17C;
+  --warn: #FFB84D;
+  --err: #FF6B6B;
+  --r-card: 14px;
+  --r-btn: 10px;
+  --tap: 48px;
+  --font: Montserrat, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --page: #EFE9E3;
+    --bg: #FBF8F5;
+    --surface: #ffffff;
+    --line: #E3DBD3;
+    --text: #16120F;
+    --muted: #625A52;
+    --ok: #14702E;
+    --warn: #8A5300;
+    --err: #B3141A;
+  }
+}
+
+:root[data-theme="light"] {
+  --page: #EFE9E3;
+  --bg: #FBF8F5;
+  --surface: #ffffff;
+  --line: #E3DBD3;
+  --text: #16120F;
+  --muted: #625A52;
+  --ok: #14702E;
+  --warn: #8A5300;
+  --err: #B3141A;
+}
+
+:root[data-theme="dark"] {
+  --page: #0B0A09;
+  --bg: #000;
+  --surface: #111010;
+  --line: #2B2622;
+  --text: #F7F4F0;
+  --muted: #A89F96;
+  --ok: #52D17C;
+  --warn: #FFB84D;
+  --err: #FF6B6B;
+}

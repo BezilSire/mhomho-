@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mhomho Media | Activate your own crowd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FBF8F5;--card:#fff;--text:#16120F;--muted:#625A52;--line:#E3DBD3;--a1:#FF9F0A;--a2:#F0191B;--ink:#140E0A;--ok:#14702E;--err:#B3141A;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#131110;--text:#F7F4F0;--muted:#A89F96;--line:#2B2622;--ok:#52D17C;--err:#FF6B6B}}
+:root[data-theme="dark"]{--bg:#000;--card:#131110;--text:#F7F4F0;--muted:#A89F96;--line:#2B2622;--ok:#52D17C;--err:#FF6B6B}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.6 Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:720px;margin:0 auto;padding:0 20px}
+.brand{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+.brand svg{width:44px;height:44px}.brand b{display:block;font-weight:800;font-size:19px;letter-spacing:.04em;line-height:1.1}
+.brand span{display:block;font-size:11px;letter-spacing:.42em;color:var(--muted)}
+h1{font-weight:800;font-size:clamp(38px,11vw,66px);line-height:1.02;letter-spacing:-.02em;margin:34px 0 18px}
+h2{font-weight:800;font-size:clamp(26px,6.6vw,38px);line-height:1.12;letter-spacing:-.01em;margin:0 0 16px}
+p{margin:0 0 14px}.lead{font-size:18px;color:var(--muted);max-width:56ch}
+.s{padding:60px 0;border-top:1px solid var(--line)}
+.btn{display:inline-block;min-height:52px;padding:15px 24px;border:0;border-radius:10px;font:800 16px Montserrat,system-ui,sans-serif;text-decoration:none;text-align:center;cursor:pointer;background:linear-gradient(90deg,var(--a1),var(--a2));color:var(--ink)}
+.btn.g{background:none;border:1px solid var(--line);color:var(--text);font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.row .btn{flex:1 1 200px}
+.dots{display:grid;grid-template-columns:repeat(12,1fr);gap:7px;margin:40px 0 10px}
+.dots i{aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2));opacity:.1;animation:on .6s ease-out forwards}
+.dots i:first-child{opacity:1;animation:none}
+@keyframes on{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:1}}
+.cap{font-size:14px;color:var(--muted)}
+.strip{display:flex;gap:8px 22px;flex-wrap:wrap;margin-top:26px;font-size:14px;font-weight:600}.strip span{position:relative;padding-left:16px}.strip span::before{content:"";position:absolute;left:0;top:.5em;width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2))}
+.bad{list-style:none;padding:0;margin:20px 0}.bad li{padding:14px 0 14px 18px;border-left:3px solid var(--a2);margin-bottom:10px;font-weight:600}
+.big{font-size:clamp(22px,5.5vw,30px);font-weight:800;line-height:1.2;margin-top:24px}
+.step{display:grid;grid-template-columns:42px 1fr;gap:14px;margin:22px 0}
+.step b.n{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2));color:var(--ink);font-weight:800}
+.step h3,.pt h3{margin:0 0 4px;font-size:18px;font-weight:800}.step p,.pt p{margin:0;color:var(--muted)}
+.scroll{overflow-x:auto}.cmp{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;min-width:520px;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+.cmp div{padding:14px;border-bottom:1px solid var(--line);background:var(--card)}
+.cmp .h{font-weight:800;background:var(--bg)}.cmp .m{font-weight:600}.cmp .k{color:var(--muted)}
+.cmp div:nth-last-child(-n+3){border-bottom:0}
+.pt{padding:18px 0;border-bottom:1px solid var(--line)}.pt:last-child{border:0}
+.facts{padding-left:20px;color:var(--muted)}.facts li{margin:6px 0}
+label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px}
+input,select,textarea{width:100%;min-height:50px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font:400 16px Montserrat,system-ui,sans-serif}
+textarea{min-height:96px;resize:vertical}
+.ck{display:flex;gap:12px;align-items:flex-start;margin-top:18px;font-size:14px}.ck input{width:22px;min-height:22px;margin-top:2px;flex:none;accent-color:var(--a2)}.ck label{margin:0;font-weight:400}
+:focus-visible{outline:3px solid var(--a1);outline-offset:2px}
+.msg{min-height:22px;margin:12px 0 0;font-size:14px;font-weight:600}.err{color:var(--err)}.ok{color:var(--ok)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:20px}
+.prog{height:4px;background:var(--line);border-radius:4px;margin-bottom:16px}.prog i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--a1),var(--a2))}
+.q{font-size:20px;font-weight:800;margin:0 0 14px;line-height:1.25}
+.chips{display:flex;flex-wrap:wrap;gap:9px}.chip{min-height:46px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--text);font:600 14px Montserrat,system-ui,sans-serif;cursor:pointer}
+.chip[aria-pressed="true"]{background:linear-gradient(90deg,var(--a1),var(--a2));color:var(--ink);border-color:transparent}
+.nav{display:flex;gap:10px;margin-top:20px}.nav .btn{flex:1}
+dl{margin:0 0 6px;font-size:14px}dt{color:var(--muted);margin-top:10px}dd{margin:0;font-weight:600}
+.paper{display:grid;gap:6px;border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--card)}
+.paper h3{margin:0;font-size:22px;font-weight:800;line-height:1.2}.paper p{color:var(--muted);margin:0 0 8px}
+footer{padding:34px 0 56px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="w">
+  <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#FFA10A"/><stop offset="1" stop-color="#F0191B"/></linearGradient></defs><circle cx="15" cy="13" r="6" fill="url(#g)"/><circle cx="32" cy="8" r="7" fill="url(#g)"/><circle cx="49" cy="13" r="6" fill="url(#g)"/><polygon points="6,26 32,46 58,26 58,60 47,60 47,40 32,53 17,40 17,60 6,60" fill="url(#g)"/></svg><div><b>MHOMHO</b><span>MEDIA</span></div></div>
+  <h1>Activate your own crowd.</h1>
+  <p class="lead">Most Zimbabwean brands buy influence the same way: pay a comedian for a post and hope. No views promised, no click-through rate, no data afterwards. That’s spray and pray. Mhomho puts your message in front of hundreds of creators your buyers already follow, and you pay for the views that were delivered.</p>
+  <div class="row"><a class="btn" href="#brands">Run a campaign</a><a class="btn g" href="#creators">Join as a creator</a></div>
+  <div class="strip"><span>Views verified post by post</span><span>Audiences matched by niche</span><span>You pay for what lands</span></div>
+  <div class="dots" id="dots" aria-hidden="true"></div>
+  <p class="cap">One post is a whisper. Hundreds of creators posting at once is a roar.</p>
+</header>
+
+<section class="s"><div class="w">
+  <h2>Spray and pray isn’t a strategy.</h2>
+  <p class="lead">We asked 233 businesses what their influencer money bought. Most couldn’t say. Most influencers in Zimbabwe are comedians, and their audiences are huge and mixed: great for laughs, useless for targeting. So businesses end up paying for followers, not deliverables.</p>
+  <ul class="bad">
+    <li>You’re buying a follower count. Views and click-through rate never make it into the deal.</li>
+    <li>There’s no tracking. Once the post is up, you get a screenshot, if that. No data means no learning.</li>
+    <li>Your product becomes a prop. It sits in a skit where the joke is the point and your brand is the background.</li>
+    <li>Prices follow fame, not results. A bigger name costs more, whether or not the right people are watching.</li>
+  </ul>
+  <p class="big">That’s a lottery ticket, not marketing.</p>
+</div></section>
+
+<section class="s"><div class="w">
+  <h2>How Mhomho works</h2>
+  <div class="step"><b class="n">1</b><div><h3>Tell us what you’re selling.</h3><p>Answer a few questions about your business, your goal and your budget. No account to create.</p></div></div>
+  <div class="step"><b class="n">2</b><div><h3>Hundreds of creators in the right niche post it.</h3><p>Tech buyers see tech creators. Beauty buyers see beauty creators. Every post lands in front of people who already follow that topic.</p></div></div>
+  <div class="step"><b class="n">3</b><div><h3>You pay for what lands.</h3><p>A post only counts once it reaches 1,000 views. Every counted view is verified, and budget that isn’t delivered isn’t billed.</p></div></div>
+  <div class="scroll" style="margin-top:34px"><div class="cmp">
+    <div class="h"></div><div class="h k">Flat-fee influencer</div><div class="h">Mhomho</div>
+    <div class="k">You pay for</div><div class="k">A famous name</div><div class="m">Views that were delivered</div>
+    <div class="k">Who sees it</div><div class="k">Whoever follows them</div><div class="m">People who follow creators for your category</div>
+    <div class="k">Proof</div><div class="k">“Trust me”</div><div class="m">Verified view counts, post by post</div>
+    <div class="k">A post flops</div><div class="k">You’ve already paid</div><div class="m">It isn’t counted and you aren’t billed</div>
+  </div></div>
+</div></section>
+
+<section class="s"><div class="w">
+  <h2>What a crowd does that one voice can’t.</h2>
+  <div class="pt"><h3>Repetition builds recall.</h3><p>People rarely act the first time they see something. Seeing it from five creators in one week is how a brand sticks.</p></div>
+  <div class="pt"><h3>Social proof.</h3><p>When different faces your audience already trusts back the same thing, it stops looking like an ad and starts looking like consensus.</p></div>
+  <div class="pt"><h3>Relevance.</h3><p>Each creator talks to their own niche in their own style, so your message lands as a recommendation, not a billboard.</p></div>
+  <div class="pt"><h3>Resilience.</h3><p>One creator can flop. Two hundred can’t all flop.</p></div>
+  <p class="big">Today, reach is something you rent from a celebrity. We’re making it something you can plan, measure and repeat.</p>
+</div></section>
+
+<section class="s"><div class="w">
+  <h2>AI reads the feed so creators don’t have to guess.</h2>
+  <p class="lead">We use AI to scan what’s taking off in Zimbabwe, across topics, sounds, hooks and formats, and break down why those videos work. People make the calls. AI does the reading.</p>
+  <div class="pt"><h3>A living library of formats.</h3><p>We study viral formats at scale, then turn them into briefs creators can use the same day.</p></div>
+  <div class="pt"><h3>A read on every niche.</h3><p>What’s moving in tech this week isn’t what’s moving in beauty, so each niche gets its own trend report.</p></div>
+  <div class="pt"><h3>Coaching from real results.</h3><p>After each campaign, creators see which hooks and lengths earned their views, so the next post is better.</p></div>
+  <div class="pt"><h3>Smarter matching.</h3><p>Past results help us pick which creators fit which campaign.</p></div>
+</div></section>
+
+<section class="s"><div class="w">
+  <h2>Why this is hard to copy.</h2>
+  <div class="pt"><h3>Creators earn their seat.</h3><p>Nobody joins by asking. Campaign Zero makes every creator prove a clip can reach 1,000 views before they touch a paid campaign. The roster is a track record, not a follower count.</p></div>
+  <div class="pt"><h3>Every campaign teaches us what works here.</h3><p>We log which niches and formats perform for Zimbabwean audiences. Over time that becomes a record you can’t buy, scrape or borrow from a foreign platform.</p></div>
+  <div class="pt"><h3>Built for how Zimbabwe actually runs.</h3><p>Briefs on WhatsApp, payouts by EcoCash, budgets sized for local businesses. Not a global tool pointed at us.</p></div>
+</div></section>
+
+<section class="s" id="creators"><div class="w">
+  <h2>Creators: get paid for what you deliver.</h2>
+  <p class="lead">Join Campaign Zero. Post 3 clips of our content. If one reaches 1,000 views, you’re in the paid program, where creators earn $1.60 per 1,000 verified views.</p>
+  <ul class="facts"><li>You need 1,000+ followers on one platform.</li><li>Campaign Zero is unpaid. The seat is the reward.</li><li>Under 1,000 views earns $0. Past it, every view counts.</li><li>No bought views. Clips stay live for 30 days.</li></ul>
+  <form id="jf" class="box" novalidate>
+    <label for="jn" style="margin-top:0">Full name</label><input id="jn" autocomplete="name">
+    <label for="jh">Your handle</label><input id="jh" autocapitalize="none" autocorrect="off" placeholder="@yourhandle">
+    <label for="jp">Main platform</label><select id="jp"></select>
+    <label for="jfo">Followers on that platform</label><input id="jfo" type="number" inputmode="numeric" min="0">
+    <label for="jni">Your niche</label><select id="jni"></select>
+    <label for="jw">WhatsApp number</label><input id="jw" type="tel" inputmode="tel" autocomplete="tel" placeholder="+263 77 000 0000">
+    <div class="ck"><input id="jok" type="checkbox"><label for="jok">I understand Campaign Zero is unpaid. My reward is a place in the paid program if one clip reaches 1,000 views.</label></div>
+    <p class="msg" id="jm" role="status" aria-live="polite"></p>
+    <button class="btn" type="submit" style="width:100%">Get my sign-up message</button>
+  </form>
+</div></section>
+
+<section class="s" id="brands"><div class="w">
+  <h2>Brands: tell us what you need.</h2>
+  <p class="lead">No sign-up. Answer a few questions and leave a phone number, then book a call or message us on WhatsApp.</p>
+  <div class="box" id="wiz"></div>
+</div></section>
+
+<section class="s"><div class="w">
+  <h2>Read the research.</h2>
+  <div class="paper"><h3>Rethinking Influencer Distribution in Zimbabwe</h3>
+  <p>Why flat-fee influencer deals fail, what the clipping economy proves about many voices beating one, and the model behind Mhomho. Market numbers included.</p>
+  <button class="btn" id="dl" type="button">Download the paper (PDF)</button>
+  <p class="msg" id="dlm" role="status" aria-live="polite"></p></div>
+</div></section>
+
+<footer><div class="w">Mhomho is Shona for a crowd. One message, a thousand voices.<br>Mhomho Media, Zimbabwe.<br><a href="https://wa.me/263786205197" target="_blank" rel="noopener noreferrer" style="color:inherit">WhatsApp +263 78 620 5197</a></div></footer>
+
+<div class="w" id="out" hidden>
+  <div class="box" style="margin:0 0 40px"><div class="q">Your message is ready</div><p class="cap">Tap send in WhatsApp. For a clip, attach an analytics screenshot too.</p><pre id="ot" style="white-space:pre-wrap;word-break:break-word;font:400 13px/1.5 ui-monospace,Menlo,monospace;margin:0 0 14px"></pre><a class="btn" id="ow" target="_blank" rel="noopener noreferrer" style="width:100%">Send on WhatsApp</a></div>
+</div>
+
+<script>
+var WA="263786205197";var PDF_B64="JVBERi0xLjQKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSIC9GMiAzIDAgUiAvRjMgNiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL0Jhc2VGb250IC9IZWx2ZXRpY2EgL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcgL05hbWUgL0YxIC9TdWJ0eXBlIC9UeXBlMSAvVHlwZSAvRm9udAo+PgplbmRvYmoKMyAwIG9iago8PAovQmFzZUZvbnQgL0hlbHZldGljYS1Cb2xkIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMiAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0NvbnRlbnRzIDE0IDAgUiAvTWVkaWFCb3ggWyAwIDAgNTk1LjI3NTYgODQxLjg4OTggXSAvUGFyZW50IDEzIDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago1IDAgb2JqCjw8Ci9Db250ZW50cyAxNSAwIFIgL01lZGlhQm94IFsgMCAwIDU5NS4yNzU2IDg0MS44ODk4IF0gL1BhcmVudCAxMyAwIFIgL1Jlc291cmNlcyA8PAovRm9udCAxIDAgUiAvUHJvY1NldCBbIC9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUkgXQo+PiAvUm90YXRlIDAgL1RyYW5zIDw8Cgo+PiAKICAvVHlwZSAvUGFnZQo+PgplbmRvYmoKNiAwIG9iago8PAovQmFzZUZvbnQgL0hlbHZldGljYS1PYmxpcXVlIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMyAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjcgMCBvYmoKPDwKL0NvbnRlbnRzIDE2IDAgUiAvTWVkaWFCb3ggWyAwIDAgNTk1LjI3NTYgODQxLjg4OTggXSAvUGFyZW50IDEzIDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago4IDAgb2JqCjw8Ci9Db250ZW50cyAxNyAwIFIgL01lZGlhQm94IFsgMCAwIDU5NS4yNzU2IDg0MS44ODk4IF0gL1BhcmVudCAxMyAwIFIgL1Jlc291cmNlcyA8PAovRm9udCAxIDAgUiAvUHJvY1NldCBbIC9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUkgXQo+PiAvUm90YXRlIDAgL1RyYW5zIDw8Cgo+PiAKICAvVHlwZSAvUGFnZQo+PgplbmRvYmoKOSAwIG9iago8PAovQ29udGVudHMgMTggMCBSIC9NZWRpYUJveCBbIDAgMCA1OTUuMjc1NiA4NDEuODg5OCBdIC9QYXJlbnQgMTMgMCBSIC9SZXNvdXJjZXMgPDwKL0ZvbnQgMSAwIFIgL1Byb2NTZXQgWyAvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJIF0KPj4gL1JvdGF0ZSAwIC9UcmFucyA8PAoKPj4gCiAgL1R5cGUgL1BhZ2UKPj4KZW5kb2JqCjEwIDAgb2JqCjw8Ci9Db250ZW50cyAxOSAwIFIgL01lZGlhQm94IFsgMCAwIDU5NS4yNzU2IDg0MS44ODk4IF0gL1BhcmVudCAxMyAwIFIgL1Jlc291cmNlcyA8PAovRm9udCAxIDAgUiAvUHJvY1NldCBbIC9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUkgXQo+PiAvUm90YXRlIDAgL1RyYW5zIDw8Cgo+PiAKICAvVHlwZSAvUGFnZQo+PgplbmRvYmoKMTEgMCBvYmoKPDwKL1BhZ2VNb2RlIC9Vc2VOb25lIC9QYWdlcyAxMyAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5kb2JqCjEyIDAgb2JqCjw8Ci9BdXRob3IgKEJlemlsIFNpcmUpIC9DcmVhdGlvbkRhdGUgKEQ6MjAyNjEwMTgxNjI5MzcrMDAnMDAnKSAvQ3JlYXRvciAoXCh1bnNwZWNpZmllZFwpKSAvS2V5d29yZHMgKCkgL01vZERhdGUgKEQ6MjAyNjEwMTgxNjI5MzcrMDAnMDAnKSAvUHJvZHVjZXIgKFJlcG9ydExhYiBQREYgTGlicmFyeSAtIFwob3BlbnNvdXJjZVwpKSAKICAvU3ViamVjdCAoXCh1bnNwZWNpZmllZFwpKSAvVGl0bGUgKE1ob21obyBNZWRpYTogUmV0aGlua2luZyBJbmZsdWVuY2VyIERpc3RyaWJ1dGlvbiBpbiBaaW1iYWJ3ZSkgL1RyYXBwZWQgL0ZhbHNlCj4+CmVuZG9iagoxMyAwIG9iago8PAovQ291bnQgNiAvS2lkcyBbIDQgMCBSIDUgMCBSIDcgMCBSIDggMCBSIDkgMCBSIDEwIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKMTQgMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9MZW5ndGggMjU1MQo+PgpzdHJlYW0KR2F0VTRnVEs5aCg0Rk0xJjRNMTIpPGUjblknL1pqRnBccHNrMTksXGE5c1RJMktMLUA2Vy8pNWJmQSZgVWghLDlQI0ojJDVeWGBvWzRjPSFda1BiKXI4W2VWXG10KyonRHFKbmM/UkwncDVKMFNjQ1RKc0lzWk03aGNKOkwtOCwzbyZ1WDJWUzxzI09mX3FqMmNuZyVOOEAoKHNXX0xMPTRBTCx1aUtUP2NIb1VFWlc3X0YvLilGUjlKMWxDTi9jLnNTa3MrYUptLSwxMXFDQ1AmJFYmQDxRKCdgYGUhKmpIJmJCa01MJF91OnI5PjFaQDlIMyFodTkiS2U5ZEhdQUc/Ti4qVyo8ZjgoQmkpcmtPIUpwWydDKz4rLT8saTxOcWI7N2s0KWgpIVRmcy85Zl9HJVxAa21eKVU1ZVxdJWM9WmxDJGknKilgayIsaHFTR0JxV11wXSVNR15pamNrW1RLKG8qdFJlbUlYLWxRNnA+QVUuSnBdL1BNJWMuOz0iMHBIZCRkKSJRSVtKKWImNmglIkU6WzxpTG09RmtvYjpSYTEvQS9QYl1kLUshYCgvTHVxOnNcSzpOckVCOkVcWmE3RmkkNzY3Z1lFZm1XRV9eYi1LaiU+L3VgM1ojQS1AMDksPWgmbCg9c14/TUd0VVFIImxLQnNPaEtLSiUyU2Uraj5EXEpeWSIwPVNBU2lMM2gnJG1tcjYmQ3VCKERibS9WYTRYKCtIRmA8OycyNFRAIiY7QVhRbFhpZFA7ZyZmTVMuYSliKmFKbCtuKkhdXUUuVUhjMVZeS0AtNTpYOV0nSFlzQWZuRy1DYVMzY1BedCVhTDNjbVA6X0VbLWBQUltWckZaUV1nYURfKy5VSUJTITdlQHFYbmBYT2V1bC81P2dhVjQhKVQjOiU+aGZyQzVtQGI4YS5xakE5Pzc3TCJWXmtpWDpMYF9xPSUpLkpnU3QyKi5nUEZDXldoMUJoZEhMKz5OIzhZI1U2UldDcWpkNDYuOGw2JzRUYWZSSksrNGNcXkErQFBVMiFVKS9FbFFZazNDS2g/LTNXMjZzJ1NaPERJWFxUajNLam1dTyFMZTA6PTJMPlcqQCYrI204OyknNG9UbjIjRTAoP2RsanIodWtFcSI6IVdqXiItPFM2KS1XS09uIlI8NSwmP1A6LiZFPVMtLDEkKEM8UGB0U2pnJ0UyPGxJSlFWXS4zOTNoIVJlZTJUaklAMWJXYyJOJ1o8bzk8UC9SLlxtdVs8XUohJEREJjk8NFQmZVw0bEtGJiNgJEBZTmhtMTZrLltdWUEuK2FxJy9PV1BVJFA7SGEhVzBjTyc9OGlWUytScSJRYTZhaCU9PkY6ZXRqMytYRDQ/L0xaJSs1dDNIcV86RDJpJ2tkT10pMzwqcVpDRypNQUZOaSFpUlVkaG9OQURgI1Y7MlU5KEFEbmgtI1xlX25cPFJuTHRzTz5kX3NTMjM/JWEuO1BOYyEyPUoyIVNnUC9LakNBZT1wYiYsMTkpN1o2aHVhTnImLDw6bGc/cUJAODE0YD5qO1NVMGAvKDpUMEoyVydSSltCZVN1QVh1PGBtWTlqXXBlM1ErQmM2a05lTSpRLTZDTGRaRmopPzQvVSIpNUAqNUdxN086YiMkaWR1QURbLUJUNTY0aS9JMyFLN1VzIztcJ0VeRiJiamw2SSVJIlVFIkw1Il07b0M0RChoYUI4KFFpczw1V0hfXDM9WTczTlcnYko4R1JZQ3U9NUxJME90K2VVNWcsJ11OPTw/Mi50YVQzWClUTy0kQyYyPEZmMXBBUFolalwxSiVCS2Y6YFwvQzBLR2lwXTVYUkYnUFddK11Ub3FucVVhNC1wLVtPa14vO2pMLUZWNyVqZEFkWkBwZEpOPmVUNSxrbGRSJVReS2FUQmpdYGBaNCI/YVZRIkkmTmUvbzAxbypYXlk1Pz1FWWFBJDUxYyY5QSE9K0FLQC9qRyY7KiJZcT8pUjJRTVAyWFtgJFYjQ3RtIm5UIWlvUT0iJ0JITUM6QTpJZDBzWTRLLzdUKllITCFFV0AvVCY6dTZdcThpSipbalo9K1BJMjVaT2Mmb2sjbVpQUWc/OHVNVSUoK2EwWSlwUWZeI3VyQkQ7VzNeVjtYTVlfOCVTVGlWXThwIypuNVknW1taNkQmTUlNcmFETiFKdUpMI08qT3VITG1TZV02VXBVO1BKTU9WJW80cCJPVC5MWDpkMSlLMF9tVFxxXjxYUTwxPG5XZGs6NDtTUG9GWnEpP2A/UkghL3BkSTVTUyVML21XQURaTEtTVW1OVCNhN05DN3JoUiVpRG5HbVpTYF9wOVUrOFxOc1xocV8xOTVJRz1NISUuTTBPJColVVtwUlBwOHEwI3UtVGcpNkJKLT8qUlorY10kaV8uMCpvZ2g7I2whJDYxX0g6bnNpZilTV1IvNTQkODUtKjM5O25rXV4nIUw4Y2BVX2tgWl45SicsKnBoL0ttNDM5NTZFO0czdSxDKVdRMlRZQms9aS50am0+QEJYKkdTbSJrO2IlNlIpbklpTWlCR2NJVmwsI1wwPF5oNyIoRjVYME9bLzsnb1FeMF4hXlQ1SlBQXSxHTk5oXSJUQD1hTCRcODtjYlwxOigrODFKOFJlPUEmR0pUaEY0TmVcWjhbS18lT1ljdDFiK0wka1hmMjhNM2IlcW0mRyIvSCw7RjNTLEltWmhlNGAoMGQ+KWpvKyQzYCttIys+UWdoJ29WYyooLD1eKyI+Kj5jWWVQQ21UMlBrW0RpWE5QMEEhPkFLaVlNNmshIjJAbVVHcS9TTUZXdHMqck49Y2cpZW5qPERQIkVsMkhBTDZ1UUI0c1lpIzZLckgqbCllIy1QdDglSTVfOTpjWTIrRSUsMFAsXlAsQ0shSUpncVJaJl06VVFsOmRhWzEybldcKmQtTlE1ZWlWZS8kZVs7LTZgcj9sMGRQKU5fST1cOzlxSVU1XVRFZWovMTU6ZEksYSxzXD1ANlhMSFwvdURBUnE6dCI6VkklQUVgKkdPWWJUQmE/TTAwWDhiayU3Qy8zbWguZlhWMm4xT2RVPWE2PVstLk4tNFhjVldOQnFPT2BYOjM2ViNrVW5tUClJMWpeJzlfWzNhW0pNUWQkITsxPXBDQCtfbXAqO2RcdUN0OG8rZDU5ZFNEa0lKOSdvb001MG5kZ1NrM1ZdITdiITlKRHIyKnU+YXBiPFFSWFdGZ15lQWNnYWswLEttQGx0JFxqblpWakhRT2hKQXBKIyFeK2teNC1KK1hrLiwlPScnOyswJThbWDRLSUI8OUpdRSxcM0JMPDMlZidXbyYobm1xND9VNVxVImNJT0AqdV5nOlVpcUhoR008bDsza0JvQSpSNkxBJChWZWwyUyNYOGA7JGBvXzd+PmVuZHN0cmVhbQplbmRvYmoKMTUgMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9MZW5ndGggMjc0Ngo+PgpzdHJlYW0KR2F0bTw5b24kdScjIjBEJ0YiYzkiPCZvLSxaMlo0P0opLzhhRE0xZllqZUpYW2AlbSRDcUA1PVpAYCZGcWw2LjhMcEcobEA7VTckWFFGVlFdTjs7OlFyJmFWTT5wYmY2dU8uMSs3Qmg3O0w2dG9QIi5NcXIna1RIP0BALFdTZVRTcCsycSk8Kl8jbENJbDtFSWgmUTM2UDBsT2BYZVRdMkE8YzFRUz8rV1lWNTswLj4uOm86cFRkXEtrZUY+VHMmS1UtV0pwS0w5bi9zb083X29UZ1xEWVVRdTYrRTs3OTR1ZypFLjlmcmhnUipOLS8sU19LLTxQc2pKck8iMjotP2gqbUprV1kjaUEvYz5AaltiPF1CaUlwMFJSWlAlRnNmb0JbIyFxPig2MkEnRFsrbVtkWkJgTDxkJkBQW007TWgnLCFDLVMmJVs6ZF41PTFZL0ckR2IqKVpSOSVUVFNlV1IhSSM+KWQsJl1KUUE+L2NzbiVHJFRKLlZvJnREY0VeSSIsWDFUPFhMbyphVkxsKUkoZUMjVE43Rk1sMCpZSTxrPSo5U05fJE5scnMoaz5nZ0lQVVZBLiczXUVTa1JqOzxjX2FaVUpJOG1BKCJkM2hIZi1qa0hNWjNGbEhkW1k/VWV1SWJYOD03ak51VVxsI3VnWCo3OloiczQzKE0rMydlUStLPlUwI0QjLFhES2NVJCg7Oj48OW82JUVBYF1DKycwKCE/OSMhM3NALV8pLTgrTmQwUCg5Ky0mbVN0VytcUzAhQllIX1QuLS4yUG40JF86M1w8MDcrXismV2lxdHBGckciLkFzIj5LQkhKciMvLTxCPU4/JW1VWUI4ZnM0bCRMQj5iRXNQU2MjdUBsJlJHSjhScFppbUFNQj1BajNAS1klNyJzRFdBSEM3MjgnSy51JztwW0c1JVtrUSlNJnVtVFxlbW4wRUhpZ150NVY0NS1sI0AiRGRUVDxDVCxDY1hQcTxgc0xET2lMNCo0LmtwLyw0aT9uZTI9YUUzRU9IPlMoYkQmZCJLXTpVSGpCVT9bNihXVDhnXz5bMmJmczUtXWp1aio0VFQrKkNOW2JsJkhCb0diaVoySzY7P0VTIS8kcjNMYignUi0haiFmXjo1IzkqTiVPJnJiUihfVk9aLFlTXixPWlBHWGFPQTknaz5UbFdEJyhHKE9ySl5dbVojJytUKFoiaT5cPWxqaCdbITNmNGxFdVFONV1bMiU/YlFiQ3U9Qy1DOmglNz07NmY3R2tNJChGYTUqOCRBbkc/LyF0OjYxa0hATz4kJjtfTFhVK2g6b0BPaXJnKj1qOyRNY1FmZ3AnLWAoMkQ0Skk6QiFTWmtYNGRNVjJcNnFLYCwrQUE7OjRaRllpKnJONWpGXTQ6RzVjY01YYEhrVmcxW14kSVFKT2AtamknK2VrYSZkXnMva0lZclU7JXVHRkUpVUlSKzNeIjM/QyktYWZtQSJucCtlViRAQkprXzNKNWsjLmhaUjJPM2tGW19gNVA8ZkdGZ21ATE9yOFUrWTItWEUjTmlKY10nV05GOVVyJWE8WW1eK1Mib3M7IWlAak1ccjlYMWIzITQkSWNURExKSExwTDJtNnE5RiwuMTFFQWtCRD00ZFM/J1w0IihbbGN0LXJvSTVEJyguOicmZCg2TmxhZDZyOlMqX2s1XlAlKiRqQjhiQEhCNnI9UiRWY1JZYEdrPWhCdWtwQ1lXVytkUVMtKCZXR0FnJjpAa0BGWkVMIlNgSSlIQC81TDwhaltURz8nLTdpXzskLmRRIyVSQyMjLlU+Oj5COzBjaUROOW1wMW8mNE9iJytlRUByWDdfND1IMSNEKyFYWmRUTFVPK2JNZlNScyEocyJdZzpnOEtYcThNT25scmFSTVBjUDoiYC5HUWEuRTVFVCthNSIrT1ouQ0MwQzgrRENwTiZERmhaWFlVMjY8MFRoKyVdO0BIVU8tIzYtRjBYWVlrVzpuTWdTPCd0MkpEIWZqK2gxSFYwOkNRJV80ZThDUGglQlkmPCc9RWFmZCgnVyJnIig+JFwkXEw1OGwyNjAkIkdALT1pPSYsJ2hnLmwmKG5Ga15dNChlIiJxXz48bHMxZnNWaV9RWUp0SldAMSdTTnBVLDo5VlphZT5XWlNzNFUkUCs/PicvQ25XXT5MPkwsRTBpT0A2RzhXVSZVRSlPNVlEZlduUmpoSTI9KTtTTW4ldC5pQFc6SzUvYGwuLkdzK1w/b1o+LXQxXl1xIy82UUBWI1c/cFBfSDs/XGcpPGZgJCkjO3NTOzhzM2ZmO25SJ1RhOzdfdXJJYiRLXEtbMVlwLlcmWEVtcSRcdCZUUz4jcHJjcSpuVCY5Ri06aGA9ZFJkNiI0KUdIZVJELUw3LSlPaUg5bj0vdUUkLl5aNyNIOCpcMzQjPmh1WEg1IWRIMUNZRjN1R1tQME9vdWVXbTVURiw5KnAvXmA4LWNqWGczN11oc0lGOyhDdVJoa0FtVWBtXFNucmVgQz9RcEI5bmItKSVLKC1EXzBBdTZRcmljZmVkXWFIaDAvbVJPWmlOJ0Mhay5rRFFlOnFUWktRWVtTOTBKckFGNCJBTmEla1lAaEQrRFkpIitUJywiXSg/JnVxaU8rPkNablJRR2RdMVNtMUw5UW5mKFtaZFs/QidjKTJDPDZHVyU7LyEwcD0xMzxqbSw3WD9XbDUiMVFgJF4tYS4kTUkncl50QEhEaGdlIl1AaFhyK0ZoOlhPcW9QZi1LSFxzUEl0OlxyXUVkTFY4X1kwbGNhOU8xdVg/Pm09O2ZKY3FARUlUOmVFTzZoYFxdOkddMzp0KWIrPUAmX2YzJypqPVtjI2lfSGZWYVZmIj8hZ2FWMycuY05NKCItdScjcGZKZHA7PkIrMTNVLUpaTE0/PEJvXjlCPm0wRFsuZzEnRE0sdXQ1KkIpYiJkT2ZWbjhrVlFATThMaCRRZlI9VypKVUAyMEcqMEhNIUguNyI/X2NsU11ddElLRyFTbVxkNVg4TEMjSmc6P2cxJmNALzEpOXBDbEExU11KODhDN0MxIT49Z3JxUDk3cF5AJ29aZmAuIUhqTTw8a1E2RWtANlApTm8uI1tUb0s0VGNDUT5vbjcxJl0xYGpXI0pfNzxIbFFDNE8lcWMpRS1iRzlkaGlzY2E3IjNddTpJUkl1Ym5wTVxKNmJPLk1LI1EqXC0hKjAyWE9bb1txcC1SSSdzPm1IT2BvS1hMPCFWPV9RVjpLPFVeIXFKSmolViYhXTo0MyNYQjw4cmVWZiRFN2JNQztBWk9SJXBxcGQ6W09JLz5JSF0rJmZeVztDMipVcUJFZyJgbjpXXjw+I28yYSFbbHFZc084QT4uMWFEYW4nJFBaLyUiVjdrQkEqKCItJkJAZVxEWjhwUzFqNSE1PWJaXVpbRUA7MFVOXCdwSWtXZik4PzpFOFpYVSQ0PVc7KDomLzgnTlJSUEcqI0BQUileXj1zSEcpRVcwV28wLl5nMl1WQTwtbjw+ZlpYO1VPSmEtcnBcTFtdPzJvOm4lRGZrSFQoRC8nZnNIJ2NyPj5MKEgrOXNTOV0scm9QZyIoYjxbS2pMbDVNa3BuL11qX2VyZGEoUj00PzczSFh1VTtjczRDNCtQVGJuInUkJ1gmZz0/TXRDTGcva3V+PmVuZHN0cmVhbQplbmRvYmoKMTYgMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9MZW5ndGggMjc3Nwo+PgpzdHJlYW0KR2F0bTw5cD0+QSZcXCdDVF85IVksciw9YEE9cUd1bVYscmFNPEYoMTciUVYrODNkUTdVWGBDb0hzUW9KLGdwMWA7XGJAL1VsZTJpVVxqXzIlbnApYVQ+Xl0ySEgmLTJaQERlQFlVIWVAJTg2Nz9COTBnND9RUywmbktyWGlNW0syWSoyVlZwLW5rKy9iRWY/bzhHPUFRNWFtczhbYllMR2JHLiRHW1RLQT1YJiNrYz5Lbz9nPiZxWF5LRD1GWmZzL2xPI2tyISpROUc1bSpyZXVUcmUyVnBlXU0wXlEiZUNMRT4iUTZFZl0iKE1UTCEqYThjZzguLENfJl4xMzQ6UTUjU1xEcUlOT3E3RCdubWAtPSNsSVYnTjlkQFRGKThXQHNGNktGImZ1XzwtV2FrLFxFMFVfZ1kxU0MsTU9qUlkuXWluOD1KOVBUQEBUM01XaVheLWwlW2tsWVI0JCxEPmxHdDdYKENlJFxMTjFBWitBJzAia3FialAwJ25oUUpvWCgxdHBORz1ecFM+IyNJLlJGNjdeZVZIc19GJmUoZEpNYD1IWzFyN2llYUFUYWRJZ1VFPGNLWE1nMEMjYjI8bHJUXTg8Oi5oU25hMSJpX1J0TW9sQUNePHJnJSFJQTFaZ1BHZWpEMiJPV0Q2X1FNUyJqQF1UbkdfK2ZZOSwrOUBgJy5mSU41Y2RRUTBcWXBgc3EzRDh0Pi1zYm1UMz8kIiQ8M1ZZLigsXEU7WVJAVEZCQlxqaFEjLlM2MCNbRlYmc2F0TEBGbkVtVzBLa2psOnFgaUMsPz0zM2spV00yNllVcz46NiRHPF5QVlcsRzI0RlUvbEhVVkc8bmM+IUBhVUw7Zk0rPU45bT9kJ3VebkxcTjo+R0hwVyxwWWtuJ0k6c29iNl02XG8uPkxbajA7N2xmVzsmPVg3W1JicDVlXzkzSEQwW0dxUUMucl88Q21sOzVpRUFNLlppUzw0a0c4R3VWLTBVZiE8O0FgaWxBb2dJNy8nLkFjK0c/RiZPQ3JERF5NTUZpaDdQSj8iRi9kKE1uIUdBKkVfQEBeUnQzKFxDRyJiaXEldU4zMyVHKFZOIzU7bmVTQmM9Sy83QFciSFo6V2tNU1NFa2dFaEZGcEZCOiluY2Jlbz81aW5fSkFNaGFvTiY/MC5DK2JPM00uY10vJi1dNScyZCgyWSZRNTBnOTpYRHVnbWU6cmotWkhHWXNiYnBYQC1cYEhOX00nU207SSpjMmU3K0pqNzZsaU5DLE8sRjRAXVFtUi5dYilhYD1RamxJQ0EkZypNNi5UPi9uIkxsRy5hZD0pU1dIPiwmWmEtNEZyYWJjKGxjTT9dZmsjbDQ0MUlrQzVsYGRVPSxkKFQ1VEZGa0h1MEwrYjU5MmlPTGcsb2dbS150ZVFoPWRxUihgQ3RvXSVtYFhOIUAxWSlHazlWT3BLaFJZRSk0T1E/T1BkYEJjNnBZQi9yYT1cYmFQanM1MDFaX1AnNmpVUWIrLEU7L0VUOSs5YG8/JExGIy1IUUBpIW9TSD5vUi1GMCNzMidmQXJmM0hxQEIsQjVqO0xuOTtJKU1wcksuJyEiTF5dJSQlTEZBLz0ubSxfVCsxcis/cUU8blU9QSJYLCM9Ik5lbiRQWkNkSE8qMDJbNSFTW2FRXDA6YWRaWTlUbGZIbmUvOl1HVGNqIUpaUDtUXS1eclQkQlFVNj86RGdBPDVxdEdrKztiMWJsR0pRVCtIckpbSDgtZjNZIjBuNVxvTVhgX1suVk02ZGwvM2hpIixNYW9WM1ZnRTNlWThKMkpgSF9tMGxsPmZTQDMla087TGNYYzwrVE5JdXM0UCR0b0VqITRlOzomOmMxITw8RSY6PHNgI2tiJWsrMiEvSTJIOD8zJzUzYTQobm5TUypwKlpUX1FrT2MwTXA7Y3UtTytUV0ZZQUA6KCsuQ2siWVBzIXVBSyxTNishIy4lLU0pXysuXSpSSW1TJ0MmJVolUkxfbnBJJVckQFc/MV5mNj1TXTphTm5kaSwnQlosPl1samRBYzJzVEQqJTMnUSFGZmA1dHEzIUpSSidSalZYOENcJUInbjRKJDZyYUJhcV1DOCkwRSszOTBvT09AWjkuOT5eL29YbDtBSzdATEZnPz5JZltmOVZmVEpGJ0FLJGJBN0ZgbURsL1Vtako4VjtwZG5Ncz9PVVkpN05MTklsamJyWl9rJzo4S1NoVU9ILiVcayVqJExoRUdPKWcqZmFMMjAzQjJgL0dUWFRQMFFySy4jS1F0Jz9VLVxVLEkpMz5YJE0iLShxUmdsSW1HOmcicF4iLStGN0YnPV1sNmckYGFwSEgzcEtbWicia2VyWjssTlJKdSlHXFZRJyNVIXVXbCcvQUIrRzQ1IS9jUiRoQypLRHVNRFgoZE9MN3VpI0lRaEIsJFlQRTU7NSlkPCFEbWMhQis2Ljxrb11bY1U2bG9DK2I7IjJcSlsoO1pCPFsqQWpcaU5dUFMucV8kYjFhMCc8UVAlJTEwSjAqcFcrIShHaiMhMVNXLElSJDBJRDEmNllaYDkqb1VEKHJwcmI2KCRQQWFQc1ZcIj02UzR0OD5JO1gmaSs9ZzlwP29ZS15pVHNpPV5HX2clWjNCKVtUTGVvYWRuS0lnR3JzUyQmNHNcKkslSyQ+ZnImLjdJOl00Y1xQLFdVKkklYFNuWjlQVlRLJFZMISJUMiEtbFMqQmpENiEqIz1FU1g8UlpxLEksZ11WaTk2aFpeRWlLT2omaTxNWlM+PTtlLDpgVGc/TEEyK0ZpdGJySkE7QlQtPVNTSjc9dU9gVyNpU2k5LEE0YUZJQ05WLFAvPGs9L0VfUF1oI2dZS1tZcitrcSJtY2YmbisldDdbO1w4bzpIOTJVb2o3XiU4bU51JUI6ODRzR0doQy5la15YM3UhUzBBRjNlRVk2M29vNDQ7OFxjIlc2P0ZBcFdcLGJoPipJcSxSTSNyIywnb0RnIixeMGFmI203KyE1Pjs5bT9vZGw9aVhXcnFyVVNDIlBvN1VBK3VeNSw1KURUWEpwVS5WWkBCUlw9RlZCNCNZRE4rb1ZUbmdiVW8iJ2ooSnRpSiNHWW0rRmM1Yzs2QGNKQVE0MG1GUW9QLGwuMFY+c3FvPG0nXy1aLTRkUzxxVz5TTUdKZD5lRlNGaDVWXztzcTZIbTQ1PDBzb3EjNl04K1ZOJnFPYkJddDNHNXVETTpCWidxa0N0LDo6JllmbVVFaUNHR3RpczloTG9lNEBCQlpgX2pzRHVAb2NmYyJtWTQoPiMzSHFER2JERjQsYyYkRlMya1FsampLVFY4akJUXF1bLTRKWmdUJlNDbyhbXSEpPF1CPkltcT5DNCcxNjFbIy4/RC1iKUZPTEw7ZUxbQ3QnUkFnX1Q3Z14hI0ZDLGo0QEVJMF4saCFESUtNPW5ZRykrR2VWSDFdSTBJSGA6JEElaigiMVVDUj90VnNbXTpLMiNeMCxJWGhJMSUmSTFLLC5BS3FJIWRAaVtES2omLV5uI1M4MzhIYWFIUE8uN0VFNEEpTlxNVHAiJExyI0xCR2NqbCRKSVFERz5sT1hCTitDalVXMUFZc0k8L3JcO29uXktfK0FcWSJvWmRoQWVlSEtcUlUwTj5FNkdaPTR0aS4xWj1ISiVEJFtXZGUkWHJNSERPUmAiZmUvZWFpQmJpYlpRRyopSVVza2dtfj5lbmRzdHJlYW0KZW5kb2JqCjE3IDAgb2JqCjw8Ci9GaWx0ZXIgWyAvQVNDSUk4NURlY29kZSAvRmxhdGVEZWNvZGUgXSAvTGVuZ3RoIDI2ODYKPj4Kc3RyZWFtCkdhdFU0PychYVsnbixoW1wtUTlWLjN0MyQmay1aMD5VTXJMQTprUnImRzBzMU5sNmNHJVBvbkc8Q1ZGYmNDSCspOyZgIlNsPFJMKS5HaUJsY0ZwT2pgVjwlJnMoK2pxcERzNSoqc2o1Qm0xLEFeVSkhKDBWL0xOcUlYWCowLkFGNWInaEBNNS5wRCcwXCJXXCNGNiR0c2Q2WDVfOzc3by9iI1ZCMFg+ZEIzZGJFcWdcJGApRz1YY1ovJGlKMURXaEZubSxRNVs1PTElal1HKDNwYnMkQDlcW0NoPSQ0QUJPUkIyUUNmW3RtMiNRc0I0UCVbJl0pcWVhRCclXF5yQmB1Tz9HbER1Zzs8aHFkU0MkOkxsIkZsWixfZl9aYShAUnUjI2VxNkZdVCYoSSY8bHA4MWcvLF9na0lQOygrIjc/aC8kZUxVOjdhPFAqJ3AkKipzK0VbKmssVDIubzxpN0hwJylTaypyS1dZWWY6JjNWSThTWWVsIzdzcnIiQkBTIm86aGNfRWczZWFIMFMyZUVXY2FBTDtfZyopOTs5Wlw/SCdKTElGKl5UUFdXKF1Ybkc0ZkFSIi05KUFOaU9WLjxaTSJeSlI8Um9Ua1gocFMhKUZbTmMyIlNzZjIxQHQ3SzJmZWBjKzwjQiFaPEQ1Iy0uNm9sIzpKVkpjQ2c8OjphSSc3PDRyT3FTRkZAZjx0Wj1xPDleOXJRWWNcV2c2P08sMmY0SDMmWnA4XHBQaUMyXjgycyltb21Pam84UyhSVzFIWFNoaXRfJG1GYlIvXUNpaiRLaD1JY21lZiZHMXFBMixzLDxPK2hkaWUpPTgqXzxNLDhTLi51QyEiVyFiSl9QOG9PLzsmKjAibSpQTFwzKHBhQSImYDxeQy1WTSZeKm9vN0FCOFdYYD5yb1xGY0todDxgI1dvMUNEMic0cGMtblU+bSxHS1ZNXU4kNFk/YVNaK1JFNzxUJXFQKWJPWU1oWiRzKVJTOkxaVU0sKUo4OlVTNGApYjtKYEpoSzFfTi40TyU/PThPOEhaRlg8LGVHOFtrPW1FIlteR2xdSWosU3REKkdZUFM/P1cpKDRpXzxAMzUzKSd0NThYUEQvQjZyMDA3XDQ6S0VXRltoRj4kVlRsImJlYlpwWWxEV19wOUMoRWk2MWI7PipjOE5PSEVOJ1U2YGReMylyVjw5XDhma1UhXWNbbF1TQk5bXDE9OXQ0Y0VfQyk5ajhPQ0JaU2FkPWdmPFpLQzFPTk1qJ0syTllLSm10aVp1XnFkK1FpXGxQMnFrY19sZUhsSmtXaD5nUzhPM2NUZzovXEpMa2tbP0Y6XzlmTDs2ZyY4UmJgPkQ/KiVIRnVqRFhbMFhJRCRFLjooOCk4JltDWkQuJm43SWlzOWkoa0JPUF5xJ0RiWWNeOi9vTCRabkAkTmV1YkkvRVBdTlxZKShCaTUjOC1sRl1ANlFrQFcqI1UsWGEzJSYtU3JmRC4kKGpsQ19LZDBxXjwiI04kW140TmFvNEVFLC1qckEsZ2hdS3Qrb1chI2lmPz5cdWguZ2hdNmFqOjM/IzQ0WSxBQzE5bnFxQ2FFV2M6XSZnW2JxWEVFPFoxRGdBay5qZDxkWzYkQ2ooMzYzPDhpZiljJFREZ1gsW1E1NVI4NkU5SiMlLVRcbVIkVyEmZmg9LmNwKmNYR0RKI1tjKHArT0pXS3FwNyVpLEsxMUwoLGYxMFckdUVLZ0psJSZaYkUoUG9gKm4rLDs7L3ErOGUlVEItIyNJRzdkWj5FdStRc1lxbDwmblA9X2VlUDQpWz9GTy5ZZWRlRjZHYzRDRDJsLTtsaSomT1ZrQEhFPGhDUjxDWFpAIkRnXkElYV4+IzQzLT8rNjZNVSFVSmVgWVF0cUVMSyE8S0FQKm1sRys2clhpYUBtTjZmay5vbWEjc0RTPGFrXStMKGEsdC4sPkh1QCtETyUmPStfVzIlc3NwWWpXTUc3Y15wJEU1a2A4KUAyKUNHJ0NgUFtPKGFmM0MiLGNwNCxUPmdeZ0VhbjgoTV1WQCU9WmkyLSVBQF4/SjZnWyEuIitHWTNVa1w0TDFJcmgoRD9lVGpsTSc0W29sQEtGLzNPR0ZZZ2YvRCUxTFlVJENONlw/Kz9RXzdBPk1VbTRDV1NLai8lbF5KVnEpTz4xVUNxM1VXPCYnW3RLQW9FP0lpQWdzRVtkK09ObGU+XFYpKFxUPEQ2JTZwP2AlYyMlI0ktKW44PHFkYy88ZlduRlJGOzZYKS9oPT9kXW1Pam9wM1NIb281K2AwIktCWS1VOUs3bnEpTT0uQWdLRzlGPU1oY1lWLCtsNCFwNnBaVmYuailSRy5Qakw7WCwrS1UtJSNmOGxCQ2A5V08xX3RlJ1VyJkBUOGVvM1oyS2AmLzgnQG05KUAxWGNEcnRdaDNnWTgxQzFOckNwN1ZCLmNHLig3NzInSS9yZTVnM2hzTiRAJCtOP0FlRGpZTCo2VF9yJiNNTV5fczMlJ1dVJ0BjXzFpakpmNicpWmZWOWBJYSxVX3A2cGRZT0RxOj1zQW8nRkJlbWclYi1CVCpYVnNSX1ZlW0tDNDUpRTRUYVxwIzNsazM3YlBnW1AsQFEjO0dzPTxxSyNpVy1uQDFaUUJDRS5FUEtobkcqXVtyZDF1QDQpcDdHWU1kSFV0b0teLlMpPEdKb0dcY3A6KU0+NjNkMCFlODNCKCZjXCRyLm5BM1tSLi83QFZHY0g1PlhZazJRNV5bOlxscEZuU0w1NlFjWShDJXQvMHM1TUxpNW1iRj5dTzRbR1NMXS5vMl1MLFonc25DKThLLS9xPTg+LSInMUE9aXJPNFMlWywtbytidV42XixXLjJHYTNgN0hkVShsKmhORjdjYUxIVi0tdCVzOy42M08+SHQkPDI/cCZbNUdlWUpCYl1DbGg9JisuP0xFTy8hdGVVRzNEajU1cildakVCcHNiSGc8X048LCRKLWQsPUhQUUIsLmVYRk9PUFdCZlhWVlc7SUJtOjU9T0dxVTUlNTJiLF4uPjEybXUxNixfLSVsImdwSDZkb3RtcHBjbGpTQWdOQFgxQCtlbj0+VEJJYkoucCRHb0M3cWReLCoiRWFkN3Mlcl9UO1BtbSdHLV9vM2s2bUhAXG1KXyk6dDFoWXRnJWo2YlReczJVL1BVPURSW0IlVGllR04tKS5Qajglbi5HP1hAPGRiVVBSWk8kLmE5QD1GSkBAck1CNCRVKGhbUXExSGJHdVosazVwUFtfJ0twLGQjUEtOZltsaiRxVGNmVV5xNl1saFw+Kz1vLmgvKiZGTlNucVBCYUNGSV5fRjE/Kz9GUDdJSkBGMkw0YidtWDFqMkAmVGglOkQ7UitmIkhcOEtNQkRuOilRMWYiXWhsMiNfbERaLEEhLkF0MzZOXGRHNFluOEpvN3AnMyZILWAkXm9rUHNNcFowLylyMzRTPj5KOWE+RSx1PU5hcVpcdFxYW2hiREZTZ0FbTGw6cGFDZTFiIWtgc0xGJSVOb0FKWnVZaGdiU1giYCQhJj07IV8zbEQ9SHNAXlxmYC0/dUxyZkYkRV1oaFlbXkZdS1w0fj5lbmRzdHJlYW0KZW5kb2JqCjE4IDAgb2JqCjw8Ci9GaWx0ZXIgWyAvQVNDSUk4NURlY29kZSAvRmxhdGVEZWNvZGUgXSAvTGVuZ3RoIDI2NzUKPj4Kc3RyZWFtCkdhdG08PyQiYVkoNEZONF5kQmwiRyU8NT8scGM/JGcuWDo5XCkjY2VMUTVeYSZzQklCIT5aZlsuXk0/Z2NOUVI7QTxPTzFoKUpvZFU1OFxobV5fTDlANTMzRHBVYi9YcXQ/J0tvM0s0clBoa18wUCIuT0VxblRxXEhoUj9DRStLW3RtU1klJGlEUG8scHBYa1k9KigkXVAkZkVXYXNeSjQxNyUkIVMub2IvZF4jcENVTWMtXWgyIzZUYHI2KTtpZmUzMlhZZG9uPWhKOWhzKDZLVCs/VFVUJ0I8ZmctSGFJZkFhPGtJLS8zR0poZjFNcz02RmE6PFs8ZWBrMk04TnFaWFpeQCg8U2dubW9aKzpAKmlLWzFvVlJDYVUsTSplXCwnOzZcMUtoSjtfQkFPXVkxRDIjITgwPUEqRV9hdSdrblxBL05cPmtyckhZbHFgOCpqOHVoIWVZLkEpPGBYWnN0KDE9YywsLDlxKDdqa2BLKVhmKXRHWUFTKEtrYz1kRlFfSDw+S1BjV2UxYktXUSlfZFtiQUBvPT43Ol47RlxFMkk4WSNGP0tiaTxRczROQjslVkBQb3MxN3FpX2RuXy4sNytFMTAsWE9ka2Y1OS0uS0VlUWErKFwjR1tpNmlGdGlWXTptNUtXb0dHIjIoTGBGKTcpcFZPXVYjcmguO2BAN0s9UlsqRDlLZTBQVS5cQSs3MF9Oc09gcDdeY1FkNGs6LHRxOS5ZLCNvM2JHLkhgOmU8MSkpVlVgVFg9cF47WF5HPD1yLi5YKU5ZJVZbLkAuWF0wKWJGRWhkakBaXTlEL2YoMHFPUmBWRmlHRCMrNEg2RmtkJlVBaTVcLGRWNFckMDwlRWAsJGVOUzZ0ZGozVCNbTiVyYjUyYWNuVlVxdUowazhLWWJiZUtfSzEtVnNOM1FtR0BtKFZaOVhyJz9mLkt1RyF1V1IlWSVaTSE+UDhGXV1cMWVxI2BOc3NtKUdIVFRfI1lVXWM0OiRYNTJpQ2RyMzhMX05CMjRPaTRkWDxiRFtJPCNRMG9sP2chWE9QI04wQm0vVCthc1ttL2JUbiRuJ2FYZmIpWzJxPmRmSzYiXU9kOFRTPCsmJ2JOLyFVK2EuX0oiK1lTTFZnM0YjRGBeakdwTEBaQjxLNUBkUXAnKnApWDIjPCpzcT51KEIqL0pHJF0jOCtIaUwjM0UqPmdePGBOKGwtSio4cTE+ZE0oRW9qRS1yanVfR2tWdTkuRjpOalJIZDkyXlBBSzJpV2dPTk0oY2tZaV1dMTZobCpXaEtxYm1KP2dVQjsjZzFqWzFdVExcR2hkQjlGQlkhRTc8SWllZmlGUjRgcSQnNzosaklTbD5SIS9QTU9dbUFtWXJkUlE8SzA9ZiVCZmlEZyo7Xy5kLWhwMEhMaDovPDNkVTpHSyQoc0JQLWx0Tm9HRmwnSFdSVHI6SFMjKXFwLCtjZiJtKWNuc3FkJjkvNSlxTkRKSlY8JihUZjRGa2gibyo2ME1RQ0xLbV49M1BKLXU0WC1xU3U5a0tuPXFbLS1APUQyPWAnOi4nWUBAbkowKlQja2NjT2JdVktAQj8/bUlJZTcnMGVgTUkobThSJ0QzS0wpMnVPdV1vcTJLbCVSO2U8IjBxcUk6bjtPZFZpU0VHXDpqJVFYUD9jcF1nayRYblVmLyUuISVXXmsyNWJTPiZTKFpiYFwvWkFYVU1BJWc/SlU8TiYzOGdiR0VGMyprI2lVdDpUayw4Kz0mYlUoViUocDhMM0thS046JCglO1RvX2EqLGBwNTApNFNdTUAwTyY3SFMmcCJrL15YQTRUKk9cNV0pOjBwa2FTQVZFLSxUbTNSPUJBUSJNRT1KPVElXm5KJDMyOixxMVxJLltRV2xEQV91WEc5VzUjcCldcDNtOypNKXUxclBTZThLNFNkJWlSVmJbWENXbGBrO0BmbShePlgxTHM5QUNNN2kwVj5yb3VJa3BVS2RHbVpwPCE/WHM9ayUjXChGSFIqViRrRDMxQV1CcighRjRROWg+VlZYRmRlLCRkRipzIlJWV0BkIWtvS048ZihbXVNEOGUqZUQxaWlfU0UpSXBhLyVmX1NWTyY9cWdgMy5uUGlUZW9QRlY+Nz9sOltFPDhEaVxLPVU5Qmw5TCQ9OGdlYDQjWS50VmQmZFNcSSZAJlIoLXU4S2ojRDYtcDRmRGA+Izw3YmI0S3QkIlIpPEYoODlack9DZDlOOWkpaWwnQzwuVHA6TyksZFxoZlgxYjZfcSpvS0NRPm9dNyRIITgsclIqVXNyKjY0IUA6a3FuQlojZD9sR15tQ0NwYz0xXj5zL2hBO1k6WFg8bGlDZ1dxajRXSSJxVSxeUTtURjhcKSFILyFYMiQ/Z0xJPFMuakgnZUJYZ2YucGlVZC1LWmx0XUdYXlVRdGB0XEYnckZSOlpzPGI9Jk5VWG9AOzlYVSRHalYqVGl1M11YMCg/VipjLkhfckM+Ri4ydUdGQShzRiJBbkAsMVRsbUNASzBmPEpTPUI3UzJcUkZgWyhHXmYzWFpnWWcoOS5FblowPFBxPixdYm1rS2JLNTVYJ2lGR2pxcyJmbkBcJj44ZDlfPS5CZyM4IllTRnREOmxxTGlual5gMW5xbWs4Jz4+SnVTP0gxPkw7UHJZPCVZSGpDQGFoUEEuOFZxVDNdLmppS2BWUlJLSU1kNzNTYDlMYls/SXJpU05LR2hMRSNoZCdAYE9ScmBDM09ALi0/RSdkaVtcSitGb25sZE9tLmUzIk8iXVchIUNJInJCOVI+cCo3L01BKWs0USwzL0clVmNzQDg7NF1vQmFeQzVqI1MnJWRzcXQ8TigsaT0/ZmJdM1sxSDFOVS9dVUZ1P3VDO1dSaT0/YmdaTXJuZiFqLT1VbyRXZ15hYTdSJGYicl1vLmBkRmZsZjhXKW0nQmpnPCFsJUs+VStJMThicWArRT1PW3A5Smp1ciolbkc3OEVpUj0nKztGYVstI2osT20iXGVKTCs2U00lVidWK0NiVlVXa04kIzhhVGxNRFg1XzxBYTBWYkc7Iy9xJFZGMitlT1hRPEhOZy5UbSFkTjpwKTY/T1NjNEwyKV1oWkVdTlVtcyYoI0s/QCo2RTNrJXIxcC5PIzoqZjVPXlRoMSpfWytlSWU4ZSEnREtjUUdzVEFXWGZEWmRbMVptY3FzRGwlZ1VOdHJNWjgrcmFlbCdrMmMrMVJDUDowYlIiQCRZQnQoITMlRCZKIzI1QWtMSlZdNUUsJUEtTmlGVWZ1cjt0MStaJiRCVEMtYl85SEA1UUNTbWQ+Kk5FXmxhLjc7ZWBfUDVPdCIxcyNEaWwkL1xYLGddMFxfSXJBamtybGxUVT8tOTc9RGciXyVzXmZUV1V1P1VVVkVMM1RcSS1tPChYLUNCIlFpMVEuJ1luMGw0YHJXOkBtKGoiY0A9YTM+JlUoOmBJWlBvakI+MDoyYzpAKT46PmBIZ3IyRENxRE9xPWMyLCdOLExtK2NYJi1AODpLSk4zOzYpdGttZjtDYStVS1VYMVhXP1Y/Kk5xZDoiNS88IjxxXyoiPkRiVX4+ZW5kc3RyZWFtCmVuZG9iagoxOSAwIG9iago8PAovRmlsdGVyIFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAyMzAKPj4Kc3RyZWFtCkdhcicjYjc5K1gmNFE+QGBFZjNyWXFISCM5bHBPSEBYaW85T1ciTjw+VCNjX2RhU0dEUCJtPk9TVER1akkuOzAiLEIsSiFTMm4qMGwrbilgUWpQNCk0SGk7Q2FvWiN0K3NObF5hbW45T2dcUVhwSldRPTI/OltVVU4rXV1ZMSpXaVVCY0pKTHA/R2k+ajhKXT0qazhgNUwvSURJbVArT2dlK2FLaEQ3VWpoS2c7ZGVrdSpqM107STQsWGQ6MnVfUF5NW1N1b1ttM3FbXyxEU14tKmdXblY/KWRBTEtxI1dXLTVgbH4+ZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgMjAKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAwMDAwMDAxMTIgMDAwMDAgbiAKMDAwMDAwMDIxOSAwMDAwMCBuIAowMDAwMDAwMzMxIDAwMDAwIG4gCjAwMDAwMDA1MzYgMDAwMDAgbiAKMDAwMDAwMDc0MSAwMDAwMCBuIAowMDAwMDAwODU2IDAwMDAwIG4gCjAwMDAwMDEwNjEgMDAwMDAgbiAKMDAwMDAwMTI2NiAwMDAwMCBuIAowMDAwMDAxNDcxIDAwMDAwIG4gCjAwMDAwMDE2NzcgMDAwMDAgbiAKMDAwMDAwMTc0NyAwMDAwMCBuIAowMDAwMDAyMDcyIDAwMDAwIG4gCjAwMDAwMDIxNjMgMDAwMDAgbiAKMDAwMDAwNDgwNiAwMDAwMCBuIAowMDAwMDA3NjQ0IDAwMDAwIG4gCjAwMDAwMTA1MTMgMDAwMDAgbiAKMDAwMDAxMzI5MSAwMDAwMCBuIAowMDAwMDE2MDU4IDAwMDAwIG4gCnRyYWlsZXIKPDwKL0lEIApbPDJiYTFjYTJkYjVjNjNjZDcxYTNiYjkzOWI3MDExM2IwPjwyYmExY2EyZGI1YzYzY2Q3MWEzYmI5MzliNzAxMTNiMD5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQREYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gMTIgMCBSCi9Sb290IDExIDAgUgovU2l6ZSAyMAo+PgpzdGFydHhyZWYKMTYzNzkKJSVFT0YK";
+var PLAT=["TikTok","Instagram","YouTube","Facebook"];
+var NICHE=["Tech & gadgets","Health & beauty","Fashion & style","Food & travel","Business & money","Entertainment & events","Gaming","Cars","Real estate & home","Education & careers","Parenting & family","Agriculture","Sports","Faith & motivation","Other"];
+function $(i){return document.getElementById(i)}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function wa(m){return "https://wa.me/"+WA+"?text="+encodeURIComponent(m)}
+function msg(i,t,k){var e=$(i);e.textContent=t;e.className="msg"+(k?" "+k:"")}
+function fill(s,l){l.forEach(function(v){var o=el("option",0,v);o.value=v;s.appendChild(o)})}
+fill($("jp"),PLAT);fill($("jni"),NICHE);
+var d=$("dots");for(var i=0;i<96;i++){var n=el("i");n.style.animationDelay=(0.5+Math.random()*2.2)+"s";d.appendChild(n)}
+
+function show(t){$("ot").textContent=t;$("ow").href=wa(t);$("out").hidden=false;$("out").scrollIntoView({block:"start"})}
+
+$("jf").addEventListener("submit",function(e){e.preventDefault();
+ var n=$("jn").value.trim(),h=$("jh").value.trim(),w=$("jw").value.trim(),f=parseInt($("jfo").value,10);
+ if(!n||!h||!w||isNaN(f)){msg("jm","Fill in every field to continue.","err");return}
+ if(f<1000){msg("jm","Campaign Zero needs 1,000+ followers on one platform. Come back when you’re there.","err");return}
+ if(!$("jok").checked){msg("jm","Tick the box to confirm you understand Campaign Zero is unpaid.","err");return}
+ msg("jm","");
+ show(["Mhomho Media: Campaign Zero sign-up","Name: "+n,"Handle: "+h,"Platform: "+$("jp").value,"Followers: "+f.toLocaleString("en-US"),"Niche: "+$("jni").value,"WhatsApp: "+w,"I understand Campaign Zero is unpaid."].join("\n"))});
+
+var S=[
+{k:"promo",q:"What are you promoting?",t:"text",ph:"A phone shop, a skincare line, a gig…"},
+{k:"niche",q:"What kind of business is it?",t:"one",o:NICHE},
+{k:"goal",q:"What do you want out of this campaign? Pick any.",t:"many",o:["More people knowing we exist","Launch something new","Sales or enquiries","Fill an event","More followers","Fix a campaign that flopped"]},
+{k:"budget",q:"What’s your budget?",t:"one",o:["$100 to $250","$250 to $500","$500 to $1,000","$1,000+","Not sure yet"]},
+{k:"start",q:"When do you want to start?",t:"one",o:["This week","In two weeks","This month","Just exploring"]},
+{k:"who",q:"Who are we speaking to?",t:"who"}];
+var A={goal:[],times:[]},si=0;
+function chips(list,key,multi,rerender){var w=el("div","chips");list.forEach(function(v){
+ var c=el("button","chip",v);c.type="button";var on=multi?A[key].indexOf(v)>-1:A[key]===v;c.setAttribute("aria-pressed",on);
+ c.onclick=function(){if(multi){var i=A[key].indexOf(v);i>-1?A[key].splice(i,1):A[key].push(v)}else A[key]=v;rerender()};w.appendChild(c)});return w}
+function brief(){return ["Mhomho Media: campaign brief","Business: "+(A.biz||"")+" ("+A.niche+")","Promoting: "+A.promo,"Goals: "+A.goal.join(", "),"Budget: "+A.budget,"Start: "+A.start,"Notes: "+(A.notes||"None"),"From: "+A.name,"Phone: "+A.phone].join("\n")}
+function wiz(){var b=$("wiz");b.textContent="";
+ if(si>=S.length){
+  b.appendChild(el("div","q","Here’s your brief"));
+  var dl=el("dl");[["Promoting",A.promo],["Business",A.biz+" ("+A.niche+")"],["Goals",A.goal.join(", ")],["Budget",A.budget],["Start",A.start]].forEach(function(r){dl.appendChild(el("dt",0,r[0]));dl.appendChild(el("dd",0,r[1]))});b.appendChild(dl);
+  b.appendChild(el("p","cap","Best time for a call? Pick any."));
+  b.appendChild(chips(["Morning","Afternoon","Evening","Weekend"],"times",true,wiz));
+  var r=el("div","row"),c=el("a","btn","Book a call"),m=el("a","btn g","WhatsApp us");
+  c.target=m.target="_blank";c.rel=m.rel="noopener noreferrer";
+  c.href=wa("Hi Mhomho, I’d like to book a call."+(A.times.length?" Best time: "+A.times.join(", ")+".":"")+"\n\n"+brief());m.href=wa(brief());
+  r.appendChild(c);r.appendChild(m);b.appendChild(r);
+  var x=el("button","btn g","Start over");x.type="button";x.style.marginTop="10px";x.style.width="100%";x.onclick=function(){A={goal:[],times:[]};si=0;wiz()};b.appendChild(x);return}
+ var s=S[si],p=el("div","prog");var f=el("i");f.style.width=((si+1)/S.length*100)+"%";p.appendChild(f);b.appendChild(p);
+ b.appendChild(el("div","q",s.q));
+ if(s.t==="text"){var i=el("input");i.value=A[s.k]||"";i.placeholder=s.ph;i.setAttribute("aria-label",s.q);i.oninput=function(){A[s.k]=i.value};b.appendChild(i)}
+ else if(s.t==="who"){[["biz","Business name"],["name","Your name"],["phone","Phone number"]].forEach(function(q){b.appendChild(el("label",0,q[1]));var i=el("input");if(q[0]==="phone"){i.type="tel";i.inputMode="tel"}i.value=A[q[0]]||"";i.oninput=function(){A[q[0]]=i.value};b.appendChild(i)});
+  b.appendChild(el("label",0,"Anything else we should know? (optional)"));var t=el("textarea");t.value=A.notes||"";t.oninput=function(){A.notes=t.value};b.appendChild(t)}
+ else b.appendChild(chips(s.o,s.k,s.t==="many",wiz));
+ var er=el("p","msg err");er.setAttribute("role","status");b.appendChild(er);
+ var nv=el("div","nav");
+ if(si>0){var bk=el("button","btn g","Back");bk.type="button";bk.onclick=function(){si--;wiz()};nv.appendChild(bk)}
+ var nx=el("button","btn",si===S.length-1?"See my brief":"Next");nx.type="button";
+ nx.onclick=function(){var ok=s.t==="who"?(A.biz&&A.biz.trim()&&A.name&&A.name.trim()&&A.phone&&A.phone.trim()):s.t==="many"?A.goal.length:(A[s.k]&&A[s.k].trim());
+  if(!ok){er.textContent=s.t==="who"?"Add your business name, your name and a phone number.":"Answer this one to continue.";return}si++;wiz()};
+ nv.appendChild(nx);b.appendChild(nv)}
+wiz();
+
+$("dl").onclick=async function(){
+ var D=null;try{D=window.claude&&await claude.use("downloads")}catch(e){}
+ if(!D){msg("dlm","Downloads aren’t available here. Message us on WhatsApp and we’ll send the paper.","err");$("dlm").innerHTML="";var a=el("a",0,"Message us on WhatsApp and we’ll send the paper.");a.href=wa("Hi Mhomho, please send me the research paper.");a.target="_blank";a.rel="noopener noreferrer";$("dlm").appendChild(a);return}
+ try{var bin=atob(PDF_B64),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  await D.save({filename:"Mhomho_Media_Research_Paper.pdf",data:new Blob([u],{type:"application/pdf"})});msg("dlm","Saved.","ok")}
+ catch(e){if(!e||e.code!=="declined")msg("dlm","Couldn’t save the file. Message us on WhatsApp and we’ll send it.","err")}};
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mhomho app: screen styles</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN TOKENS. Change here only. Keep in sync with the public site. ===== */
+:root{
+  --page:#0B0A09; --bg:#000; --surface:#111010; --line:#2B2622;
+  --text:#F7F4F0; --muted:#A89F96;
+  --a1:#FF9F0A; --a2:#F0191B; --ink:#140E0A;
+  --grad:linear-gradient(90deg,var(--a1),var(--a2));
+  --ok:#52D17C; --warn:#FFB84D; --err:#FF6B6B;
+  --r-card:14px; --r-btn:10px; --tap:48px;
+  --font:Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:light){:root{--page:#EFE9E3;--bg:#FBF8F5;--surface:#fff;--line:#E3DBD3;--text:#16120F;--muted:#625A52;--ok:#14702E;--warn:#8A5300;--err:#B3141A}}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:400 15px/1.5 var(--font);padding:24px 16px 60px}
+.intro{max-width:760px;margin:0 auto 32px}
+.intro h1{font-size:clamp(26px,6vw,36px);font-weight:800;line-height:1.1;margin:0 0 10px}
+.rules{margin:14px 0 0;padding-left:18px;color:var(--muted);font-size:14px}.rules li{margin:5px 0}
+.sw{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.sw i{width:44px;height:44px;border-radius:10px;border:1px solid var(--line)}
+.frames{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,360px));gap:36px 28px;justify-content:center}
+.lab{font-size:13px;font-weight:700;color:var(--muted);margin:0 0 8px}
+.ph{width:100%;max-width:360px;height:720px;border:1px solid var(--line);border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+.sc{flex:1;overflow:auto;padding:22px 18px 14px}
+
+/* ===== COMPONENTS ===== */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.logo{font-weight:800;letter-spacing:.06em;font-size:14px}
+h2.h{font-size:22px;font-weight:800;line-height:1.2;margin:0 0 14px}
+.sub{color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.num{font-size:28px;font-weight:800;line-height:1.1}
+.gt{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.tiles .card{margin:0}
+.bar{height:8px;background:var(--line);border-radius:8px;overflow:hidden;margin:8px 0 6px}.bar i{display:block;height:100%;background:var(--grad)}
+.btn{display:flex;align-items:center;justify-content:center;min-height:var(--tap);width:100%;border:0;border-radius:var(--r-btn);background:var(--grad);color:var(--ink);font:800 15px var(--font)}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--text);font-weight:600}
+.btn.sm{min-height:40px;width:auto;padding:0 14px;font-size:13px}.btn[disabled]{opacity:.45}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}
+.li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}.li:last-child{border:0;padding-bottom:0}
+.li b{font-weight:600}
+.tb{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:var(--surface);padding:4px 0 10px}
+.tb span{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:8px 0}.tb .on{color:var(--text)}
+.tb .on::before{content:"";display:block;width:6px;height:6px;border-radius:50%;background:var(--grad);margin:0 auto 4px}
+.chips{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.chip{white-space:nowrap;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}.chip.on{background:var(--grad);color:var(--ink);border-color:transparent}
+.fn div{padding:11px 14px;margin:0 auto 6px;border-radius:8px;background:var(--grad);color:var(--ink);font-weight:700;font-size:13px;display:flex;justify-content:space-between}
+.ring{display:block;margin:6px auto 10px}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Mhomho app: screen styles</h1>
+  <p class="sub">Static reference for the creator, brand and admin screens. Copy the tokens and components into the real app so every screen keeps this look.</p>
+  <ul class="rules">
+    <li>The orange to red gradient is for primary buttons, progress fills and one key number per screen. Nowhere else.</li>
+    <li>Cards: 14px radius, thin border, no shadows. Buttons: 10px radius, 48px tall minimum.</li>
+    <li>Montserrat 400, 600 and 800 only. Muted grey for secondary text.</li>
+    <li>Status colours: green verified, amber submitted, red rejected or flagged.</li>
+    <li>Mobile first. Creators get the bottom tab bar. Brands never see creator contact details or Mhomho's cut.</li>
+  </ul>
+  <div class="sw" aria-hidden="true"><i style="background:var(--bg)"></i><i style="background:var(--surface)"></i><i style="background:var(--a1)"></i><i style="background:var(--a2)"></i><i style="background:var(--grad)"></i><i style="background:var(--ok)"></i><i style="background:var(--warn)"></i><i style="background:var(--err)"></i></div>
+</div>
+
+<div class="frames">
+
+<div><p class="lab">Creator: Home</p><div class="ph"><div class="sc">
+  <div class="top"><span class="logo">MHOMHO</span><span class="tag ok">Approved</span></div>
+  <h2 class="h">Hey Tendai</h2>
+  <div class="tiles">
+    <div class="card"><div class="sub">Owed to you</div><div class="num gt">$42.50</div></div>
+    <div class="card"><div class="sub">Paid so far</div><div class="num">$28.00</div></div>
+  </div>
+  <div class="card"><div class="row"><b>Glow Skincare Launch</b><span class="sub">6 days left</span></div><div class="bar"><i style="width:64%"></i></div><div class="sub">64% full · 31 creators joined</div></div>
+  <div class="sub" style="margin:16px 0 4px">Latest clips</div>
+  <div class="card">
+    <div class="li"><b>Clip 1 · TikTok</b><span class="tag ok">Verified</span></div>
+    <div class="li"><b>Clip 2 · TikTok</b><span class="tag warn">Submitted</span></div>
+    <div class="li"><b>Clip 3 · Instagram</b><span class="tag err">Rejected</span></div>
+  </div>
+</div><div class="tb"><span class="on">Home</span><span>Campaigns</span><span>Clips</span><span>Earnings</span><span>Profile</span></div></div></div>
+
+<div><p class="lab">Creator: Campaigns feed</p><div class="ph"><div class="sc">
+  <h2 class="h">Campaigns</h2>
+  <div class="chips"><span class="chip on">All</span><span class="chip">Beauty</span><span class="chip">Tech</span><span class="chip">Fitness</span><span class="chip">Food</span></div>
+  <div class="card"><div class="row"><b>Glow Skincare Launch</b><span class="tag ok">Open</span></div><div class="sub">Health &amp; beauty</div><div class="bar"><i style="width:64%"></i></div><div class="sub" style="margin-bottom:12px">64% full · 31 joined · 6 days left</div><button class="btn">Join campaign</button></div>
+  <div class="card"><div class="row"><b>Zuva Data Bundles</b><span class="tag err">Full</span></div><div class="sub">Tech &amp; gadgets</div><div class="bar"><i style="width:100%"></i></div><div class="sub" style="margin-bottom:12px">Full · 52 joined</div><button class="btn" disabled>Full</button></div>
+  <div class="card"><div class="row"><b>Bulawayo Fit Week</b><span class="tag ok">Open</span></div><div class="sub">Fitness</div><div class="bar"><i style="width:41%"></i></div><div class="sub" style="margin-bottom:12px">41% full · 18 joined · 9 days left</div><button class="btn">Join campaign</button></div>
+</div><div class="tb"><span>Home</span><span class="on">Campaigns</span><span>Clips</span><span>Earnings</span><span>Profile</span></div></div></div>
+
+<div><p class="lab">Creator: Campaign detail</p><div class="ph"><div class="sc">
+  <div class="sub" style="margin-bottom:8px">← Campaigns</div>
+  <h2 class="h">Glow Skincare Launch</h2>
+  <div class="card"><div class="row"><span class="sub">Pool filled</span><b>64%</b></div><div class="bar"><i style="width:64%"></i></div><div class="sub">31 creators joined · 6 days left</div></div>
+  <div class="card"><b>The brief</b><p class="sub" style="margin:6px 0 0">Show your real morning routine and mention Glow in the first 3 seconds. One clear shot of the product.</p></div>
+  <div class="card"><b>Hook ideas</b><div class="li"><span>“I swapped my whole routine for 7 days”</span></div><div class="li"><span>“Why my skin changed in Harare’s dry season”</span></div></div>
+  <div class="card"><b>Do not</b><p class="sub" style="margin:6px 0 0">Buy views. Delete the clip within 30 days. Post from someone else’s account.</p></div>
+  <button class="btn">Submit a clip</button>
+</div><div class="tb"><span>Home</span><span class="on">Campaigns</span><span>Clips</span><span>Earnings</span><span>Profile</span></div></div></div>
+
+<div><p class="lab">Creator: Earnings</p><div class="ph"><div class="sc">
+  <h2 class="h">Earnings</h2>
+  <div class="card"><div class="sub">Owed to you</div><div class="num gt">$42.50</div><div class="sub" style="margin:6px 0 12px">Paid out 72 hours after a campaign closes, once you reach $5.</div><button class="btn ghost">EcoCash: +263 77 000 0000</button></div>
+  <div class="card">
+    <div class="li"><div><b>Glow Skincare · Clip 1</b><div class="sub">8,200 verified views</div></div><b>$8.20</b></div>
+    <div class="li"><div><b>Fit Week · Clip 2</b><div class="sub">14,500 verified views</div></div><b>$14.50</b></div>
+    <div class="li"><div><b>Zuva Bundles · Clip 1</b><div class="sub">Paid 12 Oct</div></div><span class="tag ok">Paid</span></div>
+  </div>
+</div><div class="tb"><span>Home</span><span>Campaigns</span><span>Clips</span><span class="on">Earnings</span><span>Profile</span></div></div></div>
+
+<div><p class="lab">Brand: Campaign page (private link)</p><div class="ph"><div class="sc">
+  <div class="top"><span class="logo">MHOMHO</span><span class="tag ok">Live</span></div>
+  <h2 class="h">Glow Skincare Launch</h2>
+  <div class="card">
+    <svg class="ring" width="128" height="128" viewBox="0 0 120 120" role="img" aria-label="67% of guaranteed views delivered"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#FF9F0A"/><stop offset="1" stop-color="#F0191B"/></linearGradient></defs><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="60" cy="60" r="52" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="219 327" transform="rotate(-90 60 60)"/><text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="var(--text)" font-family="Montserrat,sans-serif">67%</text></svg>
+    <div style="text-align:center"><div class="num gt">112,400</div><div class="sub">verified views of 166,667 guaranteed</div></div>
+  </div>
+  <div class="tiles"><div class="card"><div class="sub">Creators joined</div><div class="num">38</div></div><div class="card"><div class="sub">Clips live</div><div class="num">74</div></div></div>
+  <div class="card"><div class="row"><span class="sub">Budget used</span><b>$168.60 of $250</b></div><div class="bar"><i style="width:67%"></i></div></div>
+  <div class="card"><b>Views over time</b><svg viewBox="0 0 300 80" width="100%" height="80" role="img" aria-label="Views rising over 7 days"><defs><linearGradient id="cg" x1="0" x2="1"><stop offset="0" stop-color="#FF9F0A"/><stop offset="1" stop-color="#F0191B"/></linearGradient></defs><polyline fill="none" stroke="url(#cg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="4,72 50,64 100,52 150,40 200,28 250,16 296,8"/></svg></div>
+  <button class="btn" style="margin-bottom:10px">Top up this campaign</button><button class="btn ghost">WhatsApp Mhomho</button>
+</div></div></div>
+
+<div><p class="lab">Admin: Verification queue</p><div class="ph"><div class="sc">
+  <div class="top"><span class="logo">MHOMHO ADMIN</span><span class="tag warn">12 waiting</span></div>
+  <h2 class="h">Verify clips</h2>
+  <div class="card"><div class="row"><b>@tendai_tech</b><span class="tag warn">Submitted</span></div><div class="sub">TikTok · claimed 4,820 · public 4,790</div><div class="row" style="margin-top:12px;gap:8px"><button class="btn sm">Approve</button><button class="btn sm ghost">Reject</button><button class="btn sm ghost">Open post</button></div></div>
+  <div class="card"><div class="row"><b>@glow_with_rue</b><span class="tag err">Spike 5×</span></div><div class="sub">Instagram · claimed 38,000 · avg 2,100</div><div class="row" style="margin-top:12px;gap:8px"><button class="btn sm">Approve</button><button class="btn sm ghost">Reject</button><button class="btn sm ghost">Open post</button></div></div>
+  <div class="card"><div class="row"><b>@fitwithtafara</b><span class="tag warn">Submitted</span></div><div class="sub">TikTok · claimed 1,310 · public 1,305</div><div class="row" style="margin-top:12px;gap:8px"><button class="btn sm">Approve</button><button class="btn sm ghost">Reject</button><button class="btn sm ghost">Open post</button></div></div>
+</div></div></div>
+
+<div><p class="lab">Admin: Dashboard</p><div class="ph"><div class="sc">
+  <div class="top"><span class="logo">MHOMHO ADMIN</span></div>
+  <h2 class="h">Campaign Zero</h2>
+  <div class="fn" role="img" aria-label="Funnel: found, signed up, posted, accepted">
+    <div style="width:100%"><span>Found</span><span>420</span></div>
+    <div style="width:84%"><span>Signed up</span><span>212</span></div>
+    <div style="width:66%"><span>Posted clips</span><span>96</span></div>
+    <div style="width:48%"><span>Accepted</span><span>41</span></div>
+  </div>
+  <div class="sub" style="margin:18px 0 4px">Niche readiness</div>
+  <div class="card">
+    <div class="li"><b>Tech &amp; gadgets</b><span class="tag ok">Ready · 34</span></div>
+    <div class="li"><b>Health &amp; beauty</b><span class="tag warn">Building · 22</span></div>
+    <div class="li"><b>Food &amp; travel</b><span class="tag warn">Building · 9</span></div>
+  </div>
+  <div class="card"><div class="row"><span class="sub">Owed to creators</span><b class="gt" style="font-size:20px">$318.40</b></div></div>
+</div></div></div>
+
+</div>
+</body>
+</html>

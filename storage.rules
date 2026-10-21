@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /clips/{uid}/{allPaths=**} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

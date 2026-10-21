@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--page);
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar for sleek mobile/desktop feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+/* Component utilities adhering to design rules */
+.font-montserrat {
+  font-family: var(--font);
+}
+
+.text-gradient {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-gradient-mhomho {
+  background: var(--grad);
+}

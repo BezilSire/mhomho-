@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="mhomho-grad" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#FF9F0A"/>
+      <stop offset="100%" stop-color="#F0191B"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0B0A09"/>
+  <g transform="translate(4, 4) scale(0.875)">
+    <circle cx="15" cy="13" r="6" fill="url(#mhomho-grad)"/>
+    <circle cx="32" cy="8" r="7" fill="url(#mhomho-grad)"/>
+    <circle cx="49" cy="13" r="6" fill="url(#mhomho-grad)"/>
+    <polygon points="6,26 32,46 58,26 58,60 47,60 47,40 32,53 17,40 17,60 6,60" fill="url(#mhomho-grad)"/>
+  </g>
+</svg>
