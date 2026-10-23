@@ -21,10 +21,11 @@ export const Tile: React.FC<TileProps> = ({
       </div>
       <div
         style={{
-          fontSize: '28px',
+          fontSize: '30px',
           fontWeight: 800,
-          lineHeight: 1.1,
-          fontFamily: 'var(--font)',
+          lineHeight: 1.05,
+          letterSpacing: '-0.03em',
+          fontFamily: 'var(--font-display)',
         }}
         className={highlightGradient ? 'text-gradient' : ''}
       >

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Home, Megaphone, User, Video, Wallet } from 'lucide-react';
 
 export type CreatorTabId = 'home' | 'campaigns' | 'clips' | 'earnings' | 'profile';
 
@@ -6,33 +7,27 @@ export interface TabBarProps {
   activeTab: CreatorTabId;
   onTabChange: (tab: CreatorTabId) => void;
   badgeCounts?: Partial<Record<CreatorTabId, number>>;
+  className?: string;
 }
 
-const TABS: { id: CreatorTabId; label: string }[] = [
-  { id: 'home', label: 'Home' },
-  { id: 'campaigns', label: 'Campaigns' },
-  { id: 'clips', label: 'Clips' },
-  { id: 'earnings', label: 'Earnings' },
-  { id: 'profile', label: 'Profile' },
+const TABS: { id: CreatorTabId; label: string; icon: React.ElementType }[] = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
+  { id: 'clips', label: 'Clips', icon: Video },
+  { id: 'earnings', label: 'Earnings', icon: Wallet },
+  { id: 'profile', label: 'Profile', icon: User },
 ];
 
 export const TabBar: React.FC<TabBarProps> = ({
   activeTab,
   onTabChange,
   badgeCounts,
+  className = '',
 }) => {
   return (
     <nav
       aria-label="Creator navigation"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        borderTop: '1px solid var(--line)',
-        backgroundColor: 'var(--surface)',
-        padding: '6px 0 max(10px, env(safe-area-inset-bottom, 10px))',
-        flexShrink: 0,
-        userSelect: 'none',
-      }}
+      className={`grid grid-cols-5 border-t border-[var(--line)] bg-[var(--surface)] px-1 pb-[max(10px,env(safe-area-inset-bottom,10px))] pt-1.5 ${className}`}
     >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -43,52 +38,25 @@ export const TabBar: React.FC<TabBarProps> = ({
             key={tab.id}
             type="button"
             onClick={() => onTabChange(tab.id)}
-            style={{
-              background: 'none',
-              border: 'none',
-              textAlign: 'center',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: isActive ? 'var(--text)' : 'var(--muted)',
-              padding: '6px 0',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font)',
-              position: 'relative',
-            }}
+            className={`relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl py-2 text-[10px] font-semibold transition-colors ${
+              isActive ? 'text-[var(--text)]' : 'text-[var(--faint)]'
+            }`}
           >
-            {isActive && (
-              <span
-                style={{
-                  display: 'block',
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: 'var(--grad)',
-                  marginBottom: '4px',
-                }}
-              />
-            )}
-            {!isActive && <span style={{ display: 'block', height: '6px', marginBottom: '4px' }} />}
-            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              {tab.label}
+            <span className="relative">
+              <tab.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
               {typeof count === 'number' && count > 0 && (
-                <span
-                  style={{
-                    fontSize: '9px',
-                    padding: '1px 4px',
-                    borderRadius: '999px',
-                    backgroundColor: 'var(--line)',
-                    color: 'var(--text)',
-                  }}
-                >
+                <span className="absolute -right-2 -top-1.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-[var(--a1)] px-1 text-[8px] font-bold text-[var(--ink)]">
                   {count}
                 </span>
               )}
             </span>
+            {tab.label}
+            {isActive && (
+              <span
+                className="absolute -top-1.5 h-[2px] w-6 rounded-full"
+                style={{ background: 'var(--grad)' }}
+              />
+            )}
           </button>
         );
       })}

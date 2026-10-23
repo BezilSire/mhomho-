@@ -65,8 +65,8 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
     <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="font-extrabold tracking-[0.06em] text-[14px]">
-          MHOMHO
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+          Campaign report
         </span>
         <Tag variant="ok">Live</Tag>
       </div>
@@ -131,7 +131,8 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
           <div className="w-full max-w-sm rounded-[14px] bg-[var(--surface)] border border-[var(--line)] p-5">
             <h3 className="text-[18px] font-extrabold mb-2">Top Up Campaign</h3>
             <p className="text-[13px] text-[var(--muted)] mb-4">
-              Rate: 150¢ ($1.50) per 1,000 guaranteed views. All top-up budget expands the verified creator pool.
+              Every top-up expands the verified creator pool and increases your guaranteed delivery
+              target. The team will confirm the updated plan before anything is billed.
             </p>
 
             {topUpSuccess ? (

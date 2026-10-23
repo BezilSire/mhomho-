@@ -5,6 +5,11 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background-color: var(--page);
@@ -15,24 +20,44 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
 }
 
-/* Custom Scrollbar for sleek mobile/desktop feel */
+::selection {
+  background: rgba(255, 159, 10, 0.28);
+  color: var(--text);
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--line);
+  background: var(--line-strong);
   border-radius: 999px;
 }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+}
 
-/* Component utilities adhering to design rules */
+/* Coordinates all focus rings */
+:focus-visible {
+  outline: 2px solid var(--a1);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .font-montserrat {
   font-family: var(--font);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.035em;
 }
 
 .text-gradient {
@@ -44,4 +69,49 @@ body {
 
 .bg-gradient-mhomho {
   background: var(--grad);
+}
+
+/* Ambient glow used behind the hero */
+.hero-glow {
+  background:
+    radial-gradient(52% 44% at 50% 0%, rgba(255, 159, 10, 0.20) 0%, rgba(240, 25, 27, 0.08) 38%, transparent 72%);
+}
+
+/* Hairline grid used sparingly behind the hero */
+.grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 0%, transparent 78%);
+}
+
+/* Card lift on hover */
+.lift {
+  transition: transform 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+.lift:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Entrance animation */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise {
+  animation: rise 0.7s var(--ease) both;
+}
+.rise-1 { animation-delay: 0.05s; }
+.rise-2 { animation-delay: 0.12s; }
+.rise-3 { animation-delay: 0.2s; }
+.rise-4 { animation-delay: 0.28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rise, .lift { animation: none; transition: none; }
+  .lift:hover { transform: none; }
 }

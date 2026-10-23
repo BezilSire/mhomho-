@@ -5,7 +5,7 @@
  */
 
 export interface MoneyConfig {
-  brandPricePerThousandCents: number; // 150 cents ($1.50) per 1,000 verified views
+  brandPricePerThousandCents: number; // Internal brand rate per 1,000 verified views; never shown to users
   creatorRatePerThousandCents: number; // 100 cents ($1.00) per 1,000 verified views
   qualifyingViewThreshold: number; // 1,000 views minimum per post
   perPostCapPercent: number; // 25% (0.25) of creator pool

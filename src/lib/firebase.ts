@@ -27,6 +27,22 @@ import {
 // Document Schemas
 export type CreatorStatus = 'applied' | 'approved' | 'rejected';
 
+export const CAMPAIGN_ZERO_MIN_CLIPS = 3;
+export const CAMPAIGN_ZERO_MIN_VIEWS = 1000;
+
+export interface CampaignZeroClip {
+  url: string;
+  claimedViews: number;
+  addedAt: string;
+}
+
+export interface CampaignZeroState {
+  followConfirmed: boolean;
+  clips: CampaignZeroClip[];
+  submittedAt?: string;
+  verifiedAt?: string;
+}
+
 export interface CreatorPublicDoc {
   uid: string;
   handle: string;
@@ -35,13 +51,19 @@ export interface CreatorPublicDoc {
   followers: number;
   status: CreatorStatus;
   createdAt: string;
+  /** Campaign Zero proof. Required before an admin can approve the creator. */
+  campaignZero?: CampaignZeroState;
 }
 
 export interface CreatorPrivateDoc {
   uid: string;
   name: string;
+  email?: string;
   whatsappNumber: string;
   ecoCashNumber: string;
+  /** Salted SHA-256 credential. Never store or expose plaintext passwords. */
+  passwordSalt?: string;
+  passwordHash?: string;
 }
 
 export interface CampaignDoc {
@@ -204,6 +226,27 @@ const SEED_CREATORS_PUBLIC: Record<string, CreatorPublicDoc> = {
     followers: 3200,
     status: 'applied',
     createdAt: '2026-10-18',
+    campaignZero: {
+      followConfirmed: true,
+      clips: [
+        {
+          url: 'https://www.tiktok.com/@kudzai_vibe/video/7410000000000000001',
+          claimedViews: 1240,
+          addedAt: '2026-10-19',
+        },
+        {
+          url: 'https://www.tiktok.com/@kudzai_vibe/video/7410000000000000002',
+          claimedViews: 860,
+          addedAt: '2026-10-19',
+        },
+        {
+          url: 'https://www.tiktok.com/@kudzai_vibe/video/7410000000000000003',
+          claimedViews: 430,
+          addedAt: '2026-10-19',
+        },
+      ],
+      submittedAt: '2026-10-20T10:00:00.000Z',
+    },
   },
 };
 
@@ -211,8 +254,11 @@ const SEED_CREATORS_PRIVATE: Record<string, CreatorPrivateDoc> = {
   tendai_uid: {
     uid: 'tendai_uid',
     name: 'Tendai Moyo',
+    email: 'tendai@mhomho.demo',
     whatsappNumber: '+263 77 123 4567',
     ecoCashNumber: '+263 77 000 0000',
+    passwordSalt: '92d4c2a4887c2632864db1611c8304f8',
+    passwordHash: '11b4fdd7107b7cb82ef3a934016bbd588316ee0c50468e64766077424dbf2ab6',
   },
   rue_uid: {
     uid: 'rue_uid',
@@ -229,8 +275,11 @@ const SEED_CREATORS_PRIVATE: Record<string, CreatorPrivateDoc> = {
   newbie_uid: {
     uid: 'newbie_uid',
     name: 'Kudzai Marume',
+    email: 'kudzai@mhomho.demo',
     whatsappNumber: '+263 77 444 5555',
     ecoCashNumber: '+263 77 555 6666',
+    passwordSalt: 'ebe889e3a1b887ad030ad30860bca1cd',
+    passwordHash: '77cf391331719eeae572a4b1a80c69b024e7c88da30be3f9bedb6e101f54927b',
   },
 };
 
@@ -588,28 +637,62 @@ export interface DatabaseState {
   enquiries: Record<string, EnquiryDoc>;
 }
 
+function freshSeedState(): DatabaseState {
+  return {
+    creatorsPublic: structuredClone(SEED_CREATORS_PUBLIC),
+    creatorsPrivate: structuredClone(SEED_CREATORS_PRIVATE),
+    campaigns: structuredClone(SEED_CAMPAIGNS),
+    campaignFinance: structuredClone(SEED_CAMPAIGN_FINANCE),
+    campaignStats: structuredClone(SEED_CAMPAIGN_STATS),
+    campaignMembers: structuredClone(SEED_CAMPAIGN_MEMBERS),
+    clips: structuredClone(SEED_CLIPS),
+    ledger: structuredClone(SEED_LEDGER),
+    payouts: structuredClone(SEED_PAYOUTS),
+    brandViews: structuredClone(SEED_BRAND_VIEWS),
+    enquiries: structuredClone(SEED_ENQUIRIES),
+  };
+}
+
+/**
+ * Forward-compatible migration for the local demo store. It backfills
+ * credential hashes and Campaign Zero fields added after a browser had
+ * already saved an older database snapshot.
+ */
+function migrateState(state: DatabaseState): DatabaseState {
+  if (!state.creatorsPublic) state.creatorsPublic = {};
+  if (!state.creatorsPrivate) state.creatorsPrivate = {};
+
+  for (const [uid, seed] of Object.entries(SEED_CREATORS_PRIVATE)) {
+    if (state.creatorsPrivate[uid]) {
+      // Seed accounts are demo fixtures. Always restore their fixture
+      // credentials so a stale localStorage hash cannot lock the owner out.
+      state.creatorsPrivate[uid] = {
+        ...seed,
+        ...state.creatorsPrivate[uid],
+        passwordSalt: seed.passwordSalt,
+        passwordHash: seed.passwordHash,
+      };
+    }
+  }
+  for (const [uid, seed] of Object.entries(SEED_CREATORS_PUBLIC)) {
+    const existing = state.creatorsPublic[uid];
+    if (existing && seed.campaignZero && !existing.campaignZero) {
+      existing.campaignZero = structuredClone(seed.campaignZero);
+    }
+  }
+  return state;
+}
+
 function loadState(): DatabaseState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      return migrateState(JSON.parse(raw) as DatabaseState);
     }
   } catch (e) {
     console.warn('Could not read from local storage, using seeds:', e);
   }
-  return {
-    creatorsPublic: SEED_CREATORS_PUBLIC,
-    creatorsPrivate: SEED_CREATORS_PRIVATE,
-    campaigns: SEED_CAMPAIGNS,
-    campaignFinance: SEED_CAMPAIGN_FINANCE,
-    campaignStats: SEED_CAMPAIGN_STATS,
-    campaignMembers: SEED_CAMPAIGN_MEMBERS,
-    clips: SEED_CLIPS,
-    ledger: SEED_LEDGER,
-    payouts: SEED_PAYOUTS,
-    brandViews: SEED_BRAND_VIEWS,
-    enquiries: SEED_ENQUIRIES,
-  };
+  return freshSeedState();
 }
 
 function saveState(state: DatabaseState) {
@@ -642,19 +725,7 @@ export function getDatabaseState(): DatabaseState {
 }
 
 export function resetDatabaseToSeeds() {
-  currentState = {
-    creatorsPublic: SEED_CREATORS_PUBLIC,
-    creatorsPrivate: SEED_CREATORS_PRIVATE,
-    campaigns: SEED_CAMPAIGNS,
-    campaignFinance: SEED_CAMPAIGN_FINANCE,
-    campaignStats: SEED_CAMPAIGN_STATS,
-    campaignMembers: SEED_CAMPAIGN_MEMBERS,
-    clips: SEED_CLIPS,
-    ledger: SEED_LEDGER,
-    payouts: SEED_PAYOUTS,
-    brandViews: SEED_BRAND_VIEWS,
-    enquiries: SEED_ENQUIRIES,
-  };
+  currentState = freshSeedState();
   saveState(currentState);
   notify();
 }
@@ -663,9 +734,229 @@ export function resetDatabaseToSeeds() {
 // Cloud Functions (Simulated with RBAC & Transactions)
 // ==========================================
 
+export const SOCIAL_HOSTS = [
+  'tiktok.com',
+  'instagram.com',
+  'youtube.com',
+  'youtu.be',
+  'facebook.com',
+  'fb.watch',
+];
+
+/** Only allow real HTTPS links to the supported social platforms. */
+export function isAllowedSocialUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+    if (url.username || url.password) return false;
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+    return SOCIAL_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+}
+
+export interface CampaignZeroEvaluation {
+  followed: boolean;
+  clipCount: number;
+  maxViews: number;
+  hasQualifyingClip: boolean;
+  submitted: boolean;
+  complete: boolean;
+}
+
+export function evaluateCampaignZero(
+  campaignZero: CampaignZeroState | undefined
+): CampaignZeroEvaluation {
+  const clips = campaignZero?.clips ?? [];
+  const validClips = clips.filter((clip) => isAllowedSocialUrl(clip.url));
+  const maxViews = validClips.reduce(
+    (max, clip) => Math.max(max, Number.isFinite(clip.claimedViews) ? clip.claimedViews : 0),
+    0
+  );
+  const followed = Boolean(campaignZero?.followConfirmed);
+  const clipCount = validClips.length;
+  return {
+    followed,
+    clipCount,
+    maxViews,
+    hasQualifyingClip: maxViews >= CAMPAIGN_ZERO_MIN_VIEWS,
+    submitted: Boolean(campaignZero?.submittedAt),
+    complete:
+      followed && clipCount >= CAMPAIGN_ZERO_MIN_CLIPS && maxViews >= CAMPAIGN_ZERO_MIN_VIEWS,
+  };
+}
+
+/**
+ * registerCreator (public function)
+ * Creates the public + private creator records with an 'applied' status.
+ * Credentials are hashed before they reach this function.
+ */
+export function registerCreator(params: {
+  name: string;
+  email: string;
+  handle: string;
+  platform: 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook';
+  niche: string;
+  followers: number;
+  whatsappNumber: string;
+  passwordSalt: string;
+  passwordHash: string;
+}): { success: boolean; uid?: string; error?: string } {
+  const name = params.name.trim();
+  const email = params.email.trim().toLowerCase();
+  const rawHandle = params.handle.trim().replace(/^@+/, '');
+  const whatsapp = params.whatsappNumber.trim();
+
+  if (!name || !email || !rawHandle || !whatsapp) {
+    return { success: false, error: 'Please complete every field.' };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: 'Enter a valid email address.' };
+  }
+  if (!params.passwordSalt || !params.passwordHash) {
+    return { success: false, error: 'A secure password is required.' };
+  }
+  if (!Number.isFinite(params.followers) || params.followers < 0) {
+    return { success: false, error: 'Enter a valid follower count. You can join with zero.' };
+  }
+
+  const emailTaken = Object.values(currentState.creatorsPrivate).some(
+    (creator) => creator.email?.toLowerCase() === email
+  );
+  if (emailTaken) {
+    return { success: false, error: 'An account already exists for that email.' };
+  }
+
+  const handle = `@${rawHandle}`;
+  const duplicate = Object.values(currentState.creatorsPublic).some(
+    (creator) =>
+      creator.handle.toLowerCase() === handle.toLowerCase() &&
+      creator.platform === params.platform
+  );
+  if (duplicate) {
+    return { success: false, error: 'That handle is already in review for this platform.' };
+  }
+
+  const uid = `creator_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  currentState.creatorsPublic[uid] = {
+    uid,
+    handle,
+    platform: params.platform,
+    niche: params.niche,
+    followers: Math.floor(params.followers),
+    status: 'applied',
+    createdAt: new Date().toISOString().split('T')[0],
+    campaignZero: { followConfirmed: false, clips: [] },
+  };
+  currentState.creatorsPrivate[uid] = {
+    uid,
+    name,
+    email,
+    whatsappNumber: whatsapp,
+    ecoCashNumber: whatsapp,
+    passwordSalt: params.passwordSalt,
+    passwordHash: params.passwordHash,
+  };
+
+  saveState(currentState);
+  notify();
+  return { success: true, uid };
+}
+
+/**
+ * updateCampaignZero (creator-owned function)
+ * Saves the creator's social follow confirmation and up to three clip links.
+ * Submitted proof is locked and cannot be edited by the creator.
+ */
+export function updateCampaignZero(
+  uid: string,
+  input: { followConfirmed: boolean; clips: Array<{ url: string; claimedViews: number }> }
+): { success: boolean; error?: string } {
+  const creator = currentState.creatorsPublic[uid];
+  if (!creator) return { success: false, error: 'Creator not found.' };
+  if (creator.status !== 'applied') {
+    return { success: false, error: 'This application has already been reviewed.' };
+  }
+  if (creator.campaignZero?.submittedAt) {
+    return { success: false, error: 'Your Campaign Zero proof is already under review.' };
+  }
+
+  const clips: CampaignZeroClip[] = input.clips
+    .slice(0, CAMPAIGN_ZERO_MIN_CLIPS)
+    .map((clip) => ({
+      url: clip.url.trim(),
+      claimedViews: Math.max(0, Math.floor(Number(clip.claimedViews) || 0)),
+      addedAt: new Date().toISOString().split('T')[0],
+    }))
+    .filter((clip) => clip.url.length > 0);
+
+  const invalid = clips.find((clip) => !isAllowedSocialUrl(clip.url));
+  if (invalid) {
+    return {
+      success: false,
+      error: 'Use a valid TikTok, Instagram, YouTube or Facebook post link.',
+    };
+  }
+
+  currentState.creatorsPublic[uid] = {
+    ...creator,
+    campaignZero: {
+      ...creator.campaignZero,
+      followConfirmed: Boolean(input.followConfirmed),
+      clips,
+      submittedAt: undefined,
+    },
+  };
+
+  saveState(currentState);
+  notify();
+  return { success: true };
+}
+
+/** submitCampaignZero locks the proof for admin review. */
+export function submitCampaignZero(uid: string): { success: boolean; error?: string } {
+  const creator = currentState.creatorsPublic[uid];
+  if (!creator) return { success: false, error: 'Creator not found.' };
+  if (creator.status !== 'applied') {
+    return { success: false, error: 'This application has already been reviewed.' };
+  }
+  if (creator.campaignZero?.submittedAt) return { success: true };
+
+  const evaluation = evaluateCampaignZero(creator.campaignZero);
+  if (!evaluation.followed) {
+    return { success: false, error: 'Confirm that you follow a Mhomho social page.' };
+  }
+  if (evaluation.clipCount < CAMPAIGN_ZERO_MIN_CLIPS) {
+    return {
+      success: false,
+      error: `Add ${CAMPAIGN_ZERO_MIN_CLIPS - evaluation.clipCount} more clip link${
+        evaluation.clipCount + 1 === CAMPAIGN_ZERO_MIN_CLIPS ? '' : 's'
+      }.`,
+    };
+  }
+  if (!evaluation.hasQualifyingClip) {
+    return {
+      success: false,
+      error: 'One clip needs at least 1,000 views before you can submit.',
+    };
+  }
+
+  currentState.creatorsPublic[uid] = {
+    ...creator,
+    campaignZero: {
+      ...creator.campaignZero!,
+      submittedAt: new Date().toISOString(),
+    },
+  };
+  saveState(currentState);
+  notify();
+  return { success: true };
+}
+
 /**
  * approveCreator (admin-only function)
- * Sets the creator claim and changes status from 'applied' to 'approved'.
+ * Approval is refused unless Campaign Zero is complete and has been submitted.
  */
 export function approveCreator(uid: string, callerRole: UserRole): { success: boolean; error?: string } {
   if (callerRole !== 'admin') {
@@ -675,9 +966,22 @@ export function approveCreator(uid: string, callerRole: UserRole): { success: bo
   if (!creator) {
     return { success: false, error: 'Creator not found.' };
   }
+
+  const evaluation = evaluateCampaignZero(creator.campaignZero);
+  if (!evaluation.complete) {
+    return { success: false, error: 'Campaign Zero requirements are not met.' };
+  }
+  if (!evaluation.submitted) {
+    return { success: false, error: 'The creator has not submitted Campaign Zero for review.' };
+  }
+
   currentState.creatorsPublic[uid] = {
     ...creator,
     status: 'approved',
+    campaignZero: {
+      ...creator.campaignZero!,
+      verifiedAt: new Date().toISOString(),
+    },
   };
   saveState(currentState);
   notify();

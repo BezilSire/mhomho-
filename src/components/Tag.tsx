@@ -26,13 +26,15 @@ export const Tag: React.FC<TagProps> = ({
     <span
       style={{
         display: 'inline-block',
-        fontSize: '11px',
+        fontSize: '10px',
         fontWeight: 700,
-        padding: '3px 9px',
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        padding: '3px 8px',
         borderRadius: '999px',
         border: '1px solid currentColor',
         color: colorVar,
-        lineHeight: 1.2,
+        lineHeight: 1.3,
         fontFamily: 'var(--font)',
         whiteSpace: 'nowrap',
         ...style,

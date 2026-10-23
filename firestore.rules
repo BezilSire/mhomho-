@@ -7,8 +7,17 @@ service cloud.firestore {
 
     match /creators/{uid} {
       allow read: if signedIn();
-      allow create: if isOwner(uid) && request.resource.data.status == 'applied';
-      allow update: if isOwner(uid) && request.resource.data.status == resource.data.status;
+      // A new account starts in review with no Campaign Zero proof attached.
+      allow create: if isOwner(uid)
+        && request.resource.data.status == 'applied'
+        && request.resource.data.campaignZero.followConfirmed == false
+        && request.resource.data.campaignZero.clips.size() == 0;
+      // Creators may only edit their own Campaign Zero proof while status is
+      // unchanged. Approval and verification are admin/Cloud Function actions.
+      allow update: if isAdmin()
+        || (isOwner(uid)
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['campaignZero']));
       allow delete: if false;
     }
 

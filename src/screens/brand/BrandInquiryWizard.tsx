@@ -190,7 +190,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
                   onClick={() => toggleTime(t)}
                   className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border cursor-pointer ${
                     on
-                      ? 'bg-[var(--grad)] text-[var(--ink)] border-transparent'
+                      ? 'bg-gradient-mhomho text-[var(--ink)] border-transparent'
                       : 'border-[var(--line)] text-[var(--muted)]'
                   }`}
                 >
@@ -224,7 +224,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
       {/* Step Progress Bar */}
       <div className="h-1 bg-[var(--line)] rounded-full mb-4 overflow-hidden">
         <div
-          className="h-full bg-[var(--grad)] rounded-full transition-all duration-300"
+          className="h-full bg-gradient-mhomho rounded-full transition-all duration-300"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -264,7 +264,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
                   onClick={() => setAnswers({ ...answers, niche: n })}
                   className={`px-3 py-2 rounded-full text-[13px] font-semibold border cursor-pointer transition-all ${
                     selected
-                      ? 'bg-[var(--grad)] text-[var(--ink)] border-transparent'
+                      ? 'bg-gradient-mhomho text-[var(--ink)] border-transparent'
                       : 'border-[var(--line)] bg-[var(--bg)] text-[var(--text)]'
                   }`}
                 >
@@ -291,7 +291,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
                   onClick={() => toggleGoal(g)}
                   className={`px-3 py-2 rounded-full text-[13px] font-semibold border cursor-pointer transition-all ${
                     selected
-                      ? 'bg-[var(--grad)] text-[var(--ink)] border-transparent'
+                      ? 'bg-gradient-mhomho text-[var(--ink)] border-transparent'
                       : 'border-[var(--line)] bg-[var(--bg)] text-[var(--text)]'
                   }`}
                 >
@@ -317,7 +317,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
                   onClick={() => setAnswers({ ...answers, budget: b })}
                   className={`px-3 py-2 rounded-full text-[13px] font-semibold border cursor-pointer transition-all ${
                     selected
-                      ? 'bg-[var(--grad)] text-[var(--ink)] border-transparent'
+                      ? 'bg-gradient-mhomho text-[var(--ink)] border-transparent'
                       : 'border-[var(--line)] bg-[var(--bg)] text-[var(--text)]'
                   }`}
                 >
@@ -343,7 +343,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
                   onClick={() => setAnswers({ ...answers, start: s })}
                   className={`px-3 py-2 rounded-full text-[13px] font-semibold border cursor-pointer transition-all ${
                     selected
-                      ? 'bg-[var(--grad)] text-[var(--ink)] border-transparent'
+                      ? 'bg-gradient-mhomho text-[var(--ink)] border-transparent'
                       : 'border-[var(--line)] bg-[var(--bg)] text-[var(--text)]'
                   }`}
                 >

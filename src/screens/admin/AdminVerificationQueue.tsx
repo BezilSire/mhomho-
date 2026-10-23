@@ -74,8 +74,8 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
     <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="font-extrabold tracking-[0.06em] text-[14px]">
-          MHOMHO ADMIN
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+          Verification
         </span>
         <Tag variant="warn">{pendingClips.length} waiting</Tag>
       </div>

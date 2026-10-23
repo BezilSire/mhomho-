@@ -5,11 +5,20 @@
 
 import React, { useState, useEffect } from 'react';
 import {
+  ArrowLeft,
+  Home,
+  LayoutDashboard,
+  Megaphone,
+  Moon,
+  Sun,
+  User,
+  Video,
+  Wallet,
+} from 'lucide-react';
+import {
   DatabaseState,
   getDatabaseState,
   subscribeToDatabase,
-  UserRole,
-  resetDatabaseToSeeds,
 } from './lib/firebase.ts';
 import { CreatorHome } from './screens/creator/CreatorHome.tsx';
 import { CampaignsFeed } from './screens/creator/CampaignsFeed.tsx';
@@ -25,20 +34,49 @@ import { AdminDashboard } from './screens/admin/AdminDashboard.tsx';
 import { AdminCampaigns } from './screens/admin/AdminCampaigns.tsx';
 import { AdminPayouts } from './screens/admin/AdminPayouts.tsx';
 import { AdminEnquiries } from './screens/admin/AdminEnquiries.tsx';
+import { AdminAccess } from './screens/admin/AdminAccess.tsx';
 import { LandingPage } from './screens/public/LandingPage.tsx';
 import { LoginModal } from './screens/auth/LoginModal.tsx';
+import {
+  AuthSession,
+  authenticateCreator,
+  clearAdminLocation,
+  clearSession,
+  createSession,
+  getSession,
+  isAdminLocation,
+  saveSession,
+} from './lib/auth.ts';
 import { TabBar, CreatorTabId } from './components/TabBar.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
-import { runMoneyTests } from './lib/moneyTests.ts';
+import { BrandMark } from './components/BrandMark.tsx';
 
 export type MainViewMode = 'landing' | 'creator' | 'admin' | 'brand';
 export type AdminTabId = 'dashboard' | 'queue' | 'campaigns' | 'payouts' | 'enquiries';
 
+const CREATOR_NAV: { id: CreatorTabId; label: string; icon: React.ElementType }[] = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
+  { id: 'clips', label: 'Clips', icon: Video },
+  { id: 'earnings', label: 'Earnings', icon: Wallet },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
+const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
+  { id: 'dashboard', label: 'Overview' },
+  { id: 'queue', label: 'Clip verification' },
+  { id: 'campaigns', label: 'Campaigns' },
+  { id: 'payouts', label: 'Payouts' },
+  { id: 'enquiries', label: 'Brand enquiries' },
+];
+
 export default function App() {
   const [db, setDb] = useState<DatabaseState>(getDatabaseState());
-  // Starts directly on the public facing site as requested
-  const [viewMode, setViewMode] = useState<MainViewMode>('landing');
-  const [currentCreatorUid, setCurrentCreatorUid] = useState<string>('tendai_uid');
+  const [session, setSession] = useState<AuthSession | null>(() => getSession());
+  const [viewMode, setViewMode] = useState<MainViewMode>(() => {
+    if (isAdminLocation()) return 'admin';
+    return getSession()?.role === 'creator' ? 'creator' : 'landing';
+  });
 
   // Creator portal navigation state
   const [creatorTab, setCreatorTab] = useState<CreatorTabId>('home');
@@ -49,18 +87,15 @@ export default function App() {
   // Admin portal navigation state
   const [adminTab, setAdminTab] = useState<AdminTabId>('dashboard');
 
-  // Brand token dashboard state
-  const [brandToken, setBrandToken] = useState<string>('glow-skincare');
+  // Brand report state
+  const [brandToken] = useState<string>('glow-skincare');
 
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Modals
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
-  const [showTestsModal, setShowTestsModal] = useState<boolean>(false);
-  const [testResults, setTestResults] = useState<{ name: string; passed: boolean; error?: string }[]>([]);
 
-  // Subscribe to real-time local storage/database state
   useEffect(() => {
     const unsubscribe = subscribeToDatabase(() => {
       setDb({ ...getDatabaseState() });
@@ -68,354 +103,438 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Sync theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleOpenTests = () => {
-    const results = runMoneyTests();
-    setTestResults(results);
-    setShowTestsModal(true);
+  // The admin console only exists at the private hash location. There are no
+  // public links to it, and credentials are still required even when found.
+  useEffect(() => {
+    const syncLocation = () => {
+      if (isAdminLocation()) {
+        setShowLoginModal(false);
+        setViewMode('admin');
+      } else {
+        setViewMode((current) => (current === 'admin' ? 'landing' : current));
+      }
+    };
+    syncLocation();
+    window.addEventListener('hashchange', syncLocation);
+    return () => window.removeEventListener('hashchange', syncLocation);
+  }, []);
+
+  // Sessions are short-lived and expire in the background.
+  useEffect(() => {
+    if (!session) return;
+    const remaining = session.expiresAt - Date.now();
+    if (remaining <= 0) {
+      clearSession();
+      if (session.role === 'admin') clearAdminLocation();
+      setSession(null);
+      setViewMode('landing');
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      clearSession();
+      if (session.role === 'admin') clearAdminLocation();
+      setSession(null);
+      setViewMode('landing');
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [session]);
+
+  // Always enter a portal at the top of the page.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [viewMode]);
+
+  const currentCreatorUid = session?.role === 'creator' ? session.uid : '';
+  const currentCreator = currentCreatorUid ? db.creatorsPublic[currentCreatorUid] : undefined;
+  const isRejected = currentCreator?.status === 'rejected';
+  const adminAuthed = session?.role === 'admin';
+
+  const queuePendingCount = Object.values(db.clips).filter((c) => c.status === 'submitted').length;
+  const enquiriesCount = Object.values(db.enquiries).filter((e) => e.status === 'new').length;
+  const applicantsCount = Object.values(db.creatorsPublic).filter((c) => c.status === 'applied').length;
+
+  const goPublic = () => {
+    clearAdminLocation();
+    setViewMode('landing');
+    setActiveCampaignDetailId(null);
+    setIsSubmittingClip(false);
+    setShowLoginModal(false);
   };
 
-  const handleCreatorApplySuccess = (newUid: string) => {
-    setCurrentCreatorUid(newUid);
+  const signOut = () => {
+    clearSession();
+    clearAdminLocation();
+    setSession(null);
+    setViewMode('landing');
+    setCreatorTab('home');
+    setActiveCampaignDetailId(null);
+    setIsSubmittingClip(false);
+    setShowLoginModal(false);
+  };
+
+  const openCreator = () => {
     setViewMode('creator');
     setCreatorTab('home');
     setActiveCampaignDetailId(null);
     setIsSubmittingClip(false);
   };
 
-  const currentCreator = db.creatorsPublic[currentCreatorUid];
-  const isAppliedStatus = currentCreator?.status === 'applied';
+  const handleCreatorApplySuccess = (newUid: string) => {
+    const nextSession = createSession('creator', newUid, newUid);
+    saveSession(nextSession);
+    setSession(nextSession);
+    openCreator();
+  };
 
-  // Badge counters
-  const queuePendingCount = Object.values(db.clips).filter((c) => c.status === 'submitted').length;
-  const enquiriesCount = Object.values(db.enquiries).filter((e) => e.status === 'new').length;
+  const handleCreatorLogin = async (
+    identifier: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const result = await authenticateCreator(identifier, password);
+    if (!result.success || !result.uid) {
+      return { success: false, error: result.error };
+    }
+    const nextSession = createSession('creator', result.uid, identifier.trim());
+    saveSession(nextSession);
+    setSession(nextSession);
+    openCreator();
+    return { success: true };
+  };
+
+  const handleAdminAuthenticated = (email: string) => {
+    const nextSession = createSession('admin', 'admin_uid', email);
+    saveSession(nextSession);
+    setSession(nextSession);
+    setViewMode('admin');
+    setAdminTab('dashboard');
+  };
+
+  // A stale creator session must never expose portal content.
+  useEffect(() => {
+    if (session?.role === 'creator' && !db.creatorsPublic[session.uid]) {
+      signOut();
+    }
+  }, [session, db.creatorsPublic]);
+
+  // Admin access is never rendered without an authenticated admin session,
+  // even if someone finds the private location.
+  if (viewMode === 'admin' && !adminAuthed) {
+    return (
+      <AdminAccess onAuthenticated={handleAdminAuthenticated} onCancel={goPublic} />
+    );
+  }
+
+  // A creator may not see or interact with any portal surface until approval.
+  if (viewMode === 'creator' && currentCreator?.status === 'applied') {
+    return (
+      <UnderReviewScreen
+        db={db}
+        currentUid={currentCreatorUid}
+        onLogout={signOut}
+      />
+    );
+  }
+
+  if (viewMode === 'creator' && !currentCreator) {
+    return null;
+  }
+
+  const portalLabel =
+    viewMode === 'creator'
+      ? 'Creator portal'
+      : viewMode === 'admin'
+      ? 'Operations'
+      : 'Campaign report';
+
+  const portalContext =
+    viewMode === 'creator'
+      ? currentCreator?.handle || 'Creator'
+      : viewMode === 'admin'
+      ? 'Mhomho operations'
+      : 'Shared with the brand';
 
   return (
-    <div className="min-h-screen bg-[var(--page)] text-[var(--text)] font-montserrat flex flex-col">
+    <div className="flex min-h-screen flex-col bg-[var(--page)] font-montserrat text-[var(--text)]">
       <OfflineIndicator />
 
       {/* ======================================================== */}
-      {/* 1. PUBLIC FACING SITE (Default on launch)                */}
+      {/* 1. PUBLIC SITE                                           */}
       {/* ======================================================== */}
       {viewMode === 'landing' ? (
         <LandingPage
           db={db}
           onCreatorApplySuccess={handleCreatorApplySuccess}
-          onOpenPortal={(role, uid) => {
-            if (role === 'admin') {
-              setViewMode('admin');
-            } else if (role === 'brand') {
-              setViewMode('brand');
-            } else {
-              setViewMode('creator');
-              if (uid) setCurrentCreatorUid(uid);
-            }
-          }}
           onOpenSignIn={() => setShowLoginModal(true)}
         />
       ) : (
         /* ======================================================== */
-        /* 2. AUTHENTICATED RESPONSIVE WEB APPLICATION PORTAL       */
+        /* 2. AUTHENTICATED PORTAL                                  */
         /* ======================================================== */
-        <div className="min-h-screen flex flex-col bg-[var(--page)]">
-          {/* Web App Global Top Bar */}
-          <header className="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--line)] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setViewMode('landing')}
-                className="flex items-center gap-2 text-inherit font-extrabold text-[15px] tracking-[0.05em] hover:opacity-80 cursor-pointer"
-                title="Return to Public Site"
-              >
-                <span className="text-[17px] text-[var(--a1)]">←</span>
-                <span>MHOMHO</span>
-              </button>
+        <>
+          <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--page)]/85 backdrop-blur-xl">
+            <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={goPublic}
+                  className="flex shrink-0 items-center gap-2.5 text-inherit cursor-pointer"
+                  title="Back to the public site"
+                >
+                  <BrandMark size={30} />
+                  <span className="font-display hidden text-[13px] font-extrabold tracking-[0.18em] sm:block">
+                    MHOMHO
+                  </span>
+                </button>
 
-              <div className="h-4 w-px bg-[var(--line)] hidden sm:block" />
+                <span className="hidden h-5 w-px bg-[var(--line)] sm:block" />
 
-              {/* Portal Context Indicator */}
-              <div className="text-[12px] font-semibold text-[var(--muted)] flex items-center gap-2">
-                <span>Portal:</span>
-                <span className="text-[var(--text)] font-bold">
-                  {viewMode === 'creator' && (isAppliedStatus ? 'Applicant (Review)' : `Creator (${currentCreator?.handle || '@creator'})`)}
-                  {viewMode === 'admin' && 'Admin Console'}
-                  {viewMode === 'brand' && 'Brand View (/c/glow-skincare)'}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Persona / Role Switcher for seamless testing */}
-            <div className="flex items-center gap-2">
-              <div className="hidden lg:flex items-center gap-1 bg-[var(--bg)] p-1 rounded-[8px] border border-[var(--line)] text-[11px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewMode('creator');
-                    setCurrentCreatorUid('tendai_uid');
-                  }}
-                  className={`px-2.5 py-1 rounded-[5px] transition-colors cursor-pointer ${
-                    viewMode === 'creator' && currentCreatorUid === 'tendai_uid'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-bold'
-                      : 'text-[var(--muted)] hover:text-[var(--text)]'
-                  }`}
-                >
-                  Creator: Tendai
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewMode('creator');
-                    setCurrentCreatorUid('newbie_uid');
-                  }}
-                  className={`px-2.5 py-1 rounded-[5px] transition-colors cursor-pointer ${
-                    viewMode === 'creator' && currentCreatorUid === 'newbie_uid'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-bold'
-                      : 'text-[var(--muted)] hover:text-[var(--text)]'
-                  }`}
-                >
-                  Applicant: Kudzai
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('admin')}
-                  className={`px-2.5 py-1 rounded-[5px] transition-colors cursor-pointer ${
-                    viewMode === 'admin'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-bold'
-                      : 'text-[var(--muted)] hover:text-[var(--text)]'
-                  }`}
-                >
-                  Admin
-                  {queuePendingCount > 0 && (
-                    <span className="ml-1 px-1 bg-[var(--warn)] text-[var(--ink)] rounded-full text-[9px] font-bold">
-                      {queuePendingCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('brand')}
-                  className={`px-2.5 py-1 rounded-[5px] transition-colors cursor-pointer ${
-                    viewMode === 'brand'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-bold'
-                      : 'text-[var(--muted)] hover:text-[var(--text)]'
-                  }`}
-                >
-                  Brand View
-                </button>
+                <div className="min-w-0">
+                  <p className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+                    {portalLabel}
+                  </p>
+                  <p className="truncate text-[12.5px] font-semibold text-[var(--text)]">
+                    {portalContext}
+                  </p>
+                </div>
               </div>
 
-              {/* Theme toggle */}
-              <button
-                type="button"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="px-2.5 py-1.5 rounded-[8px] border border-[var(--line)] text-[12px] font-semibold hover:bg-[var(--surface)] cursor-pointer"
-                title="Toggle Theme"
-              >
-                {theme === 'dark' ? '☀️' : '🌙'}
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                </button>
 
-              {/* Money Tests status badge */}
-              <button
-                type="button"
-                onClick={handleOpenTests}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] border border-[var(--line)] text-[12px] font-semibold text-[var(--ok)] hover:bg-[var(--surface)] cursor-pointer"
-                title="Run Money Maths Tests"
-              >
-                <span>✓</span> Tests
-              </button>
+                <button
+                  type="button"
+                  onClick={goPublic}
+                  className="hidden h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3.5 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
+                >
+                  <ArrowLeft size={13} />
+                  Public site
+                </button>
 
-              {/* Return to Public Site */}
-              <button
-                type="button"
-                onClick={() => setViewMode('landing')}
-                className="px-3 py-1.5 rounded-[8px] bg-[var(--surface)] border border-[var(--line)] text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
-              >
-                Public Site
-              </button>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="inline-flex h-9 items-center rounded-full border border-[var(--line)] px-3.5 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           </header>
 
           {/* ======================================================== */}
-          {/* A. CREATOR PORTAL VIEW (Responsive, Clean Frame)         */}
+          {/* A. CREATOR PORTAL                                        */}
           {/* ======================================================== */}
           {viewMode === 'creator' && (
-            <div className="flex-1 flex flex-col justify-between max-w-xl w-full mx-auto sm:my-6 sm:border sm:border-[var(--line)] sm:rounded-[18px] bg-[var(--bg)] shadow-none sm:shadow-lg overflow-hidden">
-              {isAppliedStatus ? (
-                <UnderReviewScreen
-                  db={db}
-                  currentUid={currentCreatorUid}
-                  onApproved={() => {
-                    setCreatorTab('home');
-                  }}
-                  onLogout={() => setViewMode('landing')}
-                />
-              ) : isSubmittingClip ? (
-                <SubmitClip
-                  initialCampaignId={submitClipCampaignId}
-                  db={db}
-                  currentUid={currentCreatorUid}
-                  onBack={() => setIsSubmittingClip(false)}
-                  onSuccess={() => {
-                    setIsSubmittingClip(false);
-                    setCreatorTab('clips');
-                  }}
-                />
-              ) : activeCampaignDetailId ? (
-                <CampaignDetail
-                  campaignId={activeCampaignDetailId}
-                  db={db}
-                  currentUid={currentCreatorUid}
-                  onBack={() => setActiveCampaignDetailId(null)}
-                  onSubmitClip={(campId) => {
-                    setSubmitClipCampaignId(campId);
-                    setIsSubmittingClip(true);
-                    setActiveCampaignDetailId(null);
-                  }}
-                />
-              ) : (
-                <>
-                  <div className="flex-1 overflow-y-auto">
-                    {creatorTab === 'home' && (
-                      <CreatorHome
-                        db={db}
-                        currentUid={currentCreatorUid}
-                        onNavigateToCampaign={(campId) => setActiveCampaignDetailId(campId)}
-                        onNavigateToTab={(tab) => setCreatorTab(tab)}
-                      />
-                    )}
-
-                    {creatorTab === 'campaigns' && (
-                      <CampaignsFeed
-                        db={db}
-                        currentUid={currentCreatorUid}
-                        onSelectCampaign={(campId) => setActiveCampaignDetailId(campId)}
-                      />
-                    )}
-
-                    {creatorTab === 'clips' && (
-                      <MyClips
-                        db={db}
-                        currentUid={currentCreatorUid}
-                        onSubmitNew={() => {
-                          setSubmitClipCampaignId(undefined);
-                          setIsSubmittingClip(true);
-                        }}
-                      />
-                    )}
-
-                    {creatorTab === 'earnings' && (
-                      <EarningsScreen
-                        db={db}
-                        currentUid={currentCreatorUid}
-                        onEditEcoCash={() => setCreatorTab('profile')}
-                      />
-                    )}
-
-                    {creatorTab === 'profile' && (
-                      <CreatorProfile
-                        db={db}
-                        currentUid={currentCreatorUid}
-                        onLogout={() => setViewMode('landing')}
-                      />
-                    )}
+            <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-0 sm:px-6 sm:py-7">
+              <div className="flex flex-1 flex-col overflow-hidden border-[var(--line)] bg-[var(--bg)] sm:min-h-[calc(100vh-7.75rem)] sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)]">
+                {isRejected ? (
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+                    <span className="grid h-14 w-14 place-items-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[var(--err)]">
+                      <User size={22} />
+                    </span>
+                    <h2 className="font-display mt-5 text-[24px] font-bold">Application not approved</h2>
+                    <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-[var(--muted)]">
+                      We couldn’t verify this profile for the roster. Message onboarding if you think
+                      this was a mistake.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="mt-6 inline-flex h-11 items-center rounded-full bg-gradient-mhomho px-6 text-[13px] font-bold text-[var(--ink)] cursor-pointer"
+                    >
+                      Back to the public site
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    {/* Desktop navigation */}
+                    <div className="hidden items-center gap-1 border-b border-[var(--line)] px-3 py-2 sm:flex">
+                      {CREATOR_NAV.map((item) => {
+                        const isActive =
+                          creatorTab === item.id && !isSubmittingClip && !activeCampaignDetailId;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveCampaignDetailId(null);
+                              setIsSubmittingClip(false);
+                              setCreatorTab(item.id);
+                            }}
+                            className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-[12.5px] font-semibold transition-colors cursor-pointer ${
+                              isActive
+                                ? 'bg-[var(--surface-2)] text-[var(--text)]'
+                                : 'text-[var(--muted)] hover:text-[var(--text)]'
+                            }`}
+                          >
+                            <item.icon size={15} />
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <TabBar
-                    activeTab={creatorTab}
-                    onTabChange={(tab) => {
-                      setActiveCampaignDetailId(null);
-                      setIsSubmittingClip(false);
-                      setCreatorTab(tab);
-                    }}
-                  />
-                </>
-              )}
+                    <div className="flex-1 overflow-y-auto">
+                      {isSubmittingClip ? (
+                        <SubmitClip
+                          initialCampaignId={submitClipCampaignId}
+                          db={db}
+                          currentUid={currentCreatorUid}
+                          onBack={() => setIsSubmittingClip(false)}
+                          onSuccess={() => {
+                            setIsSubmittingClip(false);
+                            setCreatorTab('clips');
+                          }}
+                        />
+                      ) : activeCampaignDetailId ? (
+                        <CampaignDetail
+                          campaignId={activeCampaignDetailId}
+                          db={db}
+                          currentUid={currentCreatorUid}
+                          onBack={() => setActiveCampaignDetailId(null)}
+                          onSubmitClip={(campId) => {
+                            setSubmitClipCampaignId(campId);
+                            setIsSubmittingClip(true);
+                            setActiveCampaignDetailId(null);
+                          }}
+                        />
+                      ) : (
+                        <>
+                          {creatorTab === 'home' && (
+                            <CreatorHome
+                              db={db}
+                              currentUid={currentCreatorUid}
+                              onNavigateToCampaign={(campId) => setActiveCampaignDetailId(campId)}
+                              onNavigateToTab={(tab) => setCreatorTab(tab)}
+                            />
+                          )}
+
+                          {creatorTab === 'campaigns' && (
+                            <CampaignsFeed
+                              db={db}
+                              currentUid={currentCreatorUid}
+                              onSelectCampaign={(campId) => setActiveCampaignDetailId(campId)}
+                            />
+                          )}
+
+                          {creatorTab === 'clips' && (
+                            <MyClips
+                              db={db}
+                              currentUid={currentCreatorUid}
+                              onSubmitNew={() => {
+                                setSubmitClipCampaignId(undefined);
+                                setIsSubmittingClip(true);
+                              }}
+                            />
+                          )}
+
+                          {creatorTab === 'earnings' && (
+                            <EarningsScreen
+                              db={db}
+                              currentUid={currentCreatorUid}
+                              onEditEcoCash={() => setCreatorTab('profile')}
+                            />
+                          )}
+
+                          {creatorTab === 'profile' && (
+                            <CreatorProfile
+                              db={db}
+                              currentUid={currentCreatorUid}
+                              onLogout={goPublic}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <TabBar
+                      activeTab={creatorTab}
+                      onTabChange={(tab) => {
+                        setActiveCampaignDetailId(null);
+                        setIsSubmittingClip(false);
+                        setCreatorTab(tab);
+                      }}
+                      className="sm:hidden"
+                    />
+                  </>
+                )}
+              </div>
             </div>
           )}
 
           {/* ======================================================== */}
-          {/* B. ADMIN CONSOLE VIEW (Spacious Desktop Dashboard)       */}
+          {/* B. ADMIN CONSOLE                                         */}
           {/* ======================================================== */}
           {viewMode === 'admin' && (
-            <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
-              {/* Admin Navigation Pills */}
-              <div className="flex items-center gap-1.5 pb-4 mb-4 border-b border-[var(--line)] overflow-x-auto text-[13px]">
-                <button
-                  type="button"
-                  onClick={() => setAdminTab('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-[8px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    adminTab === 'dashboard'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-extrabold'
-                      : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] border border-[var(--line)]'
-                  }`}
-                >
-                  Dashboard
-                </button>
+            <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-5 py-6 sm:px-8 sm:py-8">
+              <div className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--a1)]">
+                    <LayoutDashboard size={16} />
+                  </span>
+                  <div>
+                    <h1 className="font-display text-[20px] font-bold leading-tight">Operations</h1>
+                    <p className="text-[12px] text-[var(--muted)]">
+                      Applications, clips, campaigns and payouts
+                    </p>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setAdminTab('queue')}
-                  className={`px-3.5 py-1.5 rounded-[8px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    adminTab === 'queue'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-extrabold'
-                      : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] border border-[var(--line)]'
-                  }`}
-                >
-                  Verification Queue
-                  {queuePendingCount > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.5 bg-[var(--warn)] text-[var(--ink)] rounded-full text-[10px] font-bold">
-                      {queuePendingCount}
-                    </span>
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  {ADMIN_NAV.map((tab) => {
+                    const isActive = adminTab === tab.id;
+                    const count =
+                      tab.id === 'queue'
+                        ? queuePendingCount
+                        : tab.id === 'enquiries'
+                        ? enquiriesCount
+                        : tab.id === 'dashboard'
+                        ? applicantsCount
+                        : 0;
 
-                <button
-                  type="button"
-                  onClick={() => setAdminTab('campaigns')}
-                  className={`px-3.5 py-1.5 rounded-[8px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    adminTab === 'campaigns'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-extrabold'
-                      : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] border border-[var(--line)]'
-                  }`}
-                >
-                  Campaigns
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAdminTab('payouts')}
-                  className={`px-3.5 py-1.5 rounded-[8px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    adminTab === 'payouts'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-extrabold'
-                      : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] border border-[var(--line)]'
-                  }`}
-                >
-                  EcoCash Payouts
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAdminTab('enquiries')}
-                  className={`px-3.5 py-1.5 rounded-[8px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    adminTab === 'enquiries'
-                      ? 'bg-[var(--grad)] text-[var(--ink)] font-extrabold'
-                      : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] border border-[var(--line)]'
-                  }`}
-                >
-                  Brand Inquiries
-                  {enquiriesCount > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.5 bg-[var(--ok)] text-[var(--ink)] rounded-full text-[10px] font-bold">
-                      {enquiriesCount}
-                    </span>
-                  )}
-                </button>
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setAdminTab(tab.id)}
+                        className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-[var(--text)] text-[var(--page)]'
+                            : 'border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
+                      >
+                        {tab.label}
+                        {count > 0 && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                              isActive
+                                ? 'bg-[var(--page)]/15 text-[var(--page)]'
+                                : 'bg-[var(--surface-2)] text-[var(--a1)]'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Sub-screen rendering */}
               <div className="flex-1">
                 {adminTab === 'dashboard' && <AdminDashboard db={db} />}
                 {adminTab === 'queue' && <AdminVerificationQueue db={db} />}
@@ -427,84 +546,32 @@ export default function App() {
           )}
 
           {/* ======================================================== */}
-          {/* C. BRAND CAMPAIGN VIEW (/c/:token)                       */}
+          {/* C. BRAND CAMPAIGN REPORT                                 */}
           {/* ======================================================== */}
           {viewMode === 'brand' && (
-            <div className="flex-1 max-w-xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col justify-center">
-              <BrandCampaignPage
-                token={brandToken}
-                db={db}
-                onSelectToken={(newToken) => setBrandToken(newToken)}
-              />
+            <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+              <div className="flex flex-col overflow-hidden rounded-[22px] border border-[var(--line)] bg-[var(--bg)] shadow-[var(--shadow-soft)]">
+                <BrandCampaignPage token={brandToken} db={db} onSelectToken={() => {}} />
+              </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {/* Sign In Modal */}
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        onLogin={({ role, uid }) => {
-          if (role === 'admin') {
-            setViewMode('admin');
-          } else {
-            setViewMode('creator');
-            setCurrentCreatorUid(uid);
-          }
+        onLogin={handleCreatorLogin}
+        onApply={() => {
+          goPublic();
+          window.setTimeout(() => {
+            document.getElementById('creators')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
+          }, 80);
         }}
       />
-
-      {/* Money Tests Modal */}
-      {showTestsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md rounded-[14px] bg-[var(--surface)] border border-[var(--line)] p-5 max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-[18px] font-extrabold m-0">
-                Money Maths Unit Tests
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowTestsModal(false)}
-                className="text-[var(--muted)] hover:text-[var(--text)] text-[20px] font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-[13px] text-[var(--muted)] mb-3">
-              Verifies Section 9 rules: $250 campaign $\to$ 16,666¢ pool, 4,166¢ cap, 166,666 views, rounding down, 80% pool closure, and ceiling.
-            </p>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-4 text-[13px]">
-              {testResults.map((t, i) => (
-                <div
-                  key={i}
-                  className={`p-2.5 rounded-[8px] border flex items-start gap-2 ${
-                    t.passed
-                      ? 'bg-[var(--ok)]/10 text-[var(--ok)] border-[var(--ok)]/30'
-                      : 'bg-[var(--err)]/10 text-[var(--err)] border-[var(--err)]/30'
-                  }`}
-                >
-                  <span className="font-extrabold">{t.passed ? '✓' : '✗'}</span>
-                  <div>
-                    <div className="font-semibold">{t.name}</div>
-                    {t.error && <div className="text-[11px] mt-0.5">{t.error}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowTestsModal(false)}
-              className="w-full py-2.5 rounded-[10px] bg-[var(--line)] text-[var(--text)] font-semibold text-[14px] cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

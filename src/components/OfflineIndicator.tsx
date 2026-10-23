@@ -1,3 +1,5 @@
+import React from 'react';
+import { WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../lib/useOnlineStatus.ts';
 
 export const OfflineIndicator: React.FC = () => {
@@ -8,37 +10,10 @@ export const OfflineIndicator: React.FC = () => {
   return (
     <div
       role="status"
-      style={{
-        position: 'fixed',
-        bottom: '60px',
-        left: '16px',
-        right: '16px',
-        maxWidth: '360px',
-        margin: '0 auto',
-        zIndex: 999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        borderRadius: '10px',
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--warn)',
-        color: 'var(--warn)',
-        padding: '8px 12px',
-        fontSize: '12px',
-        fontWeight: 600,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-      }}
+      className="fixed bottom-4 left-1/2 z-[999] flex w-[calc(100%-2rem)] max-w-[340px] -translate-x-1/2 items-center gap-2.5 rounded-xl border border-[var(--warn)]/40 bg-[var(--surface)] px-3.5 py-2.5 text-[12px] font-medium text-[var(--warn)] shadow-[var(--shadow-soft)]"
     >
-      <span
-        style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: 'var(--warn)',
-          display: 'inline-block',
-        }}
-      />
-      Offline Mode · Cached data in use
+      <WifiOff size={14} />
+      Offline — showing cached data
     </div>
   );
 };

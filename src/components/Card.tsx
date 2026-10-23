@@ -11,7 +11,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', style, ...
         backgroundColor: 'var(--surface)',
         border: '1px solid var(--line)',
         borderRadius: 'var(--r-card)',
-        padding: '14px',
+        padding: '16px',
         marginBottom: '12px',
         boxShadow: 'none',
         ...style,
