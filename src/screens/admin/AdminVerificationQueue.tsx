@@ -5,10 +5,10 @@ import { Button } from '../../components/Button.tsx';
 import {
   DatabaseState,
   ClipDoc,
-  verifyClipTransaction,
-  rejectClip,
+  isAllowedSocialUrl,
 } from '../../lib/firebase.ts';
-import { formatViews } from '../../lib/money.ts';
+import { rejectClip, verifyClip } from '../../lib/api.ts';
+import { formatCents, formatViews } from '../../lib/money.ts';
 
 export interface AdminVerificationQueueProps {
   db: DatabaseState;
@@ -40,7 +40,7 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
     setVerifyModalAction('preview');
   };
 
-  const handleConfirmApprove = () => {
+  const handleConfirmApprove = async () => {
     if (!selectedClip) return;
     const views = parseInt(verifiedViewsInput, 10);
     if (isNaN(views) || views <= 0) {
@@ -48,19 +48,25 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
       return;
     }
 
-    const res = verifyClipTransaction(selectedClip.id, views, 'admin');
+    const res = await verifyClip(selectedClip.id, views);
     if (!res.success) {
       setFeedbackMsg({ text: res.error || 'Verification failed', isError: true });
     } else {
-      setFeedbackMsg({ text: `Approved! ${formatViews(views)} views verified.` });
+      const earned = res.data?.earningsCents ?? 0;
+      const shortfall = res.data?.shortfallCents ?? 0;
+      setFeedbackMsg({
+        text:
+          `Approved! ${formatViews(views)} views verified · ${formatCents(earned)} earned` +
+          (shortfall > 0 ? ` · ${formatCents(shortfall)} shortfall recorded` : ''),
+      });
       setVerifyModalAction(null);
       setSelectedClip(null);
     }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!selectedClip) return;
-    const res = rejectClip(selectedClip.id, 'admin', 'Failed verification or fraudulent views');
+    const res = await rejectClip(selectedClip.id, 'Failed verification or fraudulent views');
     if (!res.success) {
       setFeedbackMsg({ text: res.error || 'Rejection failed', isError: true });
     } else {
@@ -209,12 +215,36 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
                   <div><strong>Creator:</strong> {selectedClip.creatorHandle}</div>
                   <div><strong>Platform:</strong> {selectedClip.platform}</div>
                   <div><strong>Claimed Views:</strong> {selectedClip.claimedViews.toLocaleString()}</div>
-                  <div><strong>Post Link:</strong> <a href={selectedClip.link} target="_blank" rel="noopener noreferrer" className="text-[var(--a1)] underline break-all">{selectedClip.link}</a></div>
+                  <div>
+                    <strong>Post Link:</strong>{' '}
+                    {isAllowedSocialUrl(selectedClip.link) ? (
+                      <a
+                        href={selectedClip.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[var(--a1)] underline break-all"
+                      >
+                        {selectedClip.link}
+                      </a>
+                    ) : (
+                      <span className="break-all">{selectedClip.link}</span>
+                    )}
+                  </div>
                   <div className="pt-2">
                     <span className="block text-[12px] font-semibold text-[var(--muted)] mb-1">Analytics Proof:</span>
-                    <div className="h-32 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] flex items-center justify-center text-[12px] text-[var(--muted)]">
-                      [Screenshot Attached: {selectedClip.screenshotUrl}]
-                    </div>
+                    {selectedClip.screenshotUrl ? (
+                      <a href={selectedClip.screenshotUrl} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={selectedClip.screenshotUrl}
+                          alt={`Proof screenshot for ${selectedClip.creatorHandle}`}
+                          className="max-h-48 w-full rounded-[10px] border border-[var(--line)] object-contain bg-[var(--bg)]"
+                        />
+                      </a>
+                    ) : (
+                      <div className="h-32 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] flex items-center justify-center text-[12px] text-[var(--muted)]">
+                        No screenshot was attached.
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setVerifyModalAction(null)}>

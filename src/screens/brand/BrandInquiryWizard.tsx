@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../../components/Card.tsx';
 import { Button } from '../../components/Button.tsx';
-import { createEnquiry } from '../../lib/firebase.ts';
+import { createEnquiry } from '../../lib/api.ts';
 
 const NICHES = [
   'Tech & gadgets',
@@ -31,9 +31,9 @@ const GOALS = [
 ];
 
 const BUDGETS = [
-  '$100 to $250',
-  '$250 to $500',
-  '$500 to $1,000',
+  '$100 – $250',
+  '$250 – $500',
+  '$500 – $1,000',
   '$1,000+',
   'Not sure yet',
 ];
@@ -107,7 +107,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
     ].join('\n');
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setErrorMsg('');
 
     if (step === 0 && !answers.promo.trim()) {
@@ -124,8 +124,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
         return;
       }
 
-      // Record in Firebase store
-      createEnquiry({
+      const result = await createEnquiry({
         bizName: answers.biz.trim(),
         contactName: answers.name.trim(),
         phone: answers.phone.trim(),
@@ -137,6 +136,11 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
         notes: answers.notes,
         bestTimes: answers.times,
       });
+
+      if (!result.success) {
+        setErrorMsg(result.error || 'We could not send your brief. Please try again.');
+        return;
+      }
 
       const briefText = generateBriefText(answers);
       setSubmittedBrief(briefText);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { MhomhoLogo, MhomhoMark } from './MhomhoLogo.tsx';
 
 export interface BrandMarkProps {
   size?: number;
@@ -6,28 +7,15 @@ export interface BrandMarkProps {
 }
 
 /**
- * Mhomho mark: a crowd of voices. Three ascending bars on the brand gradient.
+ * In-app brand mark: the official faceted M and crowd icon.
  */
 export const BrandMark: React.FC<BrandMarkProps> = ({ size = 32, className = '' }) => {
   return (
     <span
-      aria-hidden="true"
-      className={`inline-grid shrink-0 place-items-center rounded-[26%] ${className}`}
-      style={{ width: size, height: size, background: 'var(--grad)' }}
+      className={`inline-flex shrink-0 items-center justify-center ${className}`}
+      style={{ width: size, height: size }}
     >
-      <span className="flex items-end gap-[2px]" style={{ height: size * 0.52 }}>
-        {[0.62, 0.82, 1].map((scale, i) => (
-          <span
-            key={i}
-            style={{
-              width: Math.max(2, Math.round(size * 0.1)),
-              height: `${scale * 100}%`,
-              background: 'var(--ink)',
-              borderRadius: 2,
-            }}
-          />
-        ))}
-      </span>
+      <MhomhoMark className="h-full w-full" />
     </span>
   );
 };
@@ -38,17 +26,10 @@ export const BrandLockup: React.FC<{ size?: number; subtitle?: boolean }> = ({
 }) => {
   return (
     <span className="flex items-center gap-2.5">
-      <BrandMark size={size} />
-      <span className="flex flex-col leading-none">
-        <span className="font-display text-[14px] font-extrabold tracking-[0.18em] text-[var(--text)]">
-          MHOMHO
-        </span>
-        {subtitle && (
-          <span className="mt-1 text-[8px] font-medium tracking-[0.42em] text-[var(--muted)]">
-            MEDIA
-          </span>
-        )}
-      </span>
+      <MhomhoLogo height={size} />
+      {subtitle && (
+        <span className="sr-only">Mhomho Media</span>
+      )}
     </span>
   );
 };

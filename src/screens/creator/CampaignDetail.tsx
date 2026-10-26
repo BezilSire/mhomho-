@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../../components/Card.tsx';
 import { ProgressBar } from '../../components/ProgressBar.tsx';
 import { ListRow } from '../../components/ListRow.tsx';
 import { Button } from '../../components/Button.tsx';
-import { DatabaseState, joinCampaign } from '../../lib/firebase.ts';
+import {
+  DatabaseState,
+  campaignStatusLabel,
+  isCampaignOpenToJoins,
+} from '../../lib/firebase.ts';
+import { joinCampaign } from '../../lib/api.ts';
 import { formatPercent } from '../../lib/money.ts';
 
 export interface CampaignDetailProps {
@@ -24,11 +29,13 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
   const campaign = db.campaigns[campaignId] || Object.values(db.campaigns)[0];
   const stats = campaign ? db.campaignStats[campaign.id] : null;
   const isMember = !!db.campaignMembers[`${campaign?.id}_${currentUid}`];
-  const isFull = campaign?.status === 'full' || (stats && !stats.joiningOpen);
+  const isOpen = campaign ? isCampaignOpenToJoins(campaign, stats ?? undefined) : false;
+  const [errorMsg, setErrorMsg] = useState('');
+  const [joining, setJoining] = useState(false);
 
   const poolPercent = stats
     ? formatPercent(stats.poolUsedCents, stats.poolTotalCents)
-    : 64;
+    : 0;
 
   if (!campaign) {
     return (
@@ -41,8 +48,12 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
     );
   }
 
-  const handleJoin = () => {
-    joinCampaign(campaign.id, currentUid);
+  const handleJoin = async () => {
+    setJoining(true);
+    setErrorMsg('');
+    const result = await joinCampaign(campaign.id);
+    setJoining(false);
+    if (!result.success) setErrorMsg(result.error || 'Could not join this campaign.');
   };
 
   return (
@@ -59,6 +70,15 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
       <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
         {campaign.title}
       </h2>
+
+      {campaign.posterUrl && (
+        <img
+          src={campaign.posterUrl}
+          alt=""
+          className="mb-3 h-44 w-full rounded-2xl object-cover"
+          loading="lazy"
+        />
+      )}
 
       {/* Pool status card */}
       <Card>
@@ -102,17 +122,20 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
 
       {/* Action CTA */}
       <div className="mt-2 mb-4">
+        {errorMsg && (
+          <div className="p-3 mb-2 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
+            {errorMsg}
+          </div>
+        )}
         {isMember ? (
           <Button onClick={() => onSubmitClip(campaign.id)}>
             Submit a clip
           </Button>
-        ) : isFull ? (
-          <Button disabled={true}>
-            Campaign is full
-          </Button>
+        ) : !isOpen ? (
+          <Button disabled={true}>{`Closed · ${campaignStatusLabel(campaign)}`}</Button>
         ) : (
-          <Button onClick={handleJoin}>
-            Join campaign to submit clips
+          <Button onClick={handleJoin} disabled={joining}>
+            {joining ? 'Joining...' : 'Join campaign to submit clips'}
           </Button>
         )}
       </div>

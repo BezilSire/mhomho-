@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   User,
+  Users,
   Video,
   Wallet,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import { SubmitClip } from './screens/creator/SubmitClip.tsx';
 import { MyClips } from './screens/creator/MyClips.tsx';
 import { EarningsScreen } from './screens/creator/EarningsScreen.tsx';
 import { CreatorProfile } from './screens/creator/CreatorProfile.tsx';
+import { CommunityScreen } from './screens/creator/CommunityScreen.tsx';
 import { UnderReviewScreen } from './screens/creator/UnderReviewScreen.tsx';
 import { BrandCampaignPage } from './screens/brand/BrandCampaignPage.tsx';
 import { AdminVerificationQueue } from './screens/admin/AdminVerificationQueue.tsx';
@@ -38,26 +40,41 @@ import { AdminAccess } from './screens/admin/AdminAccess.tsx';
 import { LandingPage } from './screens/public/LandingPage.tsx';
 import { LoginModal } from './screens/auth/LoginModal.tsx';
 import {
-  AuthSession,
   authenticateCreator,
+  bootstrapSession,
   clearAdminLocation,
-  clearSession,
-  createSession,
-  getSession,
   isAdminLocation,
-  saveSession,
+  signOut as endSession,
 } from './lib/auth.ts';
+import { getSession, subscribeToSession, type AuthSession } from './lib/sessionStore.ts';
+import { fetchBrandReport } from './lib/api.ts';
 import { TabBar, CreatorTabId } from './components/TabBar.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { BrandMark } from './components/BrandMark.tsx';
+import { MhomhoLogo } from './components/MhomhoLogo.tsx';
+import { ActivityToasts } from './components/ActivityToasts.tsx';
+import { NotificationBell } from './components/NotificationBell.tsx';
+import { SupportCenter } from './components/SupportCenter.tsx';
+import { AdminSupport } from './screens/admin/AdminSupport.tsx';
+import { AdminNotifications } from './screens/admin/AdminNotifications.tsx';
+import { AdminCommunity } from './screens/admin/AdminCommunity.tsx';
 
 export type MainViewMode = 'landing' | 'creator' | 'admin' | 'brand';
-export type AdminTabId = 'dashboard' | 'queue' | 'campaigns' | 'payouts' | 'enquiries';
+export type AdminTabId =
+  | 'dashboard'
+  | 'queue'
+  | 'campaigns'
+  | 'payouts'
+  | 'enquiries'
+  | 'community'
+  | 'support'
+  | 'notifications';
 
 const CREATOR_NAV: { id: CreatorTabId; label: string; icon: React.ElementType }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
   { id: 'clips', label: 'Clips', icon: Video },
+  { id: 'community', label: 'Community', icon: Users },
   { id: 'earnings', label: 'Earnings', icon: Wallet },
   { id: 'profile', label: 'Profile', icon: User },
 ];
@@ -68,14 +85,29 @@ const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'payouts', label: 'Payouts' },
   { id: 'enquiries', label: 'Brand enquiries' },
+  { id: 'community', label: 'Community' },
+  { id: 'support', label: 'Support' },
+  { id: 'notifications', label: 'Notifications' },
 ];
+
+/** Brand report links arrive as ?report=<token> or #brand/<token>. */
+function brandTokenFromLocation(): string {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('report');
+  if (fromQuery) return fromQuery;
+  const hash = window.location.hash.replace(/^#\/?/, '');
+  return hash.startsWith('brand/') ? hash.slice('brand/'.length) : '';
+}
 
 export default function App() {
   const [db, setDb] = useState<DatabaseState>(getDatabaseState());
   const [session, setSession] = useState<AuthSession | null>(() => getSession());
+  const [booting, setBooting] = useState(true);
+  const [bootError, setBootError] = useState('');
   const [viewMode, setViewMode] = useState<MainViewMode>(() => {
     if (isAdminLocation()) return 'admin';
-    return getSession()?.role === 'creator' ? 'creator' : 'landing';
+    return brandTokenFromLocation() ? 'brand' : 'landing';
   });
 
   // Creator portal navigation state
@@ -88,13 +120,14 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<AdminTabId>('dashboard');
 
   // Brand report state
-  const [brandToken] = useState<string>('glow-skincare');
+  const [brandToken] = useState<string>(() => brandTokenFromLocation());
 
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Modals
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showSupport, setShowSupport] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToDatabase(() => {
@@ -103,12 +136,43 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => subscribeToSession(() => setSession(getSession())), []);
+
+  // Load the session and the anonymous projection once at boot. The UI stays
+  // behind a splash until the server answers, so no portal can flash open on a
+  // stale client-side guess.
+  useEffect(() => {
+    let cancelled = false;
+    bootstrapSession()
+      .then((next) => {
+        if (cancelled) return;
+        setSession(next);
+        if (next?.role === 'creator') setViewMode('creator');
+      })
+      .catch(() => {
+        if (!cancelled) setBootError('We could not reach the server. Check your connection and reload.');
+      })
+      .finally(() => {
+        if (!cancelled) setBooting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Brand reports are fetched with an unguessable token, never from local data.
+  useEffect(() => {
+    if (viewMode !== 'brand' || !brandToken) return;
+    void fetchBrandReport(brandToken);
+  }, [viewMode, brandToken]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // The admin console only exists at the private hash location. There are no
-  // public links to it, and credentials are still required even when found.
+  // The admin console shell is served only at the server-gated
+  // /console/<ADMIN_PATH> path. There are no public links to it, and
+  // credentials are still required even if the URL is discovered.
   useEffect(() => {
     const syncLocation = () => {
       if (isAdminLocation()) {
@@ -119,27 +183,28 @@ export default function App() {
       }
     };
     syncLocation();
-    window.addEventListener('hashchange', syncLocation);
-    return () => window.removeEventListener('hashchange', syncLocation);
+    window.addEventListener('popstate', syncLocation);
+    return () => window.removeEventListener('popstate', syncLocation);
   }, []);
 
-  // Sessions are short-lived and expire in the background.
+  // Sessions are short-lived and expire in the background. The server enforces
+  // the same expiry independently; this only keeps the UI honest.
   useEffect(() => {
     if (!session) return;
+
+    const expire = () => {
+      void endSession();
+      if (session.role === 'admin') clearAdminLocation();
+      setSession(null);
+      setViewMode('landing');
+    };
+
     const remaining = session.expiresAt - Date.now();
     if (remaining <= 0) {
-      clearSession();
-      if (session.role === 'admin') clearAdminLocation();
-      setSession(null);
-      setViewMode('landing');
+      expire();
       return;
     }
-    const timer = window.setTimeout(() => {
-      clearSession();
-      if (session.role === 'admin') clearAdminLocation();
-      setSession(null);
-      setViewMode('landing');
-    }, remaining);
+    const timer = window.setTimeout(expire, remaining);
     return () => window.clearTimeout(timer);
   }, [session]);
 
@@ -168,7 +233,7 @@ export default function App() {
   };
 
   const signOut = () => {
-    clearSession();
+    void endSession();
     clearAdminLocation();
     setSession(null);
     setViewMode('landing');
@@ -185,10 +250,9 @@ export default function App() {
     setIsSubmittingClip(false);
   };
 
-  const handleCreatorApplySuccess = (newUid: string) => {
-    const nextSession = createSession('creator', newUid, newUid);
-    saveSession(nextSession);
-    setSession(nextSession);
+  const handleCreatorApplySuccess = (_newUid: string) => {
+    const next = getSession();
+    if (next?.role === 'creator') setSession(next);
     openCreator();
   };
 
@@ -197,20 +261,19 @@ export default function App() {
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     const result = await authenticateCreator(identifier, password);
-    if (!result.success || !result.uid) {
+    if (!result.success) {
       return { success: false, error: result.error };
     }
-    const nextSession = createSession('creator', result.uid, identifier.trim());
-    saveSession(nextSession);
-    setSession(nextSession);
+    const next = getSession();
+    if (!next) return { success: false, error: 'The server did not create a session.' };
+    setSession(next);
     openCreator();
     return { success: true };
   };
 
-  const handleAdminAuthenticated = (email: string) => {
-    const nextSession = createSession('admin', 'admin_uid', email);
-    saveSession(nextSession);
-    setSession(nextSession);
+  const handleAdminAuthenticated = (_email: string) => {
+    const next = getSession();
+    if (next?.role === 'admin') setSession(next);
     setViewMode('admin');
     setAdminTab('dashboard');
   };
@@ -221,6 +284,37 @@ export default function App() {
       signOut();
     }
   }, [session, db.creatorsPublic]);
+
+  if (booting) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--page)] px-6 text-center font-montserrat text-[var(--text)]">
+        <BrandMark size={44} />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--faint)]">
+          Loading Mhomho
+        </p>
+        <p className="max-w-xs text-[12.5px] leading-relaxed text-[var(--muted)]">
+          Checking your session and loading live campaigns.
+        </p>
+      </div>
+    );
+  }
+
+  if (bootError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--page)] px-6 text-center font-montserrat text-[var(--text)]">
+        <BrandMark size={44} />
+        <h1 className="font-display text-[22px] font-bold">The site could not load</h1>
+        <p className="max-w-sm text-[13px] leading-relaxed text-[var(--muted)]">{bootError}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-2 inline-flex h-11 items-center rounded-full bg-gradient-mhomho px-6 text-[13px] font-bold text-[var(--ink)] cursor-pointer"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   // Admin access is never rendered without an authenticated admin session,
   // even if someone finds the private location.
@@ -233,11 +327,15 @@ export default function App() {
   // A creator may not see or interact with any portal surface until approval.
   if (viewMode === 'creator' && currentCreator?.status === 'applied') {
     return (
-      <UnderReviewScreen
-        db={db}
-        currentUid={currentCreatorUid}
-        onLogout={signOut}
-      />
+      <>
+        <UnderReviewScreen
+          db={db}
+          currentUid={currentCreatorUid}
+          onLogout={signOut}
+          onOpenSupport={() => setShowSupport(true)}
+        />
+        <SupportCenter isOpen={showSupport} onClose={() => setShowSupport(false)} />
+      </>
     );
   }
 
@@ -262,6 +360,10 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--page)] font-montserrat text-[var(--text)]">
       <OfflineIndicator />
+      <ActivityToasts
+        enabled={viewMode !== 'brand'}
+        showHandles={db.viewer?.role === 'creator' || db.viewer?.role === 'admin'}
+      />
 
       {/* ======================================================== */}
       {/* 1. PUBLIC SITE                                           */}
@@ -286,10 +388,7 @@ export default function App() {
                   className="flex shrink-0 items-center gap-2.5 text-inherit cursor-pointer"
                   title="Back to the public site"
                 >
-                  <BrandMark size={30} />
-                  <span className="font-display hidden text-[13px] font-extrabold tracking-[0.18em] sm:block">
-                    MHOMHO
-                  </span>
+                  <MhomhoLogo className="h-7 w-auto sm:h-8" />
                 </button>
 
                 <span className="hidden h-5 w-px bg-[var(--line)] sm:block" />
@@ -305,6 +404,8 @@ export default function App() {
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
+                {viewMode === 'creator' && <NotificationBell />}
+
                 <button
                   type="button"
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -442,6 +543,10 @@ export default function App() {
                             />
                           )}
 
+                          {creatorTab === 'community' && (
+                            <CommunityScreen currentUid={currentCreatorUid} />
+                          )}
+
                           {creatorTab === 'earnings' && (
                             <EarningsScreen
                               db={db}
@@ -455,6 +560,7 @@ export default function App() {
                               db={db}
                               currentUid={currentCreatorUid}
                               onLogout={goPublic}
+                              onOpenSupport={() => setShowSupport(true)}
                             />
                           )}
                         </>
@@ -541,6 +647,9 @@ export default function App() {
                 {adminTab === 'campaigns' && <AdminCampaigns db={db} />}
                 {adminTab === 'payouts' && <AdminPayouts db={db} />}
                 {adminTab === 'enquiries' && <AdminEnquiries db={db} />}
+                {adminTab === 'community' && <AdminCommunity />}
+                {adminTab === 'support' && <AdminSupport />}
+                {adminTab === 'notifications' && <AdminNotifications db={db} />}
               </div>
             </div>
           )}
@@ -557,6 +666,8 @@ export default function App() {
           )}
         </>
       )}
+
+      <SupportCenter isOpen={showSupport} onClose={() => setShowSupport(false)} />
 
       <LoginModal
         isOpen={showLoginModal}

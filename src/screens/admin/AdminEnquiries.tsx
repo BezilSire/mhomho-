@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
 import { DatabaseState, EnquiryDoc } from '../../lib/firebase.ts';
+import { updateEnquiryStatus } from '../../lib/api.ts';
 
 export interface AdminEnquiriesProps {
   db: DatabaseState;
 }
 
 export const AdminEnquiries: React.FC<AdminEnquiriesProps> = ({ db }) => {
+  const [errorMsg, setErrorMsg] = useState('');
   const enquiries = Object.values(db.enquiries).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt)
   );
@@ -20,10 +22,10 @@ export const AdminEnquiries: React.FC<AdminEnquiriesProps> = ({ db }) => {
     window.open(`https://wa.me/${enq.phone.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };
 
-  const updateStatus = (id: string, status: 'new' | 'contacted' | 'booked') => {
-    if (db.enquiries[id]) {
-      db.enquiries[id].status = status;
-    }
+  const updateStatus = async (id: string, status: 'new' | 'contacted' | 'booked') => {
+    setErrorMsg('');
+    const result = await updateEnquiryStatus(id, status);
+    if (!result.success) setErrorMsg(result.error || 'The enquiry status could not be updated.');
   };
 
   return (
@@ -34,6 +36,12 @@ export const AdminEnquiries: React.FC<AdminEnquiriesProps> = ({ db }) => {
       <p className="text-[13px] text-[var(--muted)] mb-4">
         Incoming campaign inquiries and call requests from the public website wizard.
       </p>
+
+      {errorMsg && (
+        <div className="p-3 mb-3 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
+          {errorMsg}
+        </div>
+      )}
 
       {enquiries.length === 0 ? (
         <Card className="text-center py-8 text-[var(--muted)] text-[14px]">

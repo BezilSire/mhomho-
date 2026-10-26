@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
-import { DatabaseState } from '../../lib/firebase.ts';
+import { DatabaseState, isAllowedSocialUrl } from '../../lib/firebase.ts';
 import { formatCents, formatViews } from '../../lib/money.ts';
 
 export interface MyClipsProps {
@@ -44,7 +44,7 @@ export const MyClips: React.FC<MyClipsProps> = ({
         clips.map((clip) => {
           const campaign = db.campaigns[clip.campaignId];
           const tagVariant =
-            clip.status === 'verified'
+            clip.status === 'verified' || clip.status === 'approved'
               ? 'ok'
               : clip.status === 'submitted'
               ? 'warn'
@@ -53,8 +53,12 @@ export const MyClips: React.FC<MyClipsProps> = ({
           const tagText =
             clip.status === 'verified'
               ? 'Verified'
+              : clip.status === 'approved'
+              ? 'Approved'
               : clip.status === 'submitted'
               ? 'Submitted'
+              : clip.status === 'withdrawn'
+              ? 'Withdrawn'
               : 'Rejected';
 
           return (
@@ -67,12 +71,12 @@ export const MyClips: React.FC<MyClipsProps> = ({
               </div>
 
               <div className="text-[13px] text-[var(--muted)]">
-                {clip.status === 'verified'
-                  ? `${formatViews(clip.verifiedViews)} verified views`
+                {clip.status === 'verified' || clip.status === 'approved'
+                  ? `${formatViews(clip.verifiedViews || clip.publicViews)} verified views`
                   : `Claimed ${formatViews(clip.claimedViews)} views · submitted ${clip.createdAt}`}
               </div>
 
-              {clip.status === 'verified' && clip.earningsCents && (
+              {(clip.status === 'verified' || clip.status === 'approved') && clip.earningsCents > 0 && (
                 <div className="mt-2 text-[14px] font-bold text-[var(--ok)]">
                   Earned: {formatCents(clip.earningsCents)}
                 </div>
@@ -80,19 +84,31 @@ export const MyClips: React.FC<MyClipsProps> = ({
 
               {clip.status === 'rejected' && (
                 <div className="mt-2 text-[12px] text-[var(--err)] font-medium">
-                  {clip.spikeReason || 'Views under qualifying threshold (1,000) or check failed.'}
+                  {clip.reviewNote ||
+                    clip.spikeReason ||
+                    'Views under qualifying threshold (1,000) or check failed.'}
+                </div>
+              )}
+
+              {clip.status === 'withdrawn' && (
+                <div className="mt-2 text-[12px] text-[var(--muted)] font-medium">
+                  This submission was withdrawn and is no longer eligible for earnings.
                 </div>
               )}
 
               <div className="mt-3 flex justify-between items-center text-[12px]">
-                <a
-                  href={clip.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--a1)] hover:underline"
-                >
+                {isAllowedSocialUrl(clip.link) ? (
+                  <a
+                    href={clip.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--a1)] hover:underline"
+                  >
                   View post ↗
-                </a>
+                  </a>
+                ) : (
+                  <span className="text-[var(--muted)]">Link unavailable</span>
+                )}
                 <span className="text-[var(--muted)]">{clip.createdAt}</span>
               </div>
             </Card>

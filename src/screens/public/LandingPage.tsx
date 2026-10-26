@@ -22,8 +22,8 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import { DatabaseState, createEnquiry, registerCreator } from '../../lib/firebase.ts';
-import { createSalt, hashPassword } from '../../lib/auth.ts';
+import { DatabaseState } from '../../lib/firebase.ts';
+import { createEnquiry, registerCreator } from '../../lib/api.ts';
 import { MhomhoLogo } from '../../components/MhomhoLogo.tsx';
 
 export interface LandingPageProps {
@@ -187,21 +187,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
     setCreatorSubmitting(true);
     try {
-      const salt = createSalt();
-      const passwordHash = await hashPassword(creatorForm.password, salt);
-      const result = registerCreator({
-        name: creatorForm.name,
-        email: creatorForm.email,
+      const result = await registerCreator({
+        name: creatorForm.name.trim(),
+        email: creatorForm.email.trim().toLowerCase(),
         handle: creatorForm.handle,
         platform: creatorForm.platform,
         niche: creatorForm.niche,
         followers: parseInt(creatorForm.followers, 10) || 0,
         whatsappNumber: creatorForm.whatsapp,
-        passwordSalt: salt,
-        passwordHash,
+        password: creatorForm.password,
       });
 
-      if (!result.success || !result.uid) {
+      if (!result.success) {
         setCreatorError(result.error || 'Could not create your account. Try again.');
         return;
       }
@@ -211,7 +208,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         password: '',
         confirmPassword: '',
       }));
-      setAppliedUid(result.uid);
+      setAppliedUid(result.data?.uid || null);
+      if (result.data?.uid) onCreatorApplySuccess(result.data.uid);
     } catch {
       setCreatorError('Secure account creation is unavailable. Open the app on localhost or HTTPS.');
     } finally {
@@ -219,7 +217,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  const handleBrandSubmit = (event: React.FormEvent) => {
+  const handleBrandSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBrandError('');
 
@@ -232,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       return;
     }
 
-    createEnquiry({
+    const result = await createEnquiry({
       bizName: brandForm.biz.trim(),
       contactName: brandForm.name.trim(),
       phone: brandForm.phone.trim(),
@@ -243,6 +241,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       start: brandForm.start,
       bestTimes: [],
     });
+
+    if (!result.success) {
+      setBrandError(result.error || 'We could not send your brief. Please try again.');
+      return;
+    }
 
     setBrandSent(true);
   };

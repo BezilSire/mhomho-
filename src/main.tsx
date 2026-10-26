@@ -28,10 +28,27 @@ if (rootEl) {
     createRoot(rootEl).render(<App />);
   } catch (err) {
     console.error('Error mounting Mhomho App:', err);
-    rootEl.innerHTML = `<div style="padding: 24px; color: white; background: #0B0A09; font-family: sans-serif;">
-      <h2>Loading Application...</h2>
-      <p>Error mounting app: ${String(err)}</p>
-      <button onclick="window.location.reload()" style="padding: 8px 16px; background: #FF9F0A; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Reload</button>
-    </div>`;
+    // Build the fallback with DOM APIs. Never interpolate an exception message
+    // into innerHTML: thrown values can contain attacker-controlled text.
+    rootEl.textContent = '';
+    const panel = document.createElement('div');
+    panel.style.cssText =
+      'padding: 24px; color: white; background: #0B0A09; font-family: sans-serif;';
+
+    const heading = document.createElement('h2');
+    heading.textContent = 'Loading Application...';
+
+    const detail = document.createElement('p');
+    detail.textContent = `Error mounting app: ${String(err)}`;
+
+    const reload = document.createElement('button');
+    reload.textContent = 'Reload';
+    reload.type = 'button';
+    reload.style.cssText =
+      'padding: 8px 16px; background: #FF9F0A; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;';
+    reload.addEventListener('click', () => window.location.reload());
+
+    panel.append(heading, detail, reload);
+    rootEl.append(panel);
   }
 }

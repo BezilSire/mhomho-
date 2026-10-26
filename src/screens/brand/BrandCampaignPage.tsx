@@ -24,13 +24,16 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
   const [topUpAmount, setTopUpAmount] = useState('100');
   const [topUpSuccess, setTopUpSuccess] = useState(false);
 
-  // Retrieve brand view document by token
-  const brandDoc = db.brandViews[token] || db.brandViews['glow-skincare'];
+  // Retrieve the server-projected brand report by token. There is no local
+  // fallback: an unknown or expired token renders an error.
+  const brandDoc = db.brandViews[token];
 
   if (!brandDoc) {
     return (
       <div className="flex-1 p-6 text-center text-[var(--muted)]">
-        Invalid or expired campaign token.
+        {token
+          ? 'Loading report… If this message stays, the link is invalid or has expired.'
+          : 'No campaign report token was provided.'}
       </div>
     );
   }

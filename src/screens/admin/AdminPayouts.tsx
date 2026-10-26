@@ -3,21 +3,25 @@ import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
 import { ListRow } from '../../components/ListRow.tsx';
-import {
-  DatabaseState,
-  calculateCreatorBalances,
-  markPaid,
-} from '../../lib/firebase.ts';
+import { DatabaseState, calculateCreatorBalances } from '../../lib/firebase.ts';
+import { recordPayout, settlePayout } from '../../lib/api.ts';
 import { formatCents, DEFAULT_MONEY_CONFIG } from '../../lib/money.ts';
 
 export interface AdminPayoutsProps {
   db: DatabaseState;
 }
 
+const OPEN_STATUSES = ['requested', 'approved', 'processing'];
+
 export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
   const [selectedCreatorUid, setSelectedCreatorUid] = useState<string | null>(null);
   const [refInput, setRefInput] = useState('');
   const [paidFeedback, setPaidFeedback] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [settlePayoutId, setSettlePayoutId] = useState<string | null>(null);
+  const [settleRef, setSettleRef] = useState('');
 
   // Compute balances for each creator
   const creatorsWithBalances = Object.values(db.creatorsPublic).map((creator) => {
@@ -35,23 +39,68 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
 
   const pendingPayouts = creatorsWithBalances.filter((c) => c.owedCents > 0);
   const completedPayouts = Object.values(db.payouts).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const withdrawalRequests = completedPayouts.filter((p) => OPEN_STATUSES.includes(p.status));
 
-  const handleOpenMarkPaid = (uid: string, owedCents: number) => {
+  const handleOpenMarkPaid = (uid: string) => {
     setSelectedCreatorUid(uid);
     const randomRef = `EC-${Math.floor(10000 + Math.random() * 90000)}-ZW`;
     setRefInput(randomRef);
   };
 
-  const handleConfirmPaid = () => {
-    if (!selectedCreatorUid) return;
+  const handleConfirmPaid = async () => {
+    if (!selectedCreatorUid || busy) return;
     const creator = creatorsWithBalances.find((c) => c.uid === selectedCreatorUid);
     if (!creator) return;
 
-    const res = markPaid(creator.uid, creator.owedCents, refInput || 'EC-CONFIRMED', 'admin');
+    setBusy(true);
+    setErrorMsg(null);
+    const res = await recordPayout({
+      creatorId: creator.uid,
+      amountCents: creator.owedCents,
+      reference: refInput.trim() || 'EC-CONFIRMED',
+    });
+    setBusy(false);
+
     if (res.success) {
       setPaidFeedback(`Paid ${formatCents(creator.owedCents)} to ${creator.name} via EcoCash (${refInput}).`);
       setTimeout(() => setPaidFeedback(null), 3500);
       setSelectedCreatorUid(null);
+    } else {
+      setErrorMsg(res.error || 'The payout could not be recorded.');
+    }
+  };
+
+  const handleSettleRequest = async () => {
+    if (!settlePayoutId || busy) return;
+    setBusy(true);
+    setErrorMsg(null);
+    const res = await settlePayout(settlePayoutId, {
+      status: 'paid',
+      reference: settleRef.trim(),
+    });
+    setBusy(false);
+    if (res.success) {
+      setPaidFeedback('Withdrawal settled and marked as paid.');
+      setTimeout(() => setPaidFeedback(null), 3500);
+      setSettlePayoutId(null);
+      setSettleRef('');
+    } else {
+      setErrorMsg(res.error || 'The withdrawal could not be settled.');
+    }
+  };
+
+  const handleCancelRequest = async (payoutId: string) => {
+    if (busy) return;
+    if (!window.confirm('Cancel this withdrawal and return the funds to the creator balance?')) return;
+    setBusy(true);
+    setErrorMsg(null);
+    const res = await settlePayout(payoutId, {
+      status: 'cancelled',
+      failureReason: 'Cancelled by administrator',
+    });
+    setBusy(false);
+    if (!res.success) {
+      setErrorMsg(res.error || 'The withdrawal could not be cancelled.');
     }
   };
 
@@ -61,7 +110,8 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
         EcoCash Payouts
       </h2>
       <p className="text-[13px] text-[var(--muted)] mb-4">
-        Creators qualify for payout once they reach the $5.00 threshold, 72 hours post-campaign.
+        Creators request withdrawals from their dashboard. Settle the EcoCash transfer with its
+        reference, or cancel to return the funds to their balance.
       </p>
 
       {paidFeedback && (
@@ -70,13 +120,67 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
         </div>
       )}
 
-      {/* Pending payouts */}
+      {errorMsg && (
+        <div className="p-3 mb-3 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Creator-initiated withdrawals */}
       <div className="text-[13px] text-[var(--muted)] mb-1 font-semibold">
-        Pending Payouts ({pendingPayouts.length})
+        Withdrawal requests ({withdrawalRequests.length})
+      </div>
+
+      {withdrawalRequests.length === 0 ? (
+        <Card className="text-center py-5 text-[var(--muted)] text-[13px] mb-6">
+          No withdrawal requests waiting.
+        </Card>
+      ) : (
+        <div className="space-y-3 mb-6">
+          {withdrawalRequests.map((payout) => (
+            <Card key={payout.id}>
+              <div className="flex justify-between items-center gap-2 mb-1">
+                <b className="text-[15px]">{payout.creatorName}</b>
+                <Tag variant="warn">{payout.status}</Tag>
+              </div>
+              <div className="text-[13px] text-[var(--muted)] mb-1">
+                {formatCents(payout.amountCents)} to <b>{payout.ecoCashNumber}</b>
+              </div>
+              <div className="text-[12px] text-[var(--faint)] mb-3">
+                Requested {payout.createdAt} · pay within {DEFAULT_MONEY_CONFIG.payoutDelayHours} hours
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setSettlePayoutId(payout.id);
+                    setSettleRef(`EC-${Math.floor(10000 + Math.random() * 90000)}-ZW`);
+                  }}
+                >
+                  Mark as paid
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => handleCancelRequest(payout.id)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Pending balances (manual payout) */}
+      <div className="text-[13px] text-[var(--muted)] mb-1 font-semibold">
+        Balances awaiting a payout ({pendingPayouts.length})
       </div>
 
       {pendingPayouts.length === 0 ? (
-        <Card className="text-center py-6 text-[var(--muted)] text-[13px]">
+        <Card className="text-center py-6 text-[var(--muted)] text-[13px] mb-6">
           No pending balances right now. All verified creators are settled!
         </Card>
       ) : (
@@ -104,7 +208,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
                   size="sm"
                   fullWidth={false}
                   disabled={!creator.eligible}
-                  onClick={() => handleOpenMarkPaid(creator.uid, creator.owedCents)}
+                  onClick={() => handleOpenMarkPaid(creator.uid)}
                 >
                   Mark as Paid
                 </Button>
@@ -132,14 +236,20 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
                 <div>
                   <b>{payout.creatorName}</b>
                   <div className="text-[12px] text-[var(--muted)]">
-                    {payout.ecoCashNumber} · Ref: {payout.reference}
+                    {payout.ecoCashNumber} · {payout.reference ? `Ref: ${payout.reference}` : payout.status}
                   </div>
                 </div>
               }
               right={
                 <div className="text-right">
                   <b>{formatCents(payout.amountCents)}</b>
-                  <div className="text-[11px] text-[var(--ok)] font-bold">Settled</div>
+                  <div
+                    className={`text-[11px] font-bold ${
+                      payout.status === 'paid' ? 'text-[var(--ok)]' : 'text-[var(--warn)]'
+                    }`}
+                  >
+                    {payout.status === 'paid' ? 'Settled' : payout.status}
+                  </div>
                 </div>
               }
             />
@@ -147,7 +257,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
         )}
       </Card>
 
-      {/* Confirmation modal */}
+      {/* Manual payout confirmation modal */}
       {selectedCreatorUid && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-[14px] bg-[var(--surface)] border border-[var(--line)] p-5">
@@ -173,8 +283,43 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
               <Button size="sm" variant="ghost" onClick={() => setSelectedCreatorUid(null)}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleConfirmPaid}>
-                Record & Settle
+              <Button size="sm" onClick={handleConfirmPaid} disabled={busy}>
+                {busy ? 'Recording…' : 'Record & Settle'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal settlement modal */}
+      {settlePayoutId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-sm rounded-[14px] bg-[var(--surface)] border border-[var(--line)] p-5">
+            <h3 className="text-[18px] font-extrabold mb-2">Settle Withdrawal</h3>
+            <p className="text-[13px] text-[var(--muted)] mb-3">
+              Send the EcoCash payment, then record its reference here. The creator balance was
+              already reserved when the request was made.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[12px] font-semibold text-[var(--muted)] mb-1">
+                EcoCash Reference Code
+              </label>
+              <input
+                type="text"
+                value={settleRef}
+                onChange={(e) => setSettleRef(e.target.value)}
+                placeholder="EC-88392-ZW"
+                className="w-full px-3 py-2 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold text-[14px]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setSettlePayoutId(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSettleRequest} disabled={busy}>
+                {busy ? 'Saving…' : 'Mark as paid'}
               </Button>
             </div>
           </div>

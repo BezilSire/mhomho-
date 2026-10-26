@@ -120,7 +120,7 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
           creatorClips.map((clip, idx) => {
             const isLast = idx === creatorClips.length - 1;
             const tagVariant =
-              clip.status === 'verified'
+              clip.status === 'verified' || clip.status === 'approved'
                 ? 'ok'
                 : clip.status === 'submitted'
                 ? 'warn'
@@ -129,8 +129,12 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
             const tagText =
               clip.status === 'verified'
                 ? 'Verified'
+                : clip.status === 'approved'
+                ? 'Approved'
                 : clip.status === 'submitted'
                 ? 'Submitted'
+                : clip.status === 'withdrawn'
+                ? 'Withdrawn'
                 : 'Rejected';
 
             return (

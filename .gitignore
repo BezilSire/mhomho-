@@ -4,5 +4,9 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# Local secrets and local Cloudflare state — never commit.
 .env*
+.dev.vars*
+.wrangler/
 !.env.example

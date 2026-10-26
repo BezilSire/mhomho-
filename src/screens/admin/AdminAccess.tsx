@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '../../components/BrandMark.tsx';
-import { authenticateAdmin, isAdminAuthConfigured } from '../../lib/auth.ts';
+import { authenticateAdmin } from '../../lib/auth.ts';
 
 export interface AdminAccessProps {
   onAuthenticated: (email: string) => void;
@@ -67,15 +67,6 @@ export const AdminAccess: React.FC<AdminAccessProps> = ({ onAuthenticated, onCan
             Operations credentials are required. Sessions expire after 30 minutes and failed
             attempts are rate-limited.
           </p>
-
-          {!isAdminAuthConfigured() && (
-            <p className="mt-4 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn)]/10 px-3.5 py-3 text-[11.5px] leading-relaxed text-[var(--warn)]">
-              Admin access is not configured on this deployment. Set{' '}
-              <code className="font-mono">VITE_ADMIN_EMAIL</code>,{' '}
-              <code className="font-mono">VITE_ADMIN_PASSWORD_SALT</code> and{' '}
-              <code className="font-mono">VITE_ADMIN_PASSWORD_HASH</code>, then restart the app.
-            </p>
-          )}
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
             <div>
@@ -149,8 +140,8 @@ export const AdminAccess: React.FC<AdminAccessProps> = ({ onAuthenticated, onCan
 
           <p className="mt-4 flex items-start gap-2 text-[10.5px] leading-relaxed text-[var(--faint)]">
             <ShieldCheck size={12} className="mt-0.5 shrink-0" />
-            Credentials are checked in constant time. This page is excluded from indexing and is
-            never linked from the public site.
+            Credentials are verified server-side over HTTPS with rate limiting. This page is
+            excluded from indexing and is never linked from the public site.
           </p>
         </div>
 

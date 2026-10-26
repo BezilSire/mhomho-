@@ -4,7 +4,12 @@ import { Chips } from '../../components/Chips.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { ProgressBar } from '../../components/ProgressBar.tsx';
 import { Button } from '../../components/Button.tsx';
-import { DatabaseState, joinCampaign } from '../../lib/firebase.ts';
+import {
+  DatabaseState,
+  campaignStatusLabel,
+  isCampaignOpenToJoins,
+} from '../../lib/firebase.ts';
+import { joinCampaign } from '../../lib/api.ts';
 import { formatPercent } from '../../lib/money.ts';
 
 export interface CampaignsFeedProps {
@@ -29,19 +34,22 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
 }) => {
   const [selectedNiche, setSelectedNiche] = useState('All');
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const campaigns = Object.values(db.campaigns).filter((c) => {
     if (selectedNiche === 'All') return true;
     return c.niche.toLowerCase().includes(selectedNiche.toLowerCase());
   });
 
-  const handleJoin = (e: React.MouseEvent, campaignId: string) => {
+  const handleJoin = async (e: React.MouseEvent, campaignId: string) => {
     e.stopPropagation();
     setJoiningId(campaignId);
-    setTimeout(() => {
-      joinCampaign(campaignId, currentUid);
-      setJoiningId(null);
-    }, 200);
+    setErrorMsg('');
+    const result = await joinCampaign(campaignId);
+    setJoiningId(null);
+    if (!result.success) {
+      setErrorMsg(result.error || 'Could not join this campaign.');
+    }
   };
 
   return (
@@ -49,6 +57,12 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
       <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
         Campaigns
       </h2>
+
+      {errorMsg && (
+        <div className="p-3 mb-3 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Filter Chips */}
       <Chips
@@ -71,7 +85,9 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
         campaigns.map((camp) => {
           const stats = db.campaignStats[camp.id];
           const isMember = !!db.campaignMembers[`${camp.id}_${currentUid}`];
-          const isFull = camp.status === 'full' || (stats && !stats.joiningOpen);
+          const isOpen = isCampaignOpenToJoins(camp, stats);
+          const isFull = !isOpen && (stats?.poolRemainingCents ?? 1) <= 0;
+          const statusText = isOpen ? 'Open' : isFull ? 'Full' : campaignStatusLabel(camp);
           const poolPercent = stats
             ? formatPercent(stats.poolUsedCents, stats.poolTotalCents)
             : 0;
@@ -82,11 +98,18 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
               onClick={() => onSelectCampaign(camp.id)}
               className="cursor-pointer hover:border-[var(--muted)] transition-colors"
             >
+              {camp.posterUrl && (
+                <img
+                  src={camp.posterUrl}
+                  alt=""
+                  className="mb-3 h-32 w-full rounded-xl object-cover"
+                  loading="lazy"
+                />
+              )}
+
               <div className="flex justify-between items-center gap-2 mb-1">
                 <b className="truncate text-[15px]">{camp.title}</b>
-                <Tag variant={isFull ? 'err' : 'ok'}>
-                  {isFull ? 'Full' : 'Open'}
-                </Tag>
+                <Tag variant={isOpen ? 'ok' : 'err'}>{statusText}</Tag>
               </div>
 
               <div className="text-[13px] text-[var(--muted)]">{camp.niche}</div>
@@ -94,9 +117,9 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
               <ProgressBar percentage={poolPercent} />
 
               <div className="text-[13px] text-[var(--muted)] mb-3">
-                {isFull
-                  ? `Full · ${stats?.joinedCount || 0} joined`
-                  : `${poolPercent}% full · ${stats?.joinedCount || 0} joined · ${camp.daysLeft} days left`}
+                {isOpen
+                  ? `${poolPercent}% full · ${stats?.joinedCount || 0} joined · ${camp.daysLeft} days left`
+                  : `${statusText} · ${stats?.joinedCount || 0} joined`}
               </div>
 
               {isMember ? (
@@ -109,10 +132,8 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
                 >
                   Joined · View Brief
                 </Button>
-              ) : isFull ? (
-                <Button disabled={true}>
-                  Full
-                </Button>
+              ) : !isOpen ? (
+                <Button disabled={true}>{isFull ? 'Full' : 'Closed to new creators'}</Button>
               ) : (
                 <Button
                   disabled={joiningId === camp.id}

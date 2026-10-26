@@ -10,16 +10,17 @@ import {
 } from 'lucide-react';
 import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
+import { Avatar } from '../../components/Avatar.tsx';
 import { FunnelBar, FunnelStage } from '../../components/FunnelBar.tsx';
 import {
   CAMPAIGN_ZERO_MIN_CLIPS,
   CAMPAIGN_ZERO_MIN_VIEWS,
   DatabaseState,
-  approveCreator,
   calculateTotalOwedCents,
   evaluateCampaignZero,
   isAllowedSocialUrl,
 } from '../../lib/firebase.ts';
+import { approveCreator } from '../../lib/api.ts';
 import { formatCents } from '../../lib/money.ts';
 
 export interface AdminDashboardProps {
@@ -68,6 +69,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     (creator) => evaluateCampaignZero(creator.campaignZero).submitted
   ).length;
   const accepted = allCreators.filter((creator) => creator.status === 'approved').length;
+  const countryTotals = new Map<string, number>();
+  for (const creator of allCreators) {
+    const country = db.creatorsPrivate[creator.uid]?.country || 'Unknown';
+    countryTotals.set(country, (countryTotals.get(country) ?? 0) + 1);
+  }
+  const countryRows = [...countryTotals.entries()].sort((left, right) => {
+    if (left[0] === 'Unknown') return 1;
+    if (right[0] === 'Unknown') return -1;
+    return right[1] - left[1];
+  });
+  const countryPeak = Math.max(1, ...countryRows.map(([, count]) => count));
   const nicheRows = Object.entries(
     allCreators.reduce<Record<string, { total: number; approved: number }>>((groups, creator) => {
       const group = groups[creator.niche] ?? { total: 0, approved: 0 };
@@ -105,9 +117,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     },
   ];
 
-  const handleApprove = (uid: string) => {
+  const handleApprove = async (uid: string) => {
     setApprovalError(null);
-    const result = approveCreator(uid, 'admin');
+    const result = await approveCreator(uid);
     if (!result.success) {
       setApprovalError({ uid, message: result.error || 'Could not approve this applicant.' });
     }
@@ -129,6 +141,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {pendingCreators.length} applicant{pendingCreators.length === 1 ? '' : 's'} pending
           </Tag>
         )}
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+            Total sign-ups
+          </p>
+          <p className="font-display mt-1 text-[28px] font-bold leading-none tabular-nums text-gradient">
+            {signedUp.toLocaleString()}
+          </p>
+          <p className="mt-1.5 text-[11px] leading-snug text-[var(--muted)]">
+            Every creator account, approved or not
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+            Approved
+          </p>
+          <p className="font-display mt-1 text-[28px] font-bold leading-none tabular-nums text-[var(--ok)]">
+            {accepted.toLocaleString()}
+          </p>
+          <p className="mt-1.5 text-[11px] leading-snug text-[var(--muted)]">
+            Cleared Campaign Zero
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+            Awaiting review
+          </p>
+          <p className="font-display mt-1 text-[28px] font-bold leading-none tabular-nums text-[var(--warn)]">
+            {pendingCreators.length.toLocaleString()}
+          </p>
+          <p className="mt-1.5 text-[11px] leading-snug text-[var(--muted)]">
+            Signed up but not approved yet
+          </p>
+        </div>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.05fr_0.95fr]">
@@ -185,16 +233,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <button
                         type="button"
                         onClick={() => setExpandedUid(isExpanded ? null : creator.uid)}
-                        className="min-w-0 flex-1 text-left cursor-pointer"
+                        className="flex min-w-0 flex-1 items-center gap-2.5 text-left cursor-pointer"
                         aria-expanded={isExpanded}
                       >
-                        <p className="truncate text-[13.5px] font-semibold text-[var(--text)]">
-                          {creator.handle}
-                        </p>
-                        <p className="mt-0.5 truncate text-[11.5px] text-[var(--muted)]">
-                          {creator.platform} · {creator.followers.toLocaleString()} followers ·{' '}
-                          {creator.niche}
-                        </p>
+                        <Avatar
+                          avatarKey={creator.avatarKey}
+                          handle={creator.handle}
+                          size={34}
+                          title={`${creator.handle} avatar`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-semibold text-[var(--text)]">
+                            {creator.handle}
+                          </p>
+                          <p className="mt-0.5 truncate text-[11.5px] text-[var(--muted)]">
+                            {creator.platform} · {creator.followers.toLocaleString()} followers ·{' '}
+                            {creator.niche}
+                          </p>
+                        </div>
                       </button>
                       <div className="flex shrink-0 items-center gap-2">
                         {submitted ? (
@@ -397,6 +453,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </p>
         </Card>
       </div>
+
+      <Card className="mt-4" style={{ marginBottom: 0 }}>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-[14px] font-bold text-[var(--text)]">Where creators join from</h3>
+          <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
+            {countryRows.length} {countryRows.length === 1 ? 'country' : 'countries'}
+          </span>
+        </div>
+        <p className="mb-3 text-[11.5px] leading-relaxed text-[var(--muted)]">
+          Inferred from the WhatsApp number supplied at sign-up. Includes every sign-up, before
+          approval and regardless of status.
+        </p>
+
+        {countryRows.length === 0 ? (
+          <p className="py-3 text-[12px] text-[var(--muted)]">No creators on the roster yet.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {countryRows.map(([country, count]) => {
+              const share = signedUp === 0 ? 0 : Math.round((count / signedUp) * 100);
+              return (
+                <div key={country} className="flex items-center gap-3">
+                  <span className="w-[132px] shrink-0 truncate text-[12.5px] font-medium text-[var(--text)]">
+                    {country}
+                  </span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                    <span
+                      className="block h-full rounded-full bg-gradient-mhomho"
+                      style={{ width: `${Math.max(4, Math.round((count / countryPeak) * 100))}%` }}
+                    />
+                  </span>
+                  <span className="w-11 shrink-0 text-right text-[12px] tabular-nums text-[var(--text)]">
+                    {count.toLocaleString()}
+                  </span>
+                  <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-[var(--faint)]">
+                    {share}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Check,
   Clock,
+  LifeBuoy,
   Lock,
   LogOut,
   ShieldCheck,
@@ -15,17 +16,18 @@ import {
   DatabaseState,
   evaluateCampaignZero,
   isAllowedSocialUrl,
-  submitCampaignZero,
-  updateCampaignZero,
 } from '../../lib/firebase.ts';
+import { saveCampaignZero, submitCampaignZero } from '../../lib/api.ts';
 import { BrandLockup, BrandMark } from '../../components/BrandMark.tsx';
 import { Tag } from '../../components/Tag.tsx';
+import { NotificationBell } from '../../components/NotificationBell.tsx';
 import { MHOMHO_SOCIALS } from '../../lib/brand.ts';
 
 export interface UnderReviewScreenProps {
   db: DatabaseState;
   currentUid: string;
   onLogout: () => void;
+  onOpenSupport?: () => void;
 }
 
 interface ClipDraft {
@@ -44,6 +46,7 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
   db,
   currentUid,
   onLogout,
+  onOpenSupport,
 }) => {
   const creator = db.creatorsPublic[currentUid];
   const saved = creator?.campaignZero;
@@ -85,8 +88,8 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
     setNotice('');
   };
 
-  const persist = (): boolean => {
-    const result = updateCampaignZero(currentUid, {
+  const persist = async (): Promise<boolean> => {
+    const result = await saveCampaignZero({
       followConfirmed,
       clips: draftClips.map((clip) => ({
         url: clip.url,
@@ -100,25 +103,25 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setBusy(true);
     setError('');
     setNotice('');
-    const savedOk = persist();
+    const savedOk = await persist();
     setBusy(false);
     if (savedOk) setNotice('Progress saved. You can come back and finish later.');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setBusy(true);
     setError('');
     setNotice('');
-    const savedOk = persist();
+    const savedOk = await persist();
     if (!savedOk) {
       setBusy(false);
       return;
     }
-    const result = submitCampaignZero(currentUid);
+    const result = await submitCampaignZero();
     setBusy(false);
     if (!result.success) {
       setError(result.error || 'Could not submit Campaign Zero.');
@@ -155,6 +158,17 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
         <header className="flex items-center justify-between gap-4">
           <BrandLockup size={32} />
           <div className="flex items-center gap-2">
+            {onOpenSupport && (
+              <button
+                type="button"
+                onClick={onOpenSupport}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3.5 text-[11.5px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
+              >
+                <LifeBuoy size={13} />
+                <span className="hidden sm:inline">Help</span>
+              </button>
+            )}
+            <NotificationBell />
             <span className="hidden items-center gap-1.5 rounded-full border border-[var(--warn)]/25 bg-[var(--warn)]/10 px-3 py-1.5 text-[10.5px] font-semibold text-[var(--warn)] sm:inline-flex">
               <Lock size={11} />
               Dashboard locked

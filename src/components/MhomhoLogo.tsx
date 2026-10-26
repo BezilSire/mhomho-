@@ -139,3 +139,92 @@ export const MhomhoLogo: React.FC<MhomhoLogoProps> = ({
   );
 };
 
+/**
+ * Mark-only version of the official logo (the faceted M and the crowd, without
+ * the HOMHO wordmark). Used as the app icon in navigation, loading screens and
+ * compact brand lockups.
+ */
+export const MhomhoMark: React.FC<{ className?: string; title?: string }> = ({
+  className = '',
+  title = 'Mhomho Media',
+}) => {
+  const rawId = React.useId();
+  const id = (name: string) => `${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}${name}`;
+  const ref = (name: string) => `url(#${id(name)})`;
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="12 620 276 296"
+      role="img"
+      aria-label={title}
+      className={className}
+    >
+      <title>{title}</title>
+      <defs>
+        <linearGradient id={id('gB')} gradientUnits="userSpaceOnUse" x1="549.9" y1="424.6" x2="332.1" y2="256.4">
+          <stop offset="0" stopColor="#A5001C" />
+          <stop offset="1" stopColor="#FFFF3D" />
+        </linearGradient>
+        <linearGradient id={id('g_f1')} gradientUnits="userSpaceOnUse" x1="394.7" y1="528.1" x2="317.6" y2="425">
+          <stop offset="0" stopColor="#F2B720" />
+          <stop offset="1" stopColor="#F7F256" />
+        </linearGradient>
+        <linearGradient id={id('g_f1b')} gradientUnits="userSpaceOnUse" x1="425.5" y1="334.2" x2="370.2" y2="290.7">
+          <stop offset="0" stopColor="#DE681F" />
+          <stop offset="1" stopColor="#FDE541" />
+        </linearGradient>
+        <linearGradient id={id('g_f2')} gradientUnits="userSpaceOnUse" x1="14.6" y1="681.8" x2="17.1" y2="798.4">
+          <stop offset="0" stopColor="#EEAC34" />
+          <stop offset="1" stopColor="#D2381B" />
+        </linearGradient>
+        <linearGradient id={id('g_f3a')} gradientUnits="userSpaceOnUse" x1="481.2" y1="376.7" x2="446.9" y2="349.9">
+          <stop offset="0" stopColor="#DF4421" />
+          <stop offset="1" stopColor="#DA762F" />
+        </linearGradient>
+        <linearGradient id={id('g_f3b')} gradientUnits="userSpaceOnUse" x1="483.9" y1="236" x2="437.2" y2="213.2">
+          <stop offset="0" stopColor="#CC1E39" />
+          <stop offset="1" stopColor="#DB5220" />
+        </linearGradient>
+        <linearGradient id={id('g_f4')} gradientUnits="userSpaceOnUse" x1="402.3" y1="720.3" x2="357.3" y2="639.9">
+          <stop offset="0" stopColor="#DC2C31" />
+          <stop offset="1" stopColor="#71131C" />
+        </linearGradient>
+        <linearGradient id={id('gC0')} gradientUnits="userSpaceOnUse" x1="614.6" y1="476.3" x2="385.5" y2="298.7">
+          <stop offset="0" stopColor="#530F17" />
+          <stop offset="1" stopColor="#512E11" />
+        </linearGradient>
+        <linearGradient id={id('gC1')} gradientUnits="userSpaceOnUse" x1="409.2" y1="845.4" x2="305.6" y2="631.3">
+          <stop offset="0" stopColor="#801622" />
+          <stop offset="1" stopColor="#826639" />
+        </linearGradient>
+        <linearGradient id={id('gC2')} gradientUnits="userSpaceOnUse" x1="410.9" y1="844.3" x2="306.6" y2="630">
+          <stop offset="0" stopColor="#AA0916" />
+          <stop offset="1" stopColor="#B3A661" />
+        </linearGradient>
+        <linearGradient id={id('gC3')} gradientUnits="userSpaceOnUse" x1="427.3" y1="832.4" x2="316.8" y2="617.1">
+          <stop offset="0" stopColor="#C70000" />
+          <stop offset="1" stopColor="#DCD367" />
+        </linearGradient>
+        <path id={id('mOut')} d="M44,629.5 L45,800.2 L100.5,748 L153.3,795.5 L206,747.5 L260.5,799.5 L260.5,630 L152.5,726Z" />
+        <g id={id('mFacets')}>
+          <use href={`#${id('mOut')}`} fill={ref('gB')} />
+          <path d="M44,629.5 L100.5,680 L100.5,748 L44,706Z" fill={ref('g_f1')} />
+          <path d="M44,706 L100.5,748 L45,800.2Z" fill={ref('g_f1b')} />
+          <path d="M100.5,680 L152.5,726 L153.3,795.5 L100.5,748Z" fill={ref('g_f2')} />
+          <path d="M152.5,726 L260.5,630 L153.3,795.5Z" fill={ref('g_f3a')} />
+          <path d="M260.5,630 L260.5,694 L206,747.5 L153.3,795.5Z" fill={ref('g_f3b')} />
+          <path d="M206,747.5 L260.5,694 L260.5,799.5Z" fill={ref('g_f4')} />
+        </g>
+      </defs>
+
+      <use href={`#${id('mFacets')}`} />
+      <g>
+        {CROWD_PATHS.map((d, index) => (
+          <path key={index} fill={ref(`gC${index}`)} fillRule="evenodd" d={d} />
+        ))}
+      </g>
+    </svg>
+  );
+};
+
