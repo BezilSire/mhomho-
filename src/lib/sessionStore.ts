@@ -10,7 +10,7 @@
 
 import type { Viewer } from './firebase.ts';
 
-export type SessionRole = Extract<Viewer['role'], 'creator' | 'admin'>;
+export type SessionRole = Extract<Viewer['role'], 'creator' | 'admin' | 'business'>;
 
 export interface AuthSession {
   role: SessionRole;
@@ -56,7 +56,10 @@ export function setSessionFromBootstrap(
   csrfToken: string | null,
   sessionExpiresAt: number | null
 ): void {
-  if (!viewer || (viewer.role !== 'creator' && viewer.role !== 'admin')) {
+  if (
+    !viewer ||
+    (viewer.role !== 'creator' && viewer.role !== 'admin' && viewer.role !== 'business')
+  ) {
     currentSession = null;
     currentCsrfToken = null;
     emit();

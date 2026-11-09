@@ -152,6 +152,24 @@ export function assertSameOrigin(request: Request, appOrigin: string): void {
   } catch {
     /* ignore malformed config */
   }
+
+  // Local previews can arrive through a LAN address or a temporary tunnel.
+  // Accept those only when the browser's Origin matches the host that actually
+  // reached this Worker; a cross-site origin can never satisfy that check.
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(request.url);
+    const localForward = requestUrl.protocol === 'http:';
+    if (
+      originUrl.host === requestUrl.host &&
+      (localForward || originUrl.protocol === requestUrl.protocol)
+    ) {
+      allowed.add(origin);
+    }
+  } catch {
+    /* malformed Origin is rejected below */
+  }
+
   if (!allowed.has(origin)) {
     throw forbidden('Cross-origin request blocked.');
   }

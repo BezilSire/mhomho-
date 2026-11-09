@@ -15,14 +15,14 @@ is described as "tested", the test is in `tests/` and passes.
 | --- | --- | --- | --- |
 | T1 | Client edits balances/earnings/roles | Server recomputes everything from D1; client only renders | yes |
 | T2 | Stolen database dump replays sessions | Only SHA-256 of session token stored | yes |
-| T3 | Stolen DB dump cracks passwords | PBKDF2-SHA256, 210k iterations, per-account salt | yes |
+| T3 | Stolen DB dump cracks passwords | PBKDF2-SHA256, 100k iterations, per-account salt | yes |
 | T4 | Cross-site request forgery | Origin allowlist + CSRF double-submit + SameSite=Lax | yes |
 | T5 | Brute force / credential stuffing | D1 fixed-window limits per hashed IP **and** per hashed login identifier | yes |
 | T6 | Privilege escalation via API | Role + status gates on every privileged route | yes |
 | T7 | Budget over-commitment | Ledger trigger aborts; D1 batch rolls back | yes |
 | T8 | Double payment of one clip | Partial unique index + status guard | yes |
 | T9 | Replayed payout reference | Unique key + explicit pre-check → 409 | yes |
-| T10 | SSRF via creator-supplied URL | URL is parsed, never fetched; host allowlist | yes |
+| T10 | SSRF via creator-supplied URL | URL is parsed; previews call fixed platform hosts only; no redirects | yes |
 | T11 | Malicious upload | Size cap, magic-byte sniff, server-generated key, private ACL | yes |
 | T12 | SQL injection | Every query is parameterised; no string-built SQL from input | yes |
 | T13 | Stored XSS via names/briefs | React escaping + strict CSP (`script-src 'self'`) | partial |
@@ -30,12 +30,13 @@ is described as "tested", the test is in `tests/` and passes.
 | T15 | Secret leakage in the bundle | No server secret is a `VITE_*` variable | yes |
 | T16 | Information leak in errors | Generic 500 + request ID; details only for `ApiError` | yes |
 | T17 | Abuse of expensive uploads | Per-account hourly upload limit | yes |
-| T18 | Unauthorised proof image access | Visibility + owner/admin check before R2 read | yes |
+| T18 | Unauthorised proof image access | Visibility + owner/admin check before KV read | yes |
 | T19 | Forum spam or abusive posting | Approved-creator-only access, per-account rate limits, admin hide/lock and no HTML/attachments | yes |
 
 ## 2. Authentication
 
-- **Password hashing**: PBKDF2-SHA256, 210,000 iterations, 256-bit output,
+- **Password hashing**: PBKDF2-SHA256, 100,000 iterations (Cloudflare's
+  production WebCrypto ceiling), 256-bit output,
   16-byte random salt stored as lowercase hex. The salt **string bytes** are used
   on both creation and verification, so the two paths cannot diverge.
 - **Password policy**: minimum 12 characters for creators and administrators,
@@ -99,6 +100,15 @@ password.
   cannot post as creators.
 - Ownership checks are explicit: a creator can only read their own proof assets;
   an administrator can read any.
+- Ambassador accounts use the internal `business` role. Creator login and every
+  creator campaign, submission and payout handler reject that role. Ambassador
+  writes require `business` **and** account status `approved`.
+- Ambassador application documents are readable only by their owner and an
+  approved administrator. A profile photograph is public only while its profile
+  is `published` and the linked account is `approved`.
+- Ambassador approval, rejection, suspension and reinstatement require an
+  approved administrator; the public profile endpoint returns `404` unless both
+  the profile and the account are active.
 
 Authorisation is never inferred from the presence of an ID in the request. Every
 handler loads the row and checks the actor against it.
@@ -125,8 +135,11 @@ URLs are validated by `worker/src/urls.ts`:
 - tracking parameters stripped, remaining query sorted, trailing slash removed;
 - a stable post identity is derived where the platform exposes one.
 
-**No outbound request is ever made to a creator-supplied URL.** There is no
-`fetch` in the URL path, so SSRF is structurally impossible rather than filtered.
+**Creator-supplied URLs are never fetched directly.** The preview endpoint only
+calls fixed platform hosts (TikTok, YouTube and Meta oEmbed/API endpoints); the
+canonical URL is passed as a query parameter. Requests refuse redirects, use a
+4-second timeout and a normal browser user agent, and a failure returns
+`available: false` rather than an error. The form never blocks on previews.
 
 ## 6. Uploads
 
@@ -135,12 +148,13 @@ URLs are validated by `worker/src/urls.ts`:
 | Size | `Content-Length` and actual byte length ≤ `MAX_UPLOAD_BYTES` (default 5 MiB, max 10 MiB). |
 | Type | PNG / JPEG / WebP detected from **magic bytes**; client `Content-Type` and filename ignored. |
 | Key | Server-generated `proof/YYYY/MM/obj_<uuid>.<ext>`; no user input in the key; collisions impossible. |
-| Overwrite | Keys are unique per upload; R2 `put` never targets an existing key. |
+| Overwrite | Keys are unique per upload; KV `put` never targets an existing key. |
 | Visibility | Proof assets are always `private`; a DB `CHECK` enforces it. |
 | Read | `GET /api/assets/:id` requires owner or approved admin for private assets. |
 | Response headers | `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store`. |
 | Rate limit | 30 uploads per account per hour. |
 | Audit | `asset.upload` event with actor, type and size (not content). |
+| Ambassador files | PDF / PNG / JPEG / WebP sniffed from magic bytes, 5 MiB cap, server-generated `ambassador/<account>/<kind>/obj_<uuid>.<ext>` key. Documents are always private; photographs are public only for a published profile. Owner or approved admin can read a private file. |
 
 No antivirus/CDR pipeline exists. Images are served with a sandbox CSP and
 `nosniff`, which limits the impact of a polyglot file, but this is not a
@@ -163,6 +177,10 @@ ID. D1 serialises writes, so the UPSERT is atomic.
 | `enquiry:<ip>` | 5 | 1 h |
 | `setup:<ip>` | 5 | 1 h |
 | `upload:<account>` | 30 | 1 h |
+| `ambassador-apply:<ip>` | 5 | 1 h |
+| `ambassador-login:<ip>` | 20 | 15 min |
+| `ambassador-login-account:<sha256(email)>` | 30 | 15 min |
+| `ambassador-upload:<account>` | 20 | 1 h |
 | `forum:thread:<account>` | 5 | 1 h |
 | `forum:reply:<account>` | 20 | 1 h |
 
@@ -238,13 +256,16 @@ production.
 | --- | --- | --- |
 | Email | `accounts` | the account, administrators |
 | WhatsApp / EcoCash | `creator_profiles` | the creator, administrators |
-| Proof screenshots | R2 + `campaign_assets` | owner, administrators |
+| Proof screenshots | KV + `campaign_assets` | owner, administrators |
 | IP address | never stored | — |
 | IP hash | sessions, audit, rate limits | administrators via DB only |
 | Brand enquiry contact | `enquiries` | administrators |
 | Public activity feed | `accounts.created_at`, `campaign_members.joined_at` | anonymous: first name + platform only; creators: + handle; admins: + account id |
 | Community profile | `creator_profiles.handle`, `avatar_key`, `platform`, `niche` | approved creators and administrators; no email, phone, followers or balances |
 | Forum content | `forum_threads`, `forum_replies` | approved creators see active content; administrators also see hidden content |
+| Ambassador application | `ambassador_applications` | the applicant, administrators; admin notes and review history are administrator-only |
+| Ambassador documents | KV + `ambassador_documents` | owner, administrators; never public |
+| Ambassador public profile | `ambassador_profiles` | anonymous: public name, official title, Ambassador ID, bio, location, languages, sectors, public contact details and social links, only while published and approved |
 
 - Anonymous `/api/bootstrap` returns `creatorsPrivate = {}` and no submissions.
 - `GET /api/activity` is the one deliberate exception to roster privacy. It is
@@ -254,8 +275,10 @@ production.
   callers receive a first name and platform; a handle is added only for a
   signed-in creator or administrator. `PUBLIC_ACTIVITY="false"` removes the
   feed for anonymous callers without a code change.
-- Brand report tokens return aggregates only: no creator names, handles, emails
-  or contact details. This is asserted by the E2E test.
+- Brand report tokens return aggregates only: no creator names, handles, emails,
+  contact details, post URLs or individual earnings. Platform breakdowns expose
+  views and approved-clip counts only, never per-platform creator counts. This is
+  asserted by the E2E test.
 - Payout destinations are stored masked for display; the raw number is not
   returned to the admin UI.
 - Audit rows store hashed IPs, not addresses.
@@ -285,7 +308,7 @@ Security here means "the numbers cannot be wrong or silently lost":
 ## 12. Logging and audit
 
 `audit_events` records: creator approval, submission verify/reject, payout,
-campaign create/top-up/status change, brand-token creation, enquiry status,
+campaign create/top-up/status change, brand-token creation/revocation, enquiry status,
 admin login, admin bootstrap, asset upload, forum thread/reply creation,
 community moderation, and every automatic cron transition.
 Each row carries actor, role, entity, before/after JSON, request ID and hashed IP.

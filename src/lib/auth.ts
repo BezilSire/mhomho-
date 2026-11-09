@@ -12,6 +12,7 @@
 import {
   initSession,
   loginAdmin,
+  loginAmbassador,
   loginCreator,
   logout as apiLogout,
 } from './api.ts';
@@ -54,6 +55,30 @@ export async function authenticateCreator(
     success: true,
     uid: result.data.uid,
     displayName: result.data.displayName ?? result.data.handle ?? undefined,
+    status: result.data.status,
+  };
+}
+
+export async function authenticateAmbassador(
+  email: string,
+  password: string
+): Promise<AuthResult> {
+  if (!email.trim() || !password) {
+    return { success: false, error: 'Enter your email and password.' };
+  }
+
+  const result = await loginAmbassador(email.trim(), password);
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+  if (!result.data) {
+    return { success: false, error: 'The server did not return a session.' };
+  }
+
+  return {
+    success: true,
+    uid: result.data.uid,
+    displayName: result.data.displayName ?? result.data.email,
     status: result.data.status,
   };
 }

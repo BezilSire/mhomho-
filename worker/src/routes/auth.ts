@@ -24,6 +24,8 @@ import {
   unauthorized,
 } from '../http.ts';
 import { normalizeHandle } from '../validation.ts';
+import { CAMPAIGN_ZERO_WINDOW_MS } from '../../../shared/campaign.ts';
+import { getInviteSettings, hashInviteCode } from '../invites.ts';
 import { body, guardMutation, hashIp, hashUserAgent } from './helpers.ts';
 
 const PLATFORMS = ['TikTok', 'Instagram', 'YouTube', 'Facebook'] as const;
@@ -67,7 +69,7 @@ export async function findAccountByLogin(env: Env, identifier: string): Promise<
   return row ? accountFromRow(row) : null;
 }
 
-async function startSession(
+export async function startSession(
   ctx: Ctx,
   account: AccountRow
 ): Promise<{ response: Response; token: string }> {
@@ -128,6 +130,7 @@ export async function handleRegister(ctx: Ctx): Promise<Response> {
     followers: number;
     whatsappNumber: string;
     password: string;
+    inviteCode?: string | null;
   }>(ctx, {
     name: { type: 'string', required: true, min: 2, max: 120 },
     email: { type: 'email', required: true },
@@ -137,11 +140,44 @@ export async function handleRegister(ctx: Ctx): Promise<Response> {
     followers: { type: 'int', required: true, min: 0, max: 100_000_000 },
     whatsappNumber: { type: 'string', required: true, min: 6, max: 32 },
     password: { type: 'string', required: true, min: MIN_PASSWORD, max: MAX_PASSWORD },
+    inviteCode: { type: 'string', min: 4, max: 64, nullable: true },
   });
 
   const handleBase = normalizeHandle(input.handle);
   if (!/^[a-z0-9._-]{2,40}$/.test(handleBase)) {
     throw badRequest('Handles may only contain letters, numbers, dots, dashes and underscores.');
+  }
+
+  const now = Date.now();
+
+  // The invite gate is checked before the duplicate-email/handle lookups for a
+  // friendly error and to avoid confirming whether an account exists to a
+  // visitor who has no code. The database trigger in migration 0007 enforces
+  // the same rule, so a concurrent burst at the threshold cannot create an
+  // extra account without a code.
+  const inviteSettings = await getInviteSettings(ctx.env);
+  let inviteId: string | null = null;
+  let inviteHash: string | null = null;
+
+  if (inviteSettings.inviteRequired) {
+    if (!input.inviteCode) {
+      throw badRequest(
+        `Mhomho is invite-only while the roster grows to ${inviteSettings.threshold.toLocaleString()} creators. An invite code is required.`
+      );
+    }
+
+    inviteHash = await hashInviteCode(input.inviteCode);
+    const invite = await ctx.env.DB.prepare(
+      `SELECT id FROM invite_codes
+        WHERE code_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?`
+    )
+      .bind(inviteHash, now)
+      .first<{ id: string }>();
+
+    if (!invite) {
+      throw badRequest('That invite code is invalid, expired or has already been used.');
+    }
+    inviteId = String(invite.id);
   }
 
   const existingEmail = await ctx.env.DB.prepare(
@@ -159,46 +195,76 @@ export async function handleRegister(ctx: Ctx): Promise<Response> {
   if (existingHandle) throw badRequest('That handle is already in review for this platform.');
 
   const password = await hashPassword(input.password);
-  const now = Date.now();
+  const campaignZeroDeadlineAt = now + CAMPAIGN_ZERO_WINDOW_MS;
   const accountId = newId('acc');
   const displayHandle = `@${handleBase}`;
 
+  const statements: D1PreparedStatement[] = [];
+
+  // Claim the code before the account insert. The `accounts_creator_invite_valid`
+  // trigger checks that this exact account claimed it, so both statements commit
+  // or roll back together.
+  if (inviteId && inviteHash) {
+    statements.push(
+      ctx.env.DB.prepare(
+        `UPDATE invite_codes
+            SET used_at = ?, used_by = ?
+          WHERE id = ? AND code_hash = ? AND used_at IS NULL
+            AND revoked_at IS NULL AND expires_at > ?`
+      ).bind(now, accountId, inviteId, inviteHash, now)
+    );
+  }
+
+  statements.push(
+    ctx.env.DB.prepare(
+      `INSERT INTO accounts
+         (id, email, email_normalized, password_hash, password_salt, password_iterations,
+          role, status, session_version, invite_code_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'creator', 'applied', 1, ?, ?, ?)`
+    ).bind(
+      accountId,
+      input.email.trim(),
+      input.email,
+      password.hash,
+      password.salt,
+      password.iterations,
+      inviteId,
+      now,
+      now
+    ),
+    ctx.env.DB.prepare(
+      `INSERT INTO creator_profiles
+         (account_id, display_name, handle, handle_normalized, platform, niche, followers,
+          whatsapp_number, ecocash_number, campaign_zero_follow_confirmed,
+          campaign_zero_deadline_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`
+    ).bind(
+      accountId,
+      input.name,
+      displayHandle,
+      handleBase,
+      input.platform,
+      input.niche,
+      input.followers,
+      input.whatsappNumber,
+      campaignZeroDeadlineAt,
+      now,
+      now
+    )
+  );
+
   try {
-    await ctx.env.DB.batch([
-      ctx.env.DB.prepare(
-        `INSERT INTO accounts
-           (id, email, email_normalized, password_hash, password_salt, password_iterations,
-            role, status, session_version, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'creator', 'applied', 1, ?, ?)`
-      ).bind(
-        accountId,
-        input.email.trim(),
-        input.email,
-        password.hash,
-        password.salt,
-        password.iterations,
-        now,
-        now
-      ),
-      ctx.env.DB.prepare(
-        `INSERT INTO creator_profiles
-           (account_id, display_name, handle, handle_normalized, platform, niche, followers,
-            whatsapp_number, ecocash_number, campaign_zero_follow_confirmed, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?)`
-      ).bind(
-        accountId,
-        input.name,
-        displayHandle,
-        handleBase,
-        input.platform,
-        input.niche,
-        input.followers,
-        input.whatsappNumber,
-        now,
-        now
-      ),
-    ]);
+    await ctx.env.DB.batch(statements);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('invite_required')) {
+      throw badRequest(
+        `Mhomho is invite-only while the roster grows to ${inviteSettings.threshold.toLocaleString()} creators. An invite code is required.`
+      );
+    }
+    if (message.includes('invite_invalid')) {
+      throw badRequest('That invite code is invalid, expired or has already been used.');
+    }
     console.warn('register conflict', error);
     throw badRequest('That email or handle is already registered.');
   }

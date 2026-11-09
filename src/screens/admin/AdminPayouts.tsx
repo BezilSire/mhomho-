@@ -80,18 +80,18 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
     });
     setBusy(false);
     if (res.success) {
-      setPaidFeedback('Withdrawal settled and marked as paid.');
+      setPaidFeedback('Payout settled and marked as paid.');
       setTimeout(() => setPaidFeedback(null), 3500);
       setSettlePayoutId(null);
       setSettleRef('');
     } else {
-      setErrorMsg(res.error || 'The withdrawal could not be settled.');
+      setErrorMsg(res.error || 'The payout could not be settled.');
     }
   };
 
   const handleCancelRequest = async (payoutId: string) => {
     if (busy) return;
-    if (!window.confirm('Cancel this withdrawal and return the funds to the creator balance?')) return;
+    if (!window.confirm('Cancel this payout and return the funds to the creator balance?')) return;
     setBusy(true);
     setErrorMsg(null);
     const res = await settlePayout(payoutId, {
@@ -100,7 +100,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
     });
     setBusy(false);
     if (!res.success) {
-      setErrorMsg(res.error || 'The withdrawal could not be cancelled.');
+      setErrorMsg(res.error || 'The payout could not be cancelled.');
     }
   };
 
@@ -110,8 +110,8 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
         EcoCash Payouts
       </h2>
       <p className="text-[13px] text-[var(--muted)] mb-4">
-        Creators request withdrawals from their dashboard. Settle the EcoCash transfer with its
-        reference, or cancel to return the funds to their balance.
+        Payouts are sent manually. Record the EcoCash transfer with its reference here. This screen
+        keeps the books, it does not move money.
       </p>
 
       {paidFeedback && (
@@ -126,14 +126,14 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
         </div>
       )}
 
-      {/* Creator-initiated withdrawals */}
+      {/* Open payout records */}
       <div className="text-[13px] text-[var(--muted)] mb-1 font-semibold">
-        Withdrawal requests ({withdrawalRequests.length})
+        Open payout records ({withdrawalRequests.length})
       </div>
 
       {withdrawalRequests.length === 0 ? (
         <Card className="text-center py-5 text-[var(--muted)] text-[13px] mb-6">
-          No withdrawal requests waiting.
+          No payouts in progress.
         </Card>
       ) : (
         <div className="space-y-3 mb-6">
@@ -147,7 +147,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
                 {formatCents(payout.amountCents)} to <b>{payout.ecoCashNumber}</b>
               </div>
               <div className="text-[12px] text-[var(--faint)] mb-3">
-                Requested {payout.createdAt} · pay within {DEFAULT_MONEY_CONFIG.payoutDelayHours} hours
+                Created {payout.createdAt} · pay within {DEFAULT_MONEY_CONFIG.payoutDelayHours} hours
               </div>
               <div className="flex gap-2">
                 <Button
@@ -295,7 +295,7 @@ export const AdminPayouts: React.FC<AdminPayoutsProps> = ({ db }) => {
       {settlePayoutId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-[14px] bg-[var(--surface)] border border-[var(--line)] p-5">
-            <h3 className="text-[18px] font-extrabold mb-2">Settle Withdrawal</h3>
+            <h3 className="text-[18px] font-extrabold mb-2">Settle Payout</h3>
             <p className="text-[13px] text-[var(--muted)] mb-3">
               Send the EcoCash payment, then record its reference here. The creator balance was
               already reserved when the request was made.

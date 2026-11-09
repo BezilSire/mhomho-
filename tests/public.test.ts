@@ -112,13 +112,18 @@ describe('brand enquiries', () => {
 });
 
 describe('brand report links', () => {
-  it('returns aggregate figures without creator identities', async () => {
+  it('returns reconciled aggregates and platform mix without creator identities', async () => {
     const admin = await setupAdmin();
     const creator = await approvedCreator(admin);
     const { id } = await createCampaign(admin, { budgetCents: 25_000 });
     await joinCampaign(creator, id);
-    const submission = (await submitClip(creator, id)).body.submissionId;
-    await verifySubmission(admin, submission, 8200);
+
+    const tiktok = (await submitClip(creator, id, { platform: 'TikTok' })).body.submissionId;
+    const instagram = (await submitClip(creator, id, { platform: 'Instagram' })).body.submissionId;
+    // The accepted subset is lower than the public counter. The brand report
+    // must use the accepted count consistently, not the denormalised counter.
+    await verifySubmission(admin, tiktok, 10_000, 8_200);
+    await verifySubmission(admin, instagram, 3_000);
 
     const created = await api(`/api/admin/campaigns/${id}/brand-token`, {
       cookie: admin.cookie,
@@ -126,8 +131,10 @@ describe('brand report links', () => {
       body: { label: 'Client report', expiresInDays: 30 },
     });
     expect(created.status).toBe(201);
-    const token: string = created.body.token;
+    const token: string = created.body.data.token;
     expect(token.length).toBeGreaterThan(30);
+    expect(created.body.data.path).toMatch(/^\/\?report=/);
+    expect(created.body.data.url).toContain(created.body.data.path);
 
     const stored = await testEnv.DB.prepare(
       `SELECT token_hash, label FROM brand_report_tokens`
@@ -140,17 +147,88 @@ describe('brand report links', () => {
     expect(report.status).toBe(200);
     const data = report.body.data;
     expect(data.title).toBeTruthy();
-    expect(data.verifiedViews).toBe(8200);
-    expect(data.eligibleViews).toBe(8200);
+    expect(data.verifiedViews).toBe(11_200);
+    expect(data.eligibleViews).toBe(11_200);
     expect(data.guaranteedViews).toBe(166_666);
     expect(data.budgetCents).toBe(25_000);
+    expect(data.budgetUsedCents).toBe(1_680);
     expect(data.creatorsJoined).toBe(1);
-    expect(data.clipsLive).toBe(1);
+    expect(data.clipsLive).toBe(2);
+    expect(data.lastUpdatedAt).toBeGreaterThan(0);
+    expect(data.platformMix).toEqual([
+      { platform: 'TikTok', verifiedViews: 8_200, clips: 1, sharePct: 73.2 },
+      { platform: 'Instagram', verifiedViews: 3_000, clips: 1, sharePct: 26.8 },
+      { platform: 'YouTube', verifiedViews: 0, clips: 0, sharePct: 0 },
+      { platform: 'Facebook', verifiedViews: 0, clips: 0, sharePct: 0 },
+    ]);
+    expect(
+      data.platformMix.reduce(
+        (sum: number, platform: { verifiedViews: number }) => sum + platform.verifiedViews,
+        0
+      )
+    ).toBe(data.verifiedViews);
+    expect(data.viewsSeries.at(-1)).toEqual({ label: 'Now', value: 11_200 });
 
     const serialized = JSON.stringify(report.body);
     expect(serialized).not.toContain(creator.email);
     expect(serialized).not.toContain(creator.accountId);
     expect(serialized).not.toContain('whatsapp');
+  });
+
+  it('lists and revokes report links without returning raw tokens', async () => {
+    const admin = await setupAdmin();
+    const creator = await approvedCreator(admin);
+    const { id } = await createCampaign(admin);
+
+    const created = await api(`/api/admin/campaigns/${id}/brand-token`, {
+      cookie: admin.cookie,
+      csrf: admin.csrf,
+      body: { label: 'Shared report', expiresInDays: 30 },
+    });
+    const rawToken: string = created.body.data.token;
+
+    const forbiddenList = await api(`/api/admin/campaigns/${id}/brand-tokens`, {
+      cookie: creator.cookie,
+    });
+    expect(forbiddenList.status).toBe(403);
+
+    const list = await api(`/api/admin/campaigns/${id}/brand-tokens`, {
+      cookie: admin.cookie,
+    });
+    expect(list.status).toBe(200);
+    expect(list.body.data.tokens).toHaveLength(1);
+    expect(list.body.data.tokens[0]).toMatchObject({
+      label: 'Shared report',
+      active: true,
+      revokedAt: null,
+    });
+    expect(JSON.stringify(list.body)).not.toContain(rawToken);
+
+    const tokenId: string = list.body.data.tokens[0].id;
+    const forbiddenRevoke = await api(
+      `/api/admin/campaigns/${id}/brand-tokens/${tokenId}`,
+      { method: 'DELETE', cookie: creator.cookie, csrf: creator.csrf }
+    );
+    expect(forbiddenRevoke.status).toBe(403);
+
+    const revoked = await api(`/api/admin/campaigns/${id}/brand-tokens/${tokenId}`, {
+      method: 'DELETE',
+      cookie: admin.cookie,
+      csrf: admin.csrf,
+    });
+    expect(revoked.status).toBe(200);
+    expect((await api(`/api/brand/${rawToken}`)).status).toBe(404);
+
+    const after = await api(`/api/admin/campaigns/${id}/brand-tokens`, {
+      cookie: admin.cookie,
+    });
+    expect(after.body.data.tokens[0].active).toBe(false);
+    expect(after.body.data.tokens[0].revokedAt).toBeGreaterThan(0);
+
+    const audit = await testEnv.DB.prepare(
+      `SELECT action FROM audit_events WHERE action = 'brand_report.revoke'`
+    ).first<{ action: string }>();
+    expect(audit?.action).toBe('brand_report.revoke');
   });
 
   it('does not resolve unknown, expired or revoked tokens', async () => {
@@ -164,7 +242,7 @@ describe('brand report links', () => {
       csrf: admin.csrf,
       body: { expiresInDays: 1 },
     });
-    const token: string = created.body.token;
+    const token: string = created.body.data.token;
     expect((await api(`/api/brand/${token}`)).status).toBe(200);
 
     await testEnv.DB.prepare(`UPDATE brand_report_tokens SET expires_at = ?`)

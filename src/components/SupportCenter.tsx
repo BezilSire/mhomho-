@@ -145,7 +145,8 @@ export const SupportCenter: React.FC<SupportCenterProps> = ({ isOpen, onClose })
       aria-modal="true"
       aria-label="Support"
     >
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-[22px]">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[24px] border border-[var(--line)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-soft)] sm:rounded-[22px] sm:pb-0">
+        <div className="sheet-handle mt-2 sm:hidden" />
         <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3.5">
           <div className="flex min-w-0 items-center gap-2.5">
             {view !== 'list' && (
@@ -194,7 +195,7 @@ export const SupportCenter: React.FC<SupportCenterProps> = ({ isOpen, onClose })
           </p>
         )}
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="app-scroll flex-1 overflow-y-auto px-4 py-4">
           {view === 'list' && (
             <>
               <button

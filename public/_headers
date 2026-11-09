@@ -23,3 +23,36 @@
 
 /icon.svg
   Cache-Control: public, max-age=86400
+
+/icon-192.png
+  Cache-Control: public, max-age=86400
+
+/icon-512.png
+  Cache-Control: public, max-age=86400
+
+/icon-maskable-512.png
+  Cache-Control: public, max-age=86400
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=86400
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=300
+
+/download/mhomho.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="mhomho.apk"
+  Cache-Control: no-cache
+
+/download/mhomho-creator-guide.pdf
+  Content-Type: application/pdf
+  Content-Disposition: attachment; filename="mhomho-creator-guide.pdf"
+  Cache-Control: no-cache

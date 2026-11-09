@@ -60,9 +60,9 @@ describe('proof uploads', () => {
     expect(asset.object_key).toMatch(/^proof\/\d{4}\/\d{2}\/obj_[0-9a-f]{32}\.png$/);
     expect(asset.object_key).not.toContain('proof.png');
 
-    const object = await testEnv.MEDIA.get(asset.object_key);
+    const object = await testEnv.PROOFS.get(asset.object_key, 'arrayBuffer');
     expect(object).not.toBeNull();
-    expect((await object!.arrayBuffer()).byteLength).toBe(PNG_BYTES.byteLength);
+    expect(object!.byteLength).toBe(PNG_BYTES.byteLength);
   });
 
   it('rejects a spoofed content type, an empty body and a non-image', async () => {

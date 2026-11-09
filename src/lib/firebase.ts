@@ -7,16 +7,43 @@
  */
 
 import type { AvatarKey } from '../../shared/community.ts';
+import {
+  CAMPAIGN_ZERO_MAX_CLIPS,
+  CAMPAIGN_ZERO_MIN_VIEWS,
+  CAMPAIGN_ZERO_REQUIRED_CLIPS,
+  CAMPAIGN_ZERO_WINDOW_DAYS,
+} from '../../shared/campaign.ts';
 
 export type CreatorStatus = 'applied' | 'approved' | 'rejected' | 'suspended';
 
-export const CAMPAIGN_ZERO_MIN_CLIPS = 3;
-export const CAMPAIGN_ZERO_MIN_VIEWS = 1000;
+export {
+  CAMPAIGN_ZERO_MAX_CLIPS,
+  CAMPAIGN_ZERO_MIN_VIEWS,
+  CAMPAIGN_ZERO_REQUIRED_CLIPS,
+  CAMPAIGN_ZERO_WINDOW_DAYS,
+};
+
+export interface LinkPreview {
+  title: string | null;
+  author: string | null;
+  thumbnailUrl: string | null;
+  provider: string | null;
+  views: number | null;
+  likes: number | null;
+  source: string | null;
+  /** Epoch milliseconds when the snapshot was fetched. */
+  fetchedAt: number;
+}
 
 export interface CampaignZeroClip {
+  id?: string;
   url: string;
-  claimedViews: number;
   addedAt: string;
+  preview?: LinkPreview | null;
+  /** Admin-verified live view count, stored at approval time. */
+  verifiedViews?: number | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
 }
 
 export interface CampaignZeroState {
@@ -24,6 +51,10 @@ export interface CampaignZeroState {
   clips: CampaignZeroClip[];
   submittedAt?: string;
   verifiedAt?: string;
+  /** Server-calculated deadline for this qualification attempt. */
+  deadlineAt?: string;
+  /** True when the 15-day window closed before proof was submitted. */
+  expired?: boolean;
 }
 
 export interface CreatorPublicDoc {
@@ -177,7 +208,7 @@ export interface ClipDoc {
   link: string;
   screenshotUrl: string;
   proofAssetId: string | null;
-  claimedViews: number;
+  preview?: LinkPreview | null;
   publicViews: number;
   verifiedViews: number;
   eligibleViews: number;
@@ -228,6 +259,15 @@ export interface PayoutDoc {
   createdAt: string;
 }
 
+export type BrandPlatform = 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook';
+
+export interface BrandPlatformMixDoc {
+  platform: BrandPlatform;
+  verifiedViews: number;
+  clips: number;
+  sharePct: number;
+}
+
 export interface BrandViewDoc {
   token: string;
   campaignId: string;
@@ -241,8 +281,20 @@ export interface BrandViewDoc {
   budgetCents: number;
   creatorsJoined: number;
   clipsLive: number;
+  platformMix: BrandPlatformMixDoc[];
+  lastUpdatedAt: number | null;
   viewsSeries: { label: string; value: number }[];
   reportSummary: string;
+}
+
+export interface BrandReportTokenDoc {
+  id: string;
+  label: string | null;
+  createdAt: number;
+  expiresAt: number | null;
+  revokedAt: number | null;
+  lastViewedAt: number | null;
+  active: boolean;
 }
 
 export interface EnquiryDoc {
@@ -398,9 +450,8 @@ export function isAllowedSocialUrl(value: string): boolean {
 export interface CampaignZeroEvaluation {
   followed: boolean;
   clipCount: number;
-  maxViews: number;
-  hasQualifyingClip: boolean;
   submitted: boolean;
+  expired: boolean;
   complete: boolean;
 }
 
@@ -409,20 +460,18 @@ export function evaluateCampaignZero(
 ): CampaignZeroEvaluation {
   const clips = campaignZero?.clips ?? [];
   const validClips = clips.filter((clip) => isAllowedSocialUrl(clip.url));
-  const maxViews = validClips.reduce(
-    (max, clip) => Math.max(max, Number.isFinite(clip.claimedViews) ? clip.claimedViews : 0),
-    0
-  );
   const followed = Boolean(campaignZero?.followConfirmed);
   const clipCount = validClips.length;
+  const expired = Boolean(campaignZero?.expired);
   return {
     followed,
     clipCount,
-    maxViews,
-    hasQualifyingClip: maxViews >= CAMPAIGN_ZERO_MIN_VIEWS,
     submitted: Boolean(campaignZero?.submittedAt),
+    expired,
     complete:
-      followed && clipCount >= CAMPAIGN_ZERO_MIN_CLIPS && maxViews >= CAMPAIGN_ZERO_MIN_VIEWS,
+      !expired &&
+      followed &&
+      clipCount >= CAMPAIGN_ZERO_REQUIRED_CLIPS,
   };
 }
 

@@ -106,7 +106,7 @@ export const ApplicationScreen: React.FC<ApplicationScreenProps> = ({
         Apply as a Creator
       </h2>
       <p className="text-[13px] text-[var(--muted)] mb-4">
-        Join Campaign Zero. Prove one clip can reach 1,000 views, and you earn a seat in the paid creator program.
+        Join Campaign Zero. Prove one clip can reach 500 views to unlock the creator dashboard. Paid campaigns still require 1,000+ verified views per clip.
       </p>
 
       {errorMsg && (
@@ -206,7 +206,7 @@ export const ApplicationScreen: React.FC<ApplicationScreenProps> = ({
               className="mt-1 w-4 h-4 accent-[var(--a2)]"
             />
             <span className="text-[13px] text-[var(--muted)] leading-[1.4]">
-              I understand Campaign Zero is unpaid. My reward is a seat in the paid program if one clip reaches 1,000 views.
+              I understand Campaign Zero is unpaid. Approval requires one clip to reach 500 views; paid campaigns still require 1,000+ verified views per clip.
             </span>
           </label>
         </Card>

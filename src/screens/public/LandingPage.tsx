@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
   Banknote,
+  BookOpen,
   Check,
-  CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  Download,
   FileText,
   Menu,
   MessageCircle,
@@ -23,41 +24,18 @@ import {
   X,
 } from 'lucide-react';
 import { DatabaseState } from '../../lib/firebase.ts';
-import { createEnquiry, registerCreator } from '../../lib/api.ts';
 import { MhomhoLogo } from '../../components/MhomhoLogo.tsx';
+import { BrandBriefFlow, CreatorSignupFlow } from './LandingSignupFlows.tsx';
 
 export interface LandingPageProps {
   db: DatabaseState;
   onCreatorApplySuccess: (newUid: string) => void;
   onOpenSignIn: () => void;
+  onOpenGuide: () => void;
 }
 
-const WA_NUMBER = '263786205197';
-
-const PLATFORMS = ['TikTok', 'Instagram', 'YouTube', 'Facebook'] as const;
-type Platform = (typeof PLATFORMS)[number];
-
-const NICHES = [
-  'Tech & gadgets',
-  'Health & beauty',
-  'Fashion & style',
-  'Food & travel',
-  'Business & money',
-  'Entertainment & events',
-  'Gaming',
-  'Cars',
-  'Real estate & home',
-  'Education & careers',
-  'Parenting & family',
-  'Agriculture',
-  'Sports',
-  'Faith & motivation',
-  'Other',
-];
-
-const BUDGETS = ['$100 – $250', '$250 – $500', '$500 – $1,000', '$1,000+', 'Not sure yet'];
-const GOALS = ['More people knowing we exist', 'Sales or enquiries', 'Launch something new'];
-const START = ['This week', 'In two weeks', 'This month', 'Just exploring'];
+const SUPPORT_EMAIL = 'support@mhomho.work';
+const APK_DOWNLOAD_URL = '/download/mhomho.apk?v=1.0.4';
 
 // Creator Awards — one trophy per verified-view milestone in a single campaign month.
 const AWARDS = [
@@ -93,31 +71,22 @@ const ACTIVE_CROWD = new Set([
 ]);
 const CROWD = Array.from({ length: 100 }, (_, index) => index);
 
-const FIELD =
-  'h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3.5 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--faint)] focus:border-[var(--a1)]';
-const LABEL = 'mb-1.5 block text-[12px] font-semibold text-[var(--muted)]';
-const CHIP =
-  'inline-flex h-10 items-center rounded-full border px-4 text-[13px] font-medium transition-colors cursor-pointer';
-
-const whatsappLink = (message: string) =>
-  `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`;
+const contactLink = (message: string, subject = 'Mhomho enquiry') =>
+  `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
 
 const SectionHeading: React.FC<{
-  eyebrow: string;
   title: React.ReactNode;
   copy?: string;
   className?: string;
-}> = ({ eyebrow, title, copy, className = '' }) => (
+}> = ({ title, copy, className = '' }) => (
   <div className={className}>
-    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-      <span className="h-1 w-1 rounded-full bg-[var(--a1)]" />
-      {eyebrow}
-    </span>
-    <h2 className="font-display mt-5 text-[32px] font-bold leading-[1.02] text-[var(--text)] sm:text-[42px]">
+    <h2 className="font-display text-[30px] font-semibold leading-[0.98] tracking-[-0.055em] text-[var(--text)] sm:text-[44px] lg:text-[52px]">
       {title}
     </h2>
     {copy && (
-      <p className="mt-4 max-w-[54ch] text-[16px] leading-[1.7] text-[var(--muted)]">{copy}</p>
+      <p className="mt-5 max-w-[54ch] text-[15px] leading-[1.75] text-[var(--muted)] sm:text-[16px]">
+        {copy}
+      </p>
     )}
   </div>
 );
@@ -126,140 +95,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   db,
   onCreatorApplySuccess,
   onOpenSignIn,
+  onOpenGuide,
 }) => {
   const [navOpen, setNavOpen] = useState(false);
   const [audience, setAudience] = useState<'brands' | 'creators'>('brands');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [flow, setFlow] = useState<'creator' | 'brand' | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
 
-  // Creator application
-  const [creatorForm, setCreatorForm] = useState({
-    name: '',
-    email: '',
-    handle: '',
-    platform: 'TikTok' as Platform,
-    followers: '',
-    niche: NICHES[0],
-    whatsapp: '',
-    password: '',
-    confirmPassword: '',
-    agreed: false,
-  });
-  const [creatorError, setCreatorError] = useState('');
-  const [creatorSubmitting, setCreatorSubmitting] = useState(false);
-  const [appliedUid, setAppliedUid] = useState<string | null>(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
 
-  // Brand enquiry
-  const [brandForm, setBrandForm] = useState({
-    biz: '',
-    name: '',
-    phone: '',
-    promo: '',
-    niche: NICHES[0],
-    budget: BUDGETS[1],
-    goals: [GOALS[1]] as string[],
-    start: START[0],
-  });
-  const [brandError, setBrandError] = useState('');
-  const [brandSent, setBrandSent] = useState(false);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      shell.style.setProperty(
+        '--parallax-slow',
+        reducedMotion.matches ? '0px' : `${Math.min(y * 0.055, 120)}px`,
+      );
+      shell.style.setProperty(
+        '--parallax-fast',
+        reducedMotion.matches ? '0px' : `${Math.max(y * -0.09, -180)}px`,
+      );
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    reducedMotion.addEventListener('change', update);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      reducedMotion.removeEventListener('change', update);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   const closeNav = () => setNavOpen(false);
-
-  const handleCreatorSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setCreatorError('');
-
-    if (!creatorForm.agreed) {
-      setCreatorError('Please confirm you understand Campaign Zero and how creators get paid.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(creatorForm.email.trim())) {
-      setCreatorError('Enter a valid email address.');
-      return;
-    }
-    if (creatorForm.password.length < 8) {
-      setCreatorError('Use at least 8 characters for your password.');
-      return;
-    }
-    if (creatorForm.password !== creatorForm.confirmPassword) {
-      setCreatorError('Those passwords do not match.');
-      return;
-    }
-
-    setCreatorSubmitting(true);
-    try {
-      const result = await registerCreator({
-        name: creatorForm.name.trim(),
-        email: creatorForm.email.trim().toLowerCase(),
-        handle: creatorForm.handle,
-        platform: creatorForm.platform,
-        niche: creatorForm.niche,
-        followers: parseInt(creatorForm.followers, 10) || 0,
-        whatsappNumber: creatorForm.whatsapp,
-        password: creatorForm.password,
-      });
-
-      if (!result.success) {
-        setCreatorError(result.error || 'Could not create your account. Try again.');
-        return;
-      }
-
-      setCreatorForm((current) => ({
-        ...current,
-        password: '',
-        confirmPassword: '',
-      }));
-      setAppliedUid(result.data?.uid || null);
-      if (result.data?.uid) onCreatorApplySuccess(result.data.uid);
-    } catch {
-      setCreatorError('Secure account creation is unavailable. Open the app on localhost or HTTPS.');
-    } finally {
-      setCreatorSubmitting(false);
-    }
+  const openCreatorFlow = () => {
+    closeNav();
+    setFlow('creator');
   };
-
-  const handleBrandSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setBrandError('');
-
-    if (!brandForm.biz.trim() || !brandForm.name.trim() || !brandForm.phone.trim()) {
-      setBrandError('Add your business name, your name and a WhatsApp number.');
-      return;
-    }
-    if (!brandForm.promo.trim()) {
-      setBrandError('Tell us what you want to promote.');
-      return;
-    }
-
-    const result = await createEnquiry({
-      bizName: brandForm.biz.trim(),
-      contactName: brandForm.name.trim(),
-      phone: brandForm.phone.trim(),
-      niche: brandForm.niche,
-      promo: brandForm.promo.trim(),
-      goals: brandForm.goals,
-      budget: brandForm.budget,
-      start: brandForm.start,
-      bestTimes: [],
-    });
-
-    if (!result.success) {
-      setBrandError(result.error || 'We could not send your brief. Please try again.');
-      return;
-    }
-
-    setBrandSent(true);
+  const openBrandFlow = () => {
+    closeNav();
+    setFlow('brand');
   };
-
-  const brandBrief = [
-    'Mhomho Media: campaign brief',
-    `Business: ${brandForm.biz}`,
-    `Promoting: ${brandForm.promo}`,
-    `Niche: ${brandForm.niche}`,
-    `Goals: ${brandForm.goals.join(', ')}`,
-    `Budget: ${brandForm.budget}`,
-    `Start: ${brandForm.start}`,
-    `Contact: ${brandForm.name} · ${brandForm.phone}`,
-  ].join('\n');
+  const openGuide = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    closeNav();
+    onOpenGuide();
+  };
 
   const platforms: { id: 'brands' | 'creators'; label: string }[] = [
     { id: 'brands', label: 'For brands' },
@@ -267,58 +159,71 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--page)] text-[var(--text)]">
+    <div
+      ref={shellRef}
+      className="landing-shell min-h-[100dvh] overflow-x-clip bg-[var(--page)] pb-[calc(84px+env(safe-area-inset-bottom))] text-[var(--text)] lg:pb-0"
+    >
       {/* ============================== NAV ============================== */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--page)]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-5 sm:px-8">
+      <nav className="safe-top glass-nav sticky top-0 z-50 border-b border-[var(--line)]">
+        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-4 sm:px-8">
           <a
             href="#top"
             className="flex items-center text-inherit no-underline"
             aria-label="Mhomho Media home"
           >
-            <MhomhoLogo className="h-11 w-auto sm:h-[52px]" />
+            <MhomhoLogo className="h-9 w-auto sm:h-10" />
           </a>
 
-          <div className="hidden items-center gap-6 whitespace-nowrap lg:flex">
-            <a href="#how" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              How it works
-            </a>
-            <a href="#awards" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              Awards
-            </a>
-            <a href="#why" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              Intelligence
-            </a>
-            <a href="#creators" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              For creators
-            </a>
-            <a href="#brands" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              For brands
-            </a>
-            <a href="#partners" className="text-[13px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]">
-              Partners
-            </a>
+          <div className="hidden items-center gap-5 whitespace-nowrap xl:flex">
+            {[
+              ['#how', 'How it works'],
+              ['#earnings', 'Earnings'],
+              ['#creators', 'For creators'],
+              ['#brands', 'For brands'],
+              ['#partners', 'Partners'],
+              ['/ambassadors/apply', 'Commercial Envoys'],
+              ['/resources', 'Resources'],
+              ['/creator-guide', 'Creator guide'],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={href === '/creator-guide' ? openGuide : undefined}
+                className="text-[12.5px] font-medium tracking-[-0.01em] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+              >
+                {label}
+              </a>
+            ))}
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onOpenSignIn}
-              className="hidden h-10 items-center rounded-full px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
+              className="hidden h-10 items-center rounded-full px-4 text-[12.5px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
             >
               Sign in
             </button>
             <a
-              href="#creators"
-              className="hidden h-10 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[13px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
+              href={APK_DOWNLOAD_URL}
+              download
+              className="press hidden h-10 items-center gap-2 rounded-full bg-[var(--a1)] px-4 text-[12px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
             >
-              Get paid to post
-              <ArrowRight size={15} />
+              <Download size={14} strokeWidth={2.5} />
+              Download app
             </a>
             <button
               type="button"
+              onClick={openCreatorFlow}
+              className="hidden h-10 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[12.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 sm:inline-flex cursor-pointer"
+            >
+              Get paid to post
+              <ArrowRight size={14} />
+            </button>
+            <button
+              type="button"
               onClick={() => setNavOpen((open) => !open)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] text-[var(--text)] lg:hidden cursor-pointer"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] text-[var(--text)] xl:hidden cursor-pointer"
               aria-label={navOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={navOpen}
             >
@@ -328,252 +233,267 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         {navOpen && (
-          <div className="border-t border-[var(--line)] bg-[var(--page)] px-5 py-4 lg:hidden">
+          <div className="app-scroll max-h-[calc(100dvh-64px-env(safe-area-inset-top))] overflow-y-auto border-t border-[var(--line)] bg-[var(--page)]/95 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl xl:hidden">
             <div className="flex flex-col gap-1">
               {[
                 ['#how', 'How it works'],
-                ['#awards', 'Creator Awards'],
-                ['#why', 'Intelligence'],
                 ['#creators', 'For creators'],
                 ['#brands', 'For brands'],
                 ['#partners', 'Partners'],
+                ['/ambassadors/apply', 'Commercial Envoys'],
+                ['/resources', 'Resources'],
               ].map(([href, label]) => (
                 <a
                   key={href}
                   href={href}
                   onClick={closeNav}
-                  className="rounded-lg px-2 py-3 text-[14px] font-medium text-[var(--muted)] no-underline hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                  className="rounded-xl px-3 py-3 text-[14px] font-medium text-[var(--muted)] no-underline transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)]"
                 >
                   {label}
                 </a>
               ))}
+              <a
+                href="/creator-guide"
+                onClick={openGuide}
+                className="flex items-center gap-2 rounded-xl px-3 py-3 text-[14px] font-medium text-[var(--muted)] no-underline transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)]"
+              >
+                <FileText size={15} className="text-[var(--a1)]" />
+                Creator guide
+                <span className="ml-auto rounded-full border border-[var(--line)] px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.14em] text-[var(--faint)]">
+                  PDF
+                </span>
+              </a>
               <button
                 type="button"
                 onClick={() => {
                   closeNav();
                   onOpenSignIn();
                 }}
-                className="rounded-lg px-2 py-3 text-left text-[14px] font-medium text-[var(--muted)] cursor-pointer hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                className="rounded-xl px-3 py-3 text-left text-[14px] font-medium text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)]"
               >
                 Sign in
               </button>
               <a
-                href="#creators"
+                href={APK_DOWNLOAD_URL}
+                download
                 onClick={closeNav}
-                className="mt-2 flex h-11 items-center justify-center rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] no-underline"
+                className="press mt-2 flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--a1)] text-[14px] font-bold text-[var(--ink)] no-underline"
+              >
+                <Download size={16} strokeWidth={2.5} />
+                Download Android app
+              </a>
+              <button
+                type="button"
+                onClick={openCreatorFlow}
+                className="mt-2 flex h-11 items-center justify-center rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] cursor-pointer"
               >
                 Get paid to post
-              </a>
+              </button>
             </div>
           </div>
         )}
       </nav>
 
-      {/* ============================== TAGLINE ============================== */}
-      <div className="border-b border-[var(--line)] bg-[var(--bg)]">
-        <p className="mx-auto flex w-full max-w-[1200px] items-center justify-center gap-3 px-5 py-3.5 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-[var(--muted)] sm:gap-4 sm:text-[11.5px] sm:tracking-[0.36em]">
-          <span aria-hidden="true" className="h-px w-8 bg-[var(--line-strong)] sm:w-12" />
-          <span className="text-center">Too many to ignore.</span>
-          <span aria-hidden="true" className="h-px w-8 bg-[var(--line-strong)] sm:w-12" />
-        </p>
-      </div>
-
       {/* ============================== HERO ============================== */}
       <header id="top" className="relative overflow-hidden border-b border-[var(--line)]">
-        <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[560px]" />
-        <div className="grid-lines pointer-events-none absolute inset-0" />
+        <div
+          aria-hidden="true"
+          className="landing-orb orb-drift parallax-slow left-[8%] top-[-14%] h-[420px] w-[420px]"
+          style={{ background: 'radial-gradient(circle, rgba(255,159,10,0.32), transparent 68%)' }}
+        />
+        <div
+          aria-hidden="true"
+          className="landing-orb orb-drift parallax-fast right-[-8%] top-[12%] h-[520px] w-[520px]"
+          style={{ background: 'radial-gradient(circle, rgba(240,25,27,0.2), transparent 70%)' }}
+        />
+        <div className="grid-lines pointer-events-none absolute inset-0 opacity-50" />
 
-        <div className="relative mx-auto grid w-full max-w-[1200px] gap-14 px-5 pb-20 pt-16 sm:px-8 sm:pb-24 sm:pt-24 lg:grid-cols-[1.03fr_0.97fr] lg:items-center lg:gap-16">
-          <div className="min-w-0">
-            <span className="rise inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/80 px-3 py-1.5 text-[11px] font-semibold text-[var(--muted)] backdrop-blur">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--a1)] opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--a1)]" />
-              </span>
-              Mhomho Media · Zimbabwe
+        <div className="relative mx-auto w-full max-w-[1400px] px-5 pb-16 pt-16 sm:px-8 sm:pb-24 sm:pt-24">
+          <p className="rise text-[10px] font-semibold uppercase tracking-[0.36em] text-[var(--faint)] sm:text-[10.5px]">
+            For brands + creators across Africa.
+          </p>
+
+          <h1 className="rise rise-1 font-display mt-6 text-[48px] font-semibold leading-[0.9] tracking-[-0.065em] sm:mt-7 sm:text-[76px] lg:text-[88px] xl:text-[96px]">
+            Activate
+            <br />
+            <span className="text-gradient">your crowd.</span>
+          </h1>
+
+          <p className="rise rise-2 mt-6 max-w-[78ch] text-[16.5px] leading-[1.65] text-[var(--muted)] sm:mt-7 sm:text-[20px]">
+            Imagine opening{' '}
+            <span className="font-semibold text-[var(--text)]">
+              TikTok, Facebook, YouTube and Instagram
+            </span>{' '}
+            and seeing hundreds of creators posting about your business. Taking over the For You Page
+            and timelines — one video at a time.
+          </p>
+
+          <div className="rise rise-2 mt-6 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[var(--a1)]/30 bg-[var(--a1)]/[0.06] px-4 py-2 text-[12.5px] text-[var(--muted)] sm:mt-7 sm:text-[13.5px]">
+            <span className="font-semibold text-[var(--text)]">
+              Creators get paid to post content.
             </span>
-
-            <h1 className="rise rise-1 font-display mt-6 text-[34px] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[60px] lg:text-[56px] xl:text-[66px]">
-              Activate
-              <br />
-              <span className="text-gradient">your crowd.</span>
-            </h1>
-
-            <p className="rise rise-2 mt-6 max-w-[52ch] text-[16px] leading-[1.7] text-[var(--muted)] sm:text-[17px]">
-              Brands get hundreds of different accounts posting about them. Creators get paid to
-              post content. One brief, one crowd, and an outcome you can actually measure — not
-              another post you hope works.
-            </p>
-
-            <div className="rise rise-3 mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#brands"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[14px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
-              >
-                Start a campaign
-                <ArrowRight size={16} />
-              </a>
-              <a
-                href="#creators"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--line-strong)] bg-[var(--surface)]/50 px-6 text-[14px] font-semibold text-[var(--text)] no-underline transition-colors hover:border-[var(--muted)]"
-              >
-                Get paid to post
-              </a>
-            </div>
-
-            <div className="rise rise-4 mt-8 flex flex-wrap gap-x-5 gap-y-2.5">
-              {['Hundreds of accounts, not one', 'Creators paid from $1 CPM', 'Free funnel on every campaign', 'Verified before billing'].map((item) => (
-                <span key={item} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--muted)]">
-                  <Check size={14} className="text-[var(--a1)]" />
-                  {item}
-                </span>
-              ))}
-            </div>
+            <span>Base</span>
+            <span className="font-display text-[18px] font-bold text-gradient">$1.00 CPM</span>
+            <span>paid to EcoCash.</span>
           </div>
 
-          {/* Creator offer panel */}
-          <div className="rise rise-3 relative min-w-0">
-            <div className="absolute -inset-5 rounded-[36px] bg-[var(--grad-soft)] opacity-60 blur-3xl" />
+          <div className="mt-10 grid gap-12 sm:mt-14 xl:grid-cols-[0.95fr_1.05fr] xl:items-center xl:gap-16">
+            <div className="min-w-0">
+              <div className="rise rise-3 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--line)] bg-white/[0.03] p-4">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--faint)]">
+                    For brands
+                  </p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
+                    Put your product in creator feeds.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openBrandFlow}
+                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--text)] px-4 text-[13px] font-bold text-[var(--page)] transition-transform hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    Start a campaign
+                    <ArrowRight size={15} />
+                  </button>
+                  <p className="mt-2 text-[10px] text-[var(--faint)]">One brief · many feeds</p>
+                </div>
 
-            <div className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
-              <div
-                className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full opacity-20 blur-3xl"
-                style={{ background: 'var(--grad)' }}
-              />
-              <div className="relative">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[var(--a1)]/25 bg-[var(--a1)]/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--a1)]">
-                    <Banknote size={12} />
+                <div className="rounded-2xl border border-[var(--a1)]/30 bg-[var(--a1)]/[0.06] p-4">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--a1)]">
                     For creators
-                  </span>
-                  <span className="text-[11px] font-medium text-[var(--faint)]">Zimbabwe</span>
+                  </p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
+                    Get paid to post content you already make.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openCreatorFlow}
+                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-4 text-[13px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    Get paid to post content
+                    <ArrowRight size={15} />
+                  </button>
+                  <p className="mt-2 text-[10px] text-[var(--faint)]">
+                    Base <span className="font-bold text-[var(--a1)]">$1.00 CPM</span> · paid to EcoCash
+                  </p>
                 </div>
+              </div>
 
-                <h2 className="font-display mt-6 text-[34px] font-bold leading-[1.02] tracking-[-0.03em] sm:text-[40px]">
-                  Get paid
-                  <br />
-                  to post.
-                </h2>
-                <p className="mt-3 max-w-[38ch] text-[14px] leading-relaxed text-[var(--muted)]">
-                  You already make content. Post it for brands, get views, get paid. No follower
-                  minimum.
+              <div className="rise rise-3 mt-6 rounded-2xl border border-[var(--line)] bg-white/[0.02] p-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--faint)]">
+                  Expanding across Africa
                 </p>
-
-                <div className="mt-6 flex items-end gap-2 border-b border-[var(--line)] pb-5">
-                  <span className="font-display text-[38px] font-bold leading-none tracking-[-0.03em] text-[var(--text)]">
-                    $1.00+
-                  </span>
-                  <span className="pb-1 text-[12px] font-medium text-[var(--muted)]">
-                    / 1,000 verified views
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {[
-                    'New accounts welcome',
-                    'Campaign Zero unlocks paid campaigns',
-                    'EcoCash payouts within 72 hours',
-                  ].map((item) => (
-                    <div key={item} className="flex items-center gap-2.5 text-[12.5px] text-[var(--muted)]">
-                      <Check size={14} className="shrink-0 text-[var(--a1)]" />
-                      {item}
-                    </div>
+                <p className="mt-2 max-w-[46ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
+                  Zambia, Tanzania and Mozambique are underway. Brands and creators from other
+                  countries can join now.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Zambia', 'Tanzania', 'Mozambique'].map((country) => (
+                    <span
+                      key={country}
+                      className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[10px] font-semibold text-[var(--muted)]"
+                    >
+                      {country}
+                    </span>
                   ))}
                 </div>
-
-                <a
-                  href="#creators"
-                  className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
-                >
-                  Get paid to post
-                  <ArrowRight size={15} />
-                </a>
-                <p className="mt-3 text-center text-[10.5px] text-[var(--faint)]">
-                  Base CPM. Final rate depends on campaign budget.
-                </p>
               </div>
+            </div>
+
+            <div className="rise rise-3 relative min-w-0">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-10 rounded-[48px] bg-[var(--grad-soft)] opacity-30 blur-3xl"
+              />
+
+              <figure className="group relative overflow-hidden rounded-[32px] border border-[var(--line)] bg-[var(--surface)] shadow-[0_40px_100px_-45px_rgba(0,0,0,0.95)]">
+                <img
+                  src="/images/brands-2.jpg"
+                  alt="A creator filming a beauty product with a ring light"
+                  width={1271}
+                  height={847}
+                  loading="eager"
+                  decoding="async"
+                  className="aspect-[3/2] w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                />
+              </figure>
             </div>
           </div>
         </div>
       </header>
 
-      {/* ============================== TWO WAYS IN ============================== */}
-      <section className="border-b border-[var(--line)] bg-[var(--bg)]">
-        <div className="mx-auto grid w-full max-w-[1200px] sm:grid-cols-2">
-          <a
-            href="#creators"
-            className="group flex flex-col justify-between gap-6 border-b border-[var(--line)] px-5 py-7 no-underline sm:border-b-0 sm:border-r sm:px-8 sm:py-8"
-          >
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--a1)]">
-                For creators
-              </p>
-              <p className="font-display mt-2 text-[24px] font-bold leading-tight tracking-[-0.02em] text-[var(--text)]">
-                Get paid to post content.
-              </p>
-              <p className="mt-2 max-w-[36ch] text-[13px] leading-relaxed text-[var(--muted)]">
-                No follower minimum. Base $1 CPM. EcoCash payouts.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--text)]">
-              Start earning
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </a>
+      {/* ============================== CREATOR EARNINGS ============================== */}
+      <section
+        id="earnings"
+        className="relative scroll-mt-24 overflow-hidden border-b border-[var(--line)] py-20 sm:py-28"
+      >
+        <div
+          aria-hidden="true"
+          className="landing-orb orb-drift right-[-12%] top-[8%] h-[520px] w-[520px] opacity-70"
+          style={{ background: 'radial-gradient(circle, rgba(255,159,10,0.18), transparent 70%)' }}
+        />
 
-          <a
-            href="#brands"
-            className="group flex flex-col justify-between gap-6 px-5 py-7 no-underline sm:px-8 sm:py-8"
-          >
+        <div className="relative mx-auto w-full max-w-[1400px] px-5 sm:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--a1)]">
-                For brands
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--a1)]">
+                Creator earnings
               </p>
-              <p className="font-display mt-2 text-[24px] font-bold leading-tight tracking-[-0.02em] text-[var(--text)]">
-                Activate a crowd, not a post.
-              </p>
-              <p className="mt-2 max-w-[36ch] text-[13px] leading-relaxed text-[var(--muted)]">
-                Hundreds of accounts. Guaranteed delivery. AI learning.
-              </p>
+              <h2 className="font-display mt-4 max-w-[20ch] text-[34px] font-semibold leading-[0.96] tracking-[-0.055em] sm:text-[48px]">
+                Every view is visible.
+                <br />
+                <span className="text-gradient">Every dollar is tracked.</span>
+              </h2>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--text)]">
-              Start a campaign
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </a>
+            <p className="max-w-[50ch] text-[14px] leading-[1.75] text-[var(--muted)] sm:text-[15px]">
+              A preview of how creators see the campaign, the verified views and the earnings in one
+              place.
+            </p>
+          </div>
+
+          <div className="mt-10 overflow-hidden rounded-[32px] border border-black/10 bg-[#F7F4F0] p-2 shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] sm:p-3">
+            <img
+              src="/images/feed-2.jpg"
+              alt="Campaign performance dashboard listing creators, verified views and earnings"
+              width={1408}
+              height={768}
+              loading="eager"
+              decoding="async"
+              className="w-full rounded-[24px]"
+            />
+          </div>
         </div>
       </section>
 
       {/* ============================== MISSION ============================== */}
-      <section id="mission" className="scroll-mt-20 border-b border-[var(--line)] py-20 sm:py-28">
-        <div className="mx-auto grid w-full max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-16">
-          <div className="lg:sticky lg:top-24">
+      <section id="mission" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-32">
+        <div className="mx-auto grid w-full max-w-[1200px] gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+          <div className="lg:sticky lg:top-28 lg:self-start">
             <SectionHeading
-              eyebrow="The mission"
               title={
                 <>
-                  Zimbabwe’s
+                  Africa’s
                   <br />
                   distribution network.
                 </>
               }
-              copy="Our mission is to become the best distribution network in Zimbabwe — the first call for anyone with something to say, sell, launch or grow."
+              copy="Our mission is to become Africa’s distribution network — the first call for anyone with something to say, sell, launch or grow. Expansion to Zambia, Tanzania and Mozambique is underway."
             />
-            <p className="font-display mt-6 text-[24px] font-bold leading-tight text-gradient">
-              Too many to ignore.
+            <p className="font-display mt-8 text-[26px] font-medium leading-[1.08] tracking-[-0.04em] text-gradient sm:text-[34px]">
+              Become impossible to ignore.
             </p>
-            <p className="mt-2 max-w-[40ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
+            <p className="mt-3 max-w-[40ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
               Not one account. Not one audience. A crowd that keeps showing up in the feeds that
               matter.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {[
               {
                 icon: Target,
                 title: 'Music & entertainment',
-                copy: 'You have a song, a show or a moment. We put it in front of hundreds of audiences until it’s too big to miss.',
+                copy: 'You have a song, a show or a moment. We put it in front of new audiences until it’s too big to miss.',
               },
               {
                 icon: Wallet,
@@ -593,46 +513,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ].map((item) => (
               <div
                 key={item.title}
-                className="lift rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6"
+                className="group grid gap-4 py-7 transition-colors hover:bg-white/[0.015] sm:grid-cols-[auto_1fr] sm:gap-6 sm:py-8"
               >
-                <item.icon size={20} className="text-[var(--a1)]" />
-                <h3 className="font-display mt-5 text-[17px] font-bold leading-snug">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-[13.5px] leading-[1.65] text-[var(--muted)]">
-                  {item.copy}
-                </p>
+                <span className="grid h-11 w-11 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--a1)] transition-colors group-hover:border-[var(--line-strong)]">
+                  <item.icon size={18} />
+                </span>
+                <div>
+                  <h3 className="font-display text-[18px] font-semibold leading-snug tracking-[-0.02em]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 max-w-[48ch] text-[13.5px] leading-[1.7] text-[var(--muted)]">
+                    {item.copy}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="mx-auto mt-10 w-full max-w-[1200px] px-5 sm:px-8">
-          <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-6 py-5 sm:flex-row sm:items-center">
-            <p className="max-w-[64ch] text-[14px] leading-relaxed text-[var(--muted)]">
-              Musician, business, creator or political party — if you need to reach people in
-              Zimbabwe, we get you in front of them.
-            </p>
-            <a
-              href="#brands"
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[12.5px] font-bold text-[var(--ink)] no-underline"
-            >
-              Start a campaign
-              <ArrowRight size={14} />
-            </a>
-          </div>
+        <div className="mx-auto mt-14 flex w-full max-w-[1200px] flex-col items-start justify-between gap-5 px-5 sm:flex-row sm:items-center sm:px-8">
+          <p className="max-w-[64ch] text-[14px] leading-relaxed text-[var(--muted)]">
+            Musician, business, creator or political party — if you need to reach people in
+            Zimbabwe and beyond, we get you in front of them.
+          </p>
+          <button
+            type="button"
+            onClick={openBrandFlow}
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[12.5px] font-bold text-[var(--ink)] cursor-pointer"
+          >
+            Start a campaign
+            <ArrowRight size={14} />
+          </button>
         </div>
       </section>
 
       {/* ============================== THE PROBLEM ============================== */}
       <section
         id="problem"
-        className="scroll-mt-20 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-28"
+        className="scroll-mt-24 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-32"
       >
-        <div className="mx-auto grid w-full max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16">
+        <div className="mx-auto grid w-full max-w-[1200px] gap-14 px-5 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-20">
           <div>
             <SectionHeading
-              eyebrow="The problem"
               title={
                 <>
                   Spray and pray
@@ -640,59 +562,60 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   isn’t a media plan.
                 </>
               }
-              copy="Most campaigns here still look the same: pay one account a flat fee, post once, and hope. There’s no deliverable to check, no guaranteed reach and no way to know what the money bought."
+              copy="Most campaigns here still look the same: pay one account a flat fee, post once, and hope. There’s no deliverable, no reach you can measure, and no way to know what the money bought."
             />
 
-            <p className="mt-6 max-w-[46ch] text-[13px] leading-relaxed text-[var(--faint)]">
+            <p className="mt-7 max-w-[46ch] text-[13px] leading-relaxed text-[var(--faint)]">
               It isn’t a campaign. It’s a lottery ticket with an invoice.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8">
-            <p className="font-display text-gradient text-[64px] font-bold leading-none tracking-[-0.04em]">
-              230+
+          <div className="glass-panel rounded-[28px] p-6 sm:p-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--faint)]">
+              What we heard
             </p>
-            <p className="mt-3 max-w-[34ch] text-[14px] leading-relaxed text-[var(--muted)]">
+            <p className="font-display mt-6 text-[72px] font-semibold leading-none tracking-[-0.06em] sm:text-[92px]">
+              230<span className="text-gradient">+</span>
+            </p>
+            <p className="mt-4 max-w-[34ch] text-[14px] leading-relaxed text-[var(--muted)]">
               Zimbabwean brands interviewed before we built Mhomho. The pattern was always the
               same.
             </p>
 
-            <div className="mt-7 border-t border-[var(--line)] pt-5">
+            <div className="mt-8 border-t border-[var(--line)] pt-6">
               <p className="text-[15px] font-semibold text-[var(--text)]">
                 One post. One audience. One shot.
               </p>
               <p className="mt-2 max-w-[44ch] text-[13px] leading-relaxed text-[var(--muted)]">
                 A flat fee, a screenshot, and no way to know what it moved. We built Mhomho to
-                replace that with a crowd, a guarantee and proof.
+                replace that with a crowd, a plan and proof.
               </p>
             </div>
 
-            <div className="mt-6 flex items-start gap-2 rounded-xl bg-[var(--surface-2)] px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]">
+            <div className="mt-6 flex items-start gap-2.5 rounded-2xl bg-white/[0.03] px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]">
               <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[var(--a1)]" />
-              Every campaign starts with a guaranteed delivery target and ends with something you
-              can check.
+              The plan is agreed before launch. The report is checked after.
             </div>
           </div>
         </div>
       </section>
 
       {/* ============================== HOW IT WORKS ============================== */}
-      <section id="how" className="scroll-mt-20 border-b border-[var(--line)] py-20 sm:py-28">
+      <section id="how" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-32">
         <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <SectionHeading
-              eyebrow="How it works"
               title={
                 <>
-                  One brief.
+                  From brief
                   <br />
-                  Hundreds of voices.
+                  to proof.
                 </>
               }
               copy="Three steps, no platform to learn. Pick the side you’re on."
             />
 
-            <div className="inline-flex w-fit rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
+            <div className="glass-panel inline-flex w-fit rounded-full p-1">
               {platforms.map((item) => (
                 <button
                   key={item.id}
@@ -710,104 +633,107 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {(audience === 'brands'
-              ? [
-                  {
-                    icon: FileText,
-                    title: 'Brief us once',
-                    copy: 'Tell us what you sell, who it’s for and your budget. We turn it into a guaranteed delivery target.',
-                  },
-                  {
-                    icon: Users,
-                    title: 'Hundreds of accounts post',
-                    copy: 'Your product goes out across hundreds of creators in your niche, in hundreds of different voices, in the same campaign window.',
-                  },
-                  {
-                    icon: Wallet,
-                    title: 'Pay for verified delivery',
-                    copy: 'Delivery is checked clip by clip. The guaranteed target is tracked in your report, and sub-1,000-view clips aren’t billed.',
-                  },
-                ]
-              : [
-                  {
-                    icon: ClipboardCheck,
-                    title: 'Apply once',
-                    copy: 'Send your handle, platform and niche. No follower minimum — new accounts are welcome.',
-                  },
-                  {
-                    icon: UserCheck,
-                    title: 'Get approved',
-                    copy: 'We verify you’re real, then unlock campaigns, briefs and your content kit on WhatsApp.',
-                  },
-                  {
-                    icon: Banknote,
-                    title: 'Clip and earn',
-                    copy: 'Post, submit the link, and earn from a base $1 CPM — $1.00+ per 1,000 verified views, paid to EcoCash.',
-                  },
-                ]
-            ).map((step, index) => (
-              <div
-                key={step.title}
-                className="lift rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface-2)] text-[var(--a1)]">
-                    <step.icon size={18} />
-                  </span>
-                  <span className="font-display text-[12px] font-semibold tracking-[0.2em] text-[var(--faint)]">
-                    0{index + 1}
-                  </span>
+          <div className="glass-panel mt-12 overflow-hidden rounded-[28px]">
+            <div className="grid md:grid-cols-3 md:divide-x md:divide-[var(--line)]">
+              {(audience === 'brands'
+                ? [
+                    {
+                      icon: FileText,
+                      title: 'Brief us once',
+                      copy: 'Tell us what you sell, who it’s for and your budget. We turn it into a delivery target.',
+                    },
+                    {
+                      icon: Users,
+                      title: 'Different accounts post',
+                      copy: 'Your product goes out across creators in your niche, in different voices, in the same campaign window.',
+                    },
+                    {
+                      icon: Wallet,
+                      title: 'Pay for delivery that checks out',
+                      copy: 'Delivery is checked clip by clip. The target is tracked in your report, and sub-1,000-view clips aren’t billed.',
+                    },
+                  ]
+                : [
+                    {
+                      icon: ClipboardCheck,
+                      title: 'Apply once',
+                      copy: 'Send your handle, platform and niche. No follower minimum — new accounts are welcome.',
+                    },
+                    {
+                      icon: UserCheck,
+                      title: 'Get approved',
+                      copy: 'We verify you’re real, then unlock campaigns, briefs and your content kit in your dashboard.',
+                    },
+                    {
+                      icon: Banknote,
+                      title: 'Clip and earn',
+                      copy: 'Post, submit the link, and earn from a base $1 CPM — paid to EcoCash.',
+                    },
+                  ]
+              ).map((step, index) => (
+                <div
+                  key={step.title}
+                  className="p-7 transition-colors hover:bg-white/[0.02] sm:p-9"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--a1)]">
+                      <step.icon size={18} />
+                    </span>
+                    <span className="font-display text-[11px] font-semibold tracking-[0.28em] text-[var(--faint)]">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <h3 className="font-display mt-8 text-[20px] font-semibold leading-snug tracking-[-0.02em] text-[var(--text)]">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2.5 text-[13.5px] leading-[1.7] text-[var(--muted)]">
+                    {step.copy}
+                  </p>
                 </div>
-                <h3 className="font-display mt-5 text-[18px] font-bold text-[var(--text)]">{step.title}</h3>
-                <p className="mt-2 text-[14px] leading-[1.65] text-[var(--muted)]">{step.copy}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ============================== THE CROWD ============================== */}
-      <section id="crowd" className="scroll-mt-20 border-b border-[var(--line)] py-20 sm:py-28">
+      <section id="crowd" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-32">
         <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
-          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
+          <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-20">
             <div>
               <SectionHeading
-                eyebrow="The crowd"
                 title={
                   <>
-                    Activate
+                    Why a crowd
                     <br />
-                    your crowd.
+                    wins.
                   </>
                 }
-                copy="Don’t put everything behind one account. Put your product in the hands of a crowd. One brief, hundreds of creators, hundreds of audiences — all posting in the same campaign window."
+                copy="Don’t put everything behind one account. Put your product in the hands of a crowd — different creators, different audiences, all posting in the same campaign window."
               />
 
-              <div className="mt-6 flex flex-wrap gap-2">
-                {['Hundreds of creators', 'Hundreds of audiences', 'One product'].map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex h-8 items-center rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 text-[11.5px] font-semibold text-[var(--muted)]"
-                  >
-                    {item}
-                  </span>
-                ))}
+              <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] font-medium text-[var(--faint)]">
+                <span>Different creators</span>
+                <span aria-hidden="true">·</span>
+                <span>Different audiences</span>
+                <span aria-hidden="true">·</span>
+                <span>One product</span>
               </div>
 
-              <div className="mt-6 flex items-start gap-2 text-[12px] leading-relaxed text-[var(--muted)]">
-                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[var(--ok)]" />
-                Every campaign is planned against a guaranteed delivery target and verified before
-                you’re billed.
+              <div className="mt-7 flex items-start gap-2.5 text-[12px] leading-relaxed text-[var(--muted)]">
+                <Users size={14} className="mt-0.5 shrink-0 text-[var(--a1)]" />
+                The point isn’t more posts. It’s more people hearing the same message.
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-7">
-              <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="glass-panel rounded-[28px] p-5 sm:p-7">
+              <div className="mb-5 flex items-center justify-between gap-3">
                 <p className="text-[12px] font-semibold text-[var(--text)]">
                   The crowd behind one campaign
                 </p>
-                <span className="text-[11px] font-medium text-[var(--faint)]">Hundreds of accounts</span>
+                <span className="text-[10.5px] font-medium uppercase tracking-[0.16em] text-[var(--faint)]">
+                  One campaign
+                </span>
               </div>
 
               <div className="grid grid-cols-10 gap-1.5 sm:gap-2" aria-hidden="true">
@@ -819,7 +745,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       className={`grid aspect-square place-items-center rounded-full ${
                         active
                           ? 'bg-gradient-mhomho text-[var(--ink)]'
-                          : 'border border-[var(--line)] bg-[var(--surface-2)] text-[var(--faint)]'
+                          : 'border border-[var(--line)] bg-[var(--surface)]/50 text-[var(--faint)]'
                       }`}
                     >
                       <User className="h-[42%] w-[42%]" strokeWidth={active ? 2.4 : 1.6} />
@@ -828,7 +754,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 })}
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-2 text-[10.5px] text-[var(--faint)]">
+              <div className="mt-5 flex items-center justify-between gap-2 text-[10.5px] text-[var(--faint)]">
                 <span>Different niches</span>
                 <span>Different audiences</span>
                 <span>Same brief</span>
@@ -836,17 +762,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+          <div className="mt-14 grid gap-8 border-t border-[var(--line)] pt-10 md:grid-cols-3">
             {[
               {
                 icon: Repeat2,
                 title: 'Frequency beats one big post',
-                copy: 'People rarely buy the first time they see something. Hundreds of clips put your product in front of the same buyer more than once.',
+                copy: 'People rarely buy the first time they see something. Repeated clips put your product in front of the same buyer more than once.',
               },
               {
                 icon: Users,
                 title: 'Every account is a new audience',
-                copy: 'You’re not limited to one follower count. You’re entering hundreds of communities at once.',
+                copy: 'You’re not limited to one follower count. You’re entering different communities at once.',
               },
               {
                 icon: MessageCircle,
@@ -854,15 +780,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 copy: 'A clip from someone people follow feels like a recommendation, not a sponsored interruption.',
               },
             ].map((reason) => (
-              <div
-                key={reason.title}
-                className="lift rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6"
-              >
-                <reason.icon size={20} className="text-[var(--a1)]" />
-                <h3 className="font-display mt-5 text-[17px] font-bold leading-snug">
+              <div key={reason.title}>
+                <reason.icon size={18} className="text-[var(--a1)]" />
+                <h3 className="font-display mt-5 text-[17px] font-semibold leading-snug tracking-[-0.02em]">
                   {reason.title}
                 </h3>
-                <p className="mt-2 text-[13.5px] leading-[1.65] text-[var(--muted)]">
+                <p className="mt-2 text-[13px] leading-[1.7] text-[var(--muted)]">
                   {reason.copy}
                 </p>
               </div>
@@ -874,37 +797,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ============================== CREATOR AWARDS ============================== */}
       <section
         id="awards"
-        className="relative scroll-mt-20 overflow-hidden border-b border-[var(--line)] py-20 sm:py-28"
+        className="relative scroll-mt-24 overflow-hidden border-b border-[var(--line)] py-20 sm:py-32"
       >
-        <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[520px] opacity-80" />
+        <div
+          aria-hidden="true"
+          className="landing-orb parallax-slow left-[-10%] top-[-10%] h-[480px] w-[480px] opacity-60"
+          style={{ background: 'radial-gradient(circle, rgba(255,159,10,0.2), transparent 70%)' }}
+        />
 
         <div className="relative mx-auto w-full max-w-[1200px] px-5 sm:px-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--a1)]/30 bg-[var(--a1)]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--a1)]">
-                <Trophy size={12} />
-                Coming soon
-              </span>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--a1)]">
+                Recognition
+              </p>
 
-              <h2 className="font-display mt-5 max-w-[18ch] text-[34px] font-bold leading-[0.98] tracking-[-0.03em] sm:text-[48px]">
+              <h2 className="font-display mt-5 max-w-[18ch] text-[34px] font-semibold leading-[0.96] tracking-[-0.055em] sm:text-[48px]">
                 Mhomho Creator <span className="text-gradient">Awards.</span>
               </h2>
 
-              <p className="mt-4 max-w-[58ch] text-[15px] leading-[1.7] text-[var(--muted)]">
+              <p className="mt-5 max-w-[58ch] text-[15px] leading-[1.75] text-[var(--muted)]">
                 Four trophies for the creators who move the most people. Every campaign month we
                 recognise the accounts that cross a verified-view milestone inside a single
                 campaign month — from 100,000 to 1,000,000.
               </p>
             </div>
 
-            <div className="shrink-0 border-l-2 border-[var(--a1)]/40 pl-5">
-              <p className="font-display text-gradient text-[22px] font-bold leading-tight">
+            <div className="shrink-0 border-l border-[var(--a1)]/40 pl-5">
+              <p className="font-display text-[22px] font-medium leading-tight tracking-[-0.03em] text-gradient">
                 Your reach.
                 <br />
                 Your legacy.
-              </p>
-              <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--faint)]">
-                The Mhomho standard
               </p>
             </div>
           </div>
@@ -913,7 +836,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {AWARDS.map((award) => (
               <article
                 key={award.tier}
-                className="group relative flex overflow-hidden rounded-2xl border border-[var(--line)] bg-[#060504] transition-[transform,border-color,box-shadow] duration-300 hover:border-[var(--line-strong)] hover:shadow-[var(--shadow-soft)] sm:block sm:hover:-translate-y-1"
+                className="group relative flex overflow-hidden rounded-[22px] border border-[var(--line)] bg-[#060504] transition-[transform,border-color,box-shadow] duration-300 hover:border-[var(--line-strong)] hover:shadow-[var(--shadow-soft)] sm:block sm:hover:-translate-y-1"
               >
                 <div className="relative w-[38%] shrink-0 overflow-hidden sm:w-full">
                   <img
@@ -941,7 +864,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <div className="relative flex flex-1 flex-col justify-center px-4 py-4 sm:-mt-2 sm:block sm:px-5 sm:pb-5 sm:pt-0">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-display text-[22px] font-bold leading-none tracking-[-0.02em] text-[var(--text)] sm:text-[24px]">
+                    <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[var(--text)] sm:text-[24px]">
                       {award.views}
                     </p>
                     <span
@@ -958,29 +881,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ))}
           </div>
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center">
             <p className="max-w-[64ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
-              Awards launch with the next full campaign month. Only verified views count — bought
-              views never will. Trophies are awarded per tier and recorded on your creator profile.
+              The first trophies go out with the next full campaign month. Only verified views count
+              — bought views never will. Each tier is recorded on your creator profile.
             </p>
-            <a
-              href="#creators"
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[var(--line-strong)] px-4 text-[12px] font-semibold text-[var(--text)] no-underline transition-colors hover:border-[var(--muted)]"
+            <button
+              type="button"
+              onClick={openCreatorFlow}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[var(--line-strong)] px-4 text-[12px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--muted)] cursor-pointer"
             >
               Apply as a creator
               <ArrowRight size={14} />
-            </a>
+            </button>
           </div>
         </div>
       </section>
 
       {/* ============================== INTELLIGENCE ============================== */}
-      <section id="why" className="scroll-mt-20 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-28">
+      <section id="why" className="scroll-mt-24 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-32">
         <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
-          <div className="grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-start lg:gap-16">
+          <div className="grid gap-14 lg:grid-cols-[0.92fr_1.08fr] lg:items-start lg:gap-20">
             <div>
               <SectionHeading
-                eyebrow="The intelligence"
                 title={
                   <>
                     We read the comments.
@@ -988,63 +911,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     Not just the views.
                   </>
                 }
-                copy="Views tell you what was seen. Comments tell you what Zimbabwe actually felt. Our AI analyzes sentiment across the comment sections of hundreds of posts in every campaign — to understand internet trends, interests, objections and buying signals."
+                copy="Views tell you what was seen. Comments tell you what Zimbabwe actually felt. Our AI reads the comment sections of every post in a campaign — to understand internet trends, interests, objections and buying signals."
               />
-              <p className="mt-6 max-w-[46ch] text-[13px] leading-relaxed text-[var(--faint)]">
+              <p className="mt-7 max-w-[46ch] text-[13px] leading-relaxed text-[var(--faint)]">
                 Every campaign teaches the next one. That is how we learn what Zimbabwe wants
                 before it becomes obvious.
               </p>
             </div>
 
-            <div className="grid gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2">
-              {[
-                {
-                  icon: MessageCircle,
-                  title: 'Zimbabwean sentiment',
-                  copy: 'Trained on how people here actually talk — not imported trend data.',
-                },
-                {
-                  icon: Repeat2,
-                  title: 'Every comment, not a sample',
-                  copy: 'We analyze the comment sections of each post in the campaign, at scale.',
-                },
-                {
-                  icon: Target,
-                  title: 'Interests & objections',
-                  copy: 'See what people ask for, doubt and share — the signals behind the views.',
-                },
-                {
-                  icon: Sparkles,
-                  title: 'Smarter every campaign',
-                  copy: 'Each campaign sharpens the next brief, creator match and creative direction.',
-                },
-              ].map((item) => (
-                <div key={item.title} className="bg-[var(--surface)] p-6">
-                  <item.icon size={19} className="text-[var(--a1)]" />
-                  <h3 className="font-display mt-4 text-[16px] font-bold leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-[13px] leading-[1.65] text-[var(--muted)]">
-                    {item.copy}
-                  </p>
-                </div>
-              ))}
+            <div className="glass-panel overflow-hidden rounded-[28px]">
+              <div className="grid gap-px bg-[var(--line)] sm:grid-cols-2">
+                {[
+                  {
+                    icon: MessageCircle,
+                    title: 'Zimbabwean sentiment',
+                    copy: 'Trained on how people here actually talk — not imported trend data.',
+                  },
+                  {
+                    icon: Repeat2,
+                    title: 'The whole conversation',
+                    copy: 'All comments in the campaign, not a sample.',
+                  },
+                  {
+                    icon: Target,
+                    title: 'Interests & objections',
+                    copy: 'See what people ask for, doubt and share — the signals behind the views.',
+                  },
+                  {
+                    icon: Sparkles,
+                    title: 'Smarter every campaign',
+                    copy: 'Each campaign sharpens the next brief, creator match and creative direction.',
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="bg-[var(--surface)]/60 p-7 sm:p-8">
+                    <item.icon size={19} className="text-[var(--a1)]" />
+                    <h3 className="font-display mt-5 text-[16px] font-semibold leading-snug tracking-[-0.02em]">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-[13px] leading-[1.7] text-[var(--muted)]">
+                      {item.copy}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 flex items-start gap-2.5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-[13px] leading-relaxed text-[var(--muted)]">
-            <Sparkles size={15} className="mt-0.5 shrink-0 text-[var(--a1)]" />
+          <p className="mt-10 max-w-[58ch] border-l border-[var(--a1)]/40 pl-5 text-[14px] leading-[1.7] text-[var(--muted)]">
             The result is not a report full of numbers. It is a sharper read on what to say next.
-          </div>
+          </p>
         </div>
       </section>
 
       {/* ============================== CREATORS ============================== */}
-      <section id="creators" className="scroll-mt-20 border-b border-[var(--line)] py-20 sm:py-28">
-        <div className="mx-auto grid w-full max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
+      <section id="creators" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-32">
+        <div className="mx-auto grid w-full max-w-[1200px] gap-14 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-20">
           <div className="lg:self-start">
             <SectionHeading
-              eyebrow="For creators"
               title={
                 <>
                   Get paid
@@ -1052,56 +975,54 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   to post content.
                 </>
               }
-              copy="You already make content. Mhomho pays you to post it for brands. No follower minimum, no gatekeeping. A new account with one clip at 1,000 views earns the same base $1 CPM as a page with 100,000 followers."
+              copy="You already make content. Mhomho pays you to post it for brands. No follower minimum, no gatekeeping. A new account with one qualifying clip earns the same base rate as a page with 100,000 followers."
             />
 
-            <div className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">
-                    Creator CPM · base rate
-                  </p>
-                  <p className="font-display mt-1 text-[40px] font-bold leading-none tracking-[-0.03em]">
-                    $1.00+
-                    <span className="ml-1.5 text-[13px] font-medium tracking-normal text-[var(--muted)]">
-                      / 1,000 verified views
-                    </span>
-                  </p>
-                </div>
-                <Banknote size={22} className="mb-1.5 shrink-0 text-[var(--a1)]" />
+            <div className="glass-panel mt-8 rounded-[24px] p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--faint)]">
+                Base rate
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-x-2 gap-y-1">
+                <span className="font-display text-[52px] font-semibold leading-none tracking-[-0.06em]">
+                  $1.00
+                </span>
+                <span className="pb-1 text-[13px] font-medium text-[var(--muted)]">
+                  + / 1,000 verified views
+                </span>
               </div>
-              <div className="mt-4 border-t border-[var(--line)] pt-4">
-                <p className="text-[12.5px] leading-relaxed text-[var(--muted)]">
-                  Base rate for 1,000 verified views. Final CPM depends on the campaign budget.
-                  Payouts go to EcoCash within 72 hours of a campaign closing.
-                </p>
-              </div>
+              <p className="mt-5 border-t border-[var(--line)] pt-4 text-[12.5px] leading-relaxed text-[var(--muted)]">
+                Final CPM depends on the campaign budget. Payouts go to EcoCash within 72 hours of a
+                campaign closing.
+              </p>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
+            <div className="mt-8 border-t border-[var(--line)] pt-7">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--a1)]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--a1)]">
                     Campaign Zero
                   </p>
-                  <p className="mt-1 text-[15px] font-bold text-[var(--text)]">
+                  <p className="mt-1.5 text-[16px] font-semibold text-[var(--text)]">
                     Unlock your dashboard.
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-[var(--warn)]/12 px-2.5 py-1 text-[9.5px] font-bold text-[var(--warn)]">
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--warn)]">
                   Required
                 </span>
               </div>
-              <p className="mt-2 text-[12px] leading-relaxed text-[var(--muted)]">
+              <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--muted)]">
                 The final step before approval. Prove you can make a clip people watch.
               </p>
-              <ol className="mt-3 space-y-2.5">
+              <ol className="mt-5 space-y-3">
                 {[
                   'Follow any Mhomho social page',
-                  'Post at least 3 clips featuring Mhomho',
-                  'Get 1,000+ views on one of those clips',
+                  'Post at least 1 clip featuring Mhomho (up to 3; extras optional)',
+                  'Get 500+ views on one of those clips',
                 ].map((item, index) => (
-                  <li key={item} className="flex items-start gap-2.5 text-[12px] leading-relaxed text-[var(--muted)]">
+                  <li
+                    key={item}
+                    className="flex items-start gap-3 text-[12.5px] leading-relaxed text-[var(--muted)]"
+                  >
                     <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[9.5px] font-bold text-[var(--text)]">
                       {index + 1}
                     </span>
@@ -1109,304 +1030,153 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 border-t border-[var(--line)] pt-3 text-[11px] leading-relaxed text-[var(--faint)]">
-                Complete it inside your account after sign-up. An admin verifies your views before
-                the dashboard unlocks.
+              <p className="mt-4 text-[11px] leading-relaxed text-[var(--faint)]">
+                Complete it inside your account within 15 days of sign-up. An admin verifies your
+                views before the dashboard unlocks.
               </p>
             </div>
 
-            <p className="mt-5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-              Any account size. A clip qualifies at 1,000 views. No bought views.
-            </p>
-
-            <p className="mt-6 text-[12px] text-[var(--faint)]">
-              After Campaign Zero is complete, applications are reviewed within 48 hours.
+            <p className="mt-6 text-[12.5px] leading-relaxed text-[var(--muted)]">
+              Any account size. No bought views. Applications are reviewed within 48 hours of
+              completion.
             </p>
           </div>
 
-          <div>
-            {appliedUid ? (
-              <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--ok)]/12 text-[var(--ok)]">
-                  <CheckCircle2 size={24} />
-                </span>
-                <h3 className="font-display mt-5 text-[26px] font-bold leading-tight">
-                  Account created.
-                  <br />
-                  Campaign Zero starts now.
-                </h3>
-                <p className="mt-2 max-w-[46ch] text-[14px] leading-[1.7] text-[var(--muted)]">
-                  You’re signed in as{' '}
-                  <span className="font-semibold text-[var(--text)]">
-                    @{creatorForm.handle.replace(/^@+/, '')}
-                  </span>{' '}
-                  on {creatorForm.platform}. Your dashboard is locked until you follow a Mhomho
-                  page, post 3 clips and get 1,000+ views on one of them.
-                </p>
-
-                <div className="mt-6 space-y-0 rounded-xl border border-[var(--line)]">
-                  {[
-                    ['Account created', 'Just now', true],
-                    ['Campaign Zero', 'Next step', false],
-                    ['Dashboard unlocked', 'After approval', false],
-                  ].map(([label, meta, done], index) => (
-                    <div
-                      key={String(label)}
-                      className={`flex items-center gap-3 px-4 py-3.5 ${
-                        index !== 2 ? 'border-b border-[var(--line)]' : ''
-                      }`}
-                    >
-                      <span
-                        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
-                          done
-                            ? 'bg-[var(--ok)]/15 text-[var(--ok)]'
-                            : 'border border-[var(--line)] text-[var(--faint)]'
-                        }`}
-                      >
-                        {done ? <Check size={12} /> : index + 1}
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <div className="glass-panel rounded-[28px] p-7 sm:p-8">
+              <h3 className="font-display text-[28px] font-semibold leading-[1.06] tracking-[-0.045em]">
+                Your first clip could start it.
+              </h3>
+              <p className="mt-4 text-[13.5px] leading-[1.75] text-[var(--muted)]">
+                Create your account, complete Campaign Zero, and get approved. It takes two minutes
+                to start.
+              </p>
+              <ol className="mt-7 space-y-4">
+                {[
+                  ['Create your account', 'Name, email, handle and password.'],
+                  ['Complete Campaign Zero', 'Post and submit your clip.'],
+                  ['Get approved, then earn', 'Paid clips need 1,000+ verified views. Base $1 CPM.'],
+                ].map(([title, copy], index) => (
+                  <li key={title} className="flex items-start gap-3">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[10px] font-bold text-[var(--text)]">
+                      {index + 1}
+                    </span>
+                    <span>
+                      <span className="block text-[13px] font-semibold text-[var(--text)]">
+                        {title}
                       </span>
-                      <span className="flex-1 text-[13px] font-medium text-[var(--text)]">{label}</span>
-                      <span className="text-[11.5px] text-[var(--faint)]">{meta}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => onCreatorApplySuccess(appliedUid)}
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
-                  >
-                    Start Campaign Zero
-                    <ArrowRight size={15} />
-                  </button>
-                  <a
-                    href={whatsappLink(
-                      `Hi Mhomho, I just applied as a creator. My handle is @${creatorForm.handle.replace(/^@+/, '')}.`
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--line-strong)] text-[13.5px] font-semibold text-[var(--text)] no-underline hover:border-[var(--muted)]"
-                  >
-                    <MessageCircle size={15} />
-                    Message onboarding
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleCreatorSubmit}
-                className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8"
+                      <span className="mt-0.5 block text-[12px] leading-relaxed text-[var(--muted)]">
+                        {copy}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={openCreatorFlow}
+                className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-display text-[22px] font-bold">Create your account</h3>
-                    <p className="mt-1 text-[13px] text-[var(--muted)]">
-                      Takes two minutes. Campaign Zero starts after sign-up.
-                    </p>
-                  </div>
-                  <span className="hidden shrink-0 rounded-full border border-[var(--line)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)] sm:inline-flex">
-                    Free
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={LABEL} htmlFor="creator-name">
-                      Full name
-                    </label>
-                    <input
-                      id="creator-name"
-                      value={creatorForm.name}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, name: e.target.value })}
-                      className={FIELD}
-                      placeholder="Tendai Moyo"
-                      autoComplete="name"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-email">
-                      Email
-                    </label>
-                    <input
-                      id="creator-email"
-                      type="email"
-                      value={creatorForm.email}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, email: e.target.value })}
-                      className={FIELD}
-                      placeholder="you@email.com"
-                      autoComplete="email"
-                      spellCheck={false}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-handle">
-                      Handle
-                    </label>
-                    <input
-                      id="creator-handle"
-                      value={creatorForm.handle}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, handle: e.target.value })}
-                      className={FIELD}
-                      placeholder="@yourhandle"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-platform">
-                      Main platform
-                    </label>
-                    <select
-                      id="creator-platform"
-                      value={creatorForm.platform}
-                      onChange={(e) =>
-                        setCreatorForm({ ...creatorForm, platform: e.target.value as Platform })
-                      }
-                      className={FIELD}
-                    >
-                      {PLATFORMS.map((platform) => (
-                        <option key={platform} value={platform}>
-                          {platform}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-followers">
-                      Followers (optional)
-                    </label>
-                    <input
-                      id="creator-followers"
-                      type="number"
-                      min="0"
-                      inputMode="numeric"
-                      value={creatorForm.followers}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, followers: e.target.value })}
-                      className={FIELD}
-                      placeholder="0 if brand new"
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-niche">
-                      Your niche
-                    </label>
-                    <select
-                      id="creator-niche"
-                      value={creatorForm.niche}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, niche: e.target.value })}
-                      className={FIELD}
-                    >
-                      {NICHES.map((niche) => (
-                        <option key={niche} value={niche}>
-                          {niche}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-whatsapp">
-                      WhatsApp number
-                    </label>
-                    <input
-                      id="creator-whatsapp"
-                      type="tel"
-                      value={creatorForm.whatsapp}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, whatsapp: e.target.value })}
-                      className={FIELD}
-                      placeholder="+263 77 000 0000"
-                      autoComplete="tel"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-password">
-                      Password
-                    </label>
-                    <input
-                      id="creator-password"
-                      type="password"
-                      value={creatorForm.password}
-                      onChange={(e) => setCreatorForm({ ...creatorForm, password: e.target.value })}
-                      className={FIELD}
-                      placeholder="At least 8 characters"
-                      autoComplete="new-password"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="creator-confirm-password">
-                      Confirm password
-                    </label>
-                    <input
-                      id="creator-confirm-password"
-                      type="password"
-                      value={creatorForm.confirmPassword}
-                      onChange={(e) =>
-                        setCreatorForm({ ...creatorForm, confirmPassword: e.target.value })
-                      }
-                      className={FIELD}
-                      placeholder="Repeat password"
-                      autoComplete="new-password"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <label className="mt-5 flex cursor-pointer items-start gap-3 text-[12.5px] leading-[1.55] text-[var(--muted)]">
-                  <input
-                    type="checkbox"
-                    checked={creatorForm.agreed}
-                    onChange={(e) => setCreatorForm({ ...creatorForm, agreed: e.target.checked })}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--a1)]"
-                  />
-                  <span>
-                    I’ll complete Campaign Zero (follow a Mhomho page, post 3 clips, one at 1,000+
-                    views) and keep clips live for 30 days. I understand I’m paid $1.00 per 1,000
-                    verified views after approval.
-                  </span>
-                </label>
-
-                {creatorError && (
-                  <p className="mt-4 rounded-lg border border-[var(--err)]/30 bg-[var(--err)]/10 px-3 py-2.5 text-[12.5px] font-medium text-[var(--err)]">
-                    {creatorError}
-                  </p>
-                )}
-
+                Get paid to post
+                <ArrowRight size={16} />
+              </button>
+              <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
+                Already have an account?{' '}
                 <button
-                  type="submit"
-                  disabled={creatorSubmitting}
-                  className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
+                  type="button"
+                  onClick={onOpenSignIn}
+                  className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)] cursor-pointer"
                 >
-                  {creatorSubmitting ? 'Creating account…' : 'Create account & start Campaign Zero'}
-                  <ArrowRight size={16} />
+                  Sign in
                 </button>
+              </p>
+              <a
+                href="/creator-guide"
+                onClick={openGuide}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--line)] px-4 py-3 text-[12px] font-semibold text-[var(--muted)] no-underline transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
+              >
+                <FileText size={13} className="text-[var(--a1)]" />
+                Read the creator guide
+                <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">
+                  PDF
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
-                <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={onOpenSignIn}
-                    className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)] cursor-pointer"
-                  >
-                    Sign in
-                  </button>
+      {/* ============================== BRAND PROOF ============================== */}
+      <section id="proof" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-28">
+        <div className="mx-auto w-full max-w-[1400px] px-5 sm:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--a1)]">
+                In the wild
+              </p>
+              <h2 className="font-display mt-4 max-w-[20ch] text-[34px] font-semibold leading-[0.96] tracking-[-0.055em] sm:text-[48px]">
+                Your product,
+                <br />
+                <span className="text-gradient">in feeds people already follow.</span>
+              </h2>
+            </div>
+            <p className="max-w-[48ch] text-[14px] leading-[1.75] text-[var(--muted)] sm:text-[15px]">
+              Not one post. A crowd of creators, each with their own audience, all showing what you
+              sell in the same campaign window.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <figure className="group relative overflow-hidden rounded-[28px] border border-[var(--line)] bg-[var(--surface)]">
+              <img
+                src="/images/brands-1.jpg"
+                alt="A creator surrounded by social posts featuring food, fashion and travel brands"
+                width={1191}
+                height={888}
+                loading="lazy"
+                decoding="async"
+                className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+              <figcaption className="absolute bottom-4 left-4 right-4 rounded-2xl bg-[#F7F4F0]/95 p-4 text-[#15110E] backdrop-blur">
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C2410C]">
+                  One product
                 </p>
-              </form>
-            )}
+                <p className="mt-1 text-[13px] font-semibold">
+                  A crowd of creators, one campaign window.
+                </p>
+              </figcaption>
+            </figure>
+
+            <figure className="group relative overflow-hidden rounded-[28px] border border-[var(--line)] bg-[var(--surface)]">
+              <img
+                src="/images/brands-2.jpg"
+                alt="A creator filming a beauty product with a ring light in her studio"
+                width={1271}
+                height={847}
+                loading="lazy"
+                decoding="async"
+                className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+              <figcaption className="absolute bottom-4 left-4 right-4 rounded-2xl bg-[#F7F4F0]/95 p-4 text-[#15110E] backdrop-blur">
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#C2410C]">
+                  Native content
+                </p>
+                <p className="mt-1 text-[13px] font-semibold">
+                  Made by people their audience already trusts.
+                </p>
+              </figcaption>
+            </figure>
           </div>
         </div>
       </section>
 
       {/* ============================== BRANDS ============================== */}
-      <section id="brands" className="scroll-mt-20 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-28">
-        <div className="mx-auto grid w-full max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
-          <div className="lg:sticky lg:top-24 lg:self-start">
+      <section id="brands" className="scroll-mt-24 border-b border-[var(--line)] bg-[var(--bg)] py-20 sm:py-32">
+        <div className="mx-auto grid w-full max-w-[1200px] gap-14 px-5 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-20">
+          <div className="lg:sticky lg:top-28 lg:self-start">
             <SectionHeading
-              eyebrow="For brands"
               title={
                 <>
                   Stop betting
@@ -1414,323 +1184,129 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   on one account.
                 </>
               }
-              copy="Tell us what you sell and who it’s for. We turn your budget into a guaranteed delivery plan, put your product in front of hundreds of creator audiences, and only bill for delivery verified as real."
+              copy="Tell us what you sell and who it’s for. We turn your budget into a guaranteed delivery plan, put your product in front of creator audiences, and only bill for delivery verified as real."
             />
 
-            <div className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--a1)]">
-                  Included free
-                </p>
-                <span className="rounded-full bg-[var(--ok)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--ok)]">
-                  With every campaign
-                </span>
-              </div>
+            <div className="mt-8 border-t border-[var(--line)] pt-7">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--a1)]">
+                Included with every campaign
+              </p>
 
-              <h3 className="font-display mt-4 text-[24px] font-bold leading-tight tracking-[-0.02em]">
+              <h3 className="font-display mt-4 text-[26px] font-semibold leading-[1.08] tracking-[-0.04em]">
                 No funnel?
                 <br />
                 We’ll build one.
               </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">
-                Run a campaign with Mhomho and get a conversion-ready sales funnel built at no
-                extra cost. Traffic without a next step is just noise.
+              <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted)]">
+                Run a campaign with Mhomho and get a conversion-ready sales funnel built at no extra
+                cost. Traffic without a next step is just noise.
               </p>
 
-              <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4">
+              <div className="mt-6 space-y-3 border-t border-[var(--line)] pt-5">
                 {[
                   'Landing page and offer',
                   'Tracking and follow-up',
-                  'Shaped by campaign comments',
+                  'Built from your campaign brief',
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-2.5 text-[12.5px] text-[var(--muted)]">
+                  <div
+                    key={item}
+                    className="flex items-center gap-2.5 text-[12.5px] text-[var(--muted)]"
+                  >
                     <Check size={14} className="shrink-0 text-[var(--a1)]" />
                     {item}
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
 
-          <div>
-            {brandSent ? (
-              <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--ok)]/12 text-[var(--ok)]">
-                  <CheckCircle2 size={24} />
-                </span>
-                <h3 className="font-display mt-5 text-[26px] font-bold leading-tight">
-                  Brief received.
-                </h3>
-                <p className="mt-2 max-w-[44ch] text-[14px] leading-[1.7] text-[var(--muted)]">
-                  Thanks {brandForm.name.split(' ')[0] || 'there'} — we’ll come back with a creator
-                  plan for {brandForm.biz} and a guaranteed delivery target. Usually within one working
-                  day.
-                </p>
-
-                <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--bg)] p-4">
-                  <dl className="space-y-2 text-[12.5px]">
-                    {[
-                      ['Promoting', brandForm.promo],
-                      ['Niche', brandForm.niche],
-                      ['Budget', brandForm.budget],
-                      ['Start', brandForm.start],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex justify-between gap-6">
-                        <dt className="shrink-0 text-[var(--faint)]">{label}</dt>
-                        <dd className="m-0 text-right font-medium text-[var(--text)]">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
-                  <a
-                    href={whatsappLink(`Hi Mhomho, here’s my campaign brief.\n\n${brandBrief}`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
-                  >
-                    <MessageCircle size={15} />
-                    Book a call on WhatsApp
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setBrandSent(false)}
-                    className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-[var(--line-strong)] text-[13.5px] font-semibold text-[var(--text)] cursor-pointer hover:border-[var(--muted)]"
-                  >
-                    Send another brief
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleBrandSubmit}
-                className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8"
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <div className="glass-panel rounded-[28px] p-7 sm:p-8">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--faint)]">
+                One-minute brief
+              </p>
+              <h3 className="font-display mt-4 text-[28px] font-semibold leading-[1.06] tracking-[-0.045em]">
+                Tell us what you sell. We’ll build the crowd.
+              </h3>
+              <p className="mt-4 text-[13.5px] leading-[1.75] text-[var(--muted)]">
+                Send a one-minute brief. We reply with a creator plan and a delivery target —
+                usually within one working day.
+              </p>
+              <ol className="mt-7 space-y-4">
+                {[
+                  ['Send your brief', 'Business, budget and what a win looks like.'],
+                  ['Get a plan', 'Creators, angles and a delivery target.'],
+                  ['Approve and launch', 'We run the campaign and report what was delivered.'],
+                ].map(([title, copy], index) => (
+                  <li key={title} className="flex items-start gap-3">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[10px] font-bold text-[var(--text)]">
+                      {index + 1}
+                    </span>
+                    <span>
+                      <span className="block text-[13px] font-semibold text-[var(--text)]">
+                        {title}
+                      </span>
+                      <span className="mt-0.5 block text-[12px] leading-relaxed text-[var(--muted)]">
+                        {copy}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={openBrandFlow}
+                className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-display text-[22px] font-bold">Start a campaign</h3>
-                    <p className="mt-1 text-[13px] text-[var(--muted)]">
-                      No sign-up. We reply with a plan and a guaranteed delivery target.
-                    </p>
-                  </div>
-                  <span className="hidden shrink-0 rounded-full border border-[var(--line)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)] sm:inline-flex">
-                    1 min
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={LABEL} htmlFor="brand-biz">
-                      Business name
-                    </label>
-                    <input
-                      id="brand-biz"
-                      value={brandForm.biz}
-                      onChange={(e) => setBrandForm({ ...brandForm, biz: e.target.value })}
-                      className={FIELD}
-                      placeholder="Glow Beauty Labs"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="brand-name">
-                      Your name
-                    </label>
-                    <input
-                      id="brand-name"
-                      value={brandForm.name}
-                      onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
-                      className={FIELD}
-                      placeholder="Rudo Chikafu"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="brand-phone">
-                      WhatsApp number
-                    </label>
-                    <input
-                      id="brand-phone"
-                      type="tel"
-                      value={brandForm.phone}
-                      onChange={(e) => setBrandForm({ ...brandForm, phone: e.target.value })}
-                      className={FIELD}
-                      placeholder="+263 77 000 0000"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL} htmlFor="brand-niche">
-                      Industry
-                    </label>
-                    <select
-                      id="brand-niche"
-                      value={brandForm.niche}
-                      onChange={(e) => setBrandForm({ ...brandForm, niche: e.target.value })}
-                      className={FIELD}
-                    >
-                      {NICHES.map((niche) => (
-                        <option key={niche} value={niche}>
-                          {niche}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className={LABEL} htmlFor="brand-promo">
-                    What are you promoting?
-                  </label>
-                  <textarea
-                    id="brand-promo"
-                    value={brandForm.promo}
-                    onChange={(e) => setBrandForm({ ...brandForm, promo: e.target.value })}
-                    className="min-h-[96px] w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3.5 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--faint)] focus:border-[var(--a1)]"
-                    placeholder="A new skincare line, a data bundle, a weekend event…"
-                    required
-                  />
-                </div>
-
-                <div className="mt-5">
-                  <p className={LABEL}>Budget</p>
-                  <div className="flex flex-wrap gap-2">
-                    {BUDGETS.map((budget) => {
-                      const selected = brandForm.budget === budget;
-                      return (
-                        <button
-                          key={budget}
-                          type="button"
-                          onClick={() => setBrandForm({ ...brandForm, budget })}
-                          className={`${CHIP} ${
-                            selected
-                              ? 'border-transparent bg-[var(--text)] text-[var(--page)]'
-                              : 'border-[var(--line)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]'
-                          }`}
-                        >
-                          {budget}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <p className={LABEL}>What would make this a win?</p>
-                  <div className="flex flex-wrap gap-2">
-                    {GOALS.map((goal) => {
-                      const selected = brandForm.goals.includes(goal);
-                      return (
-                        <button
-                          key={goal}
-                          type="button"
-                          onClick={() =>
-                            setBrandForm({
-                              ...brandForm,
-                              goals: selected
-                                ? brandForm.goals.filter((item) => item !== goal)
-                                : [...brandForm.goals, goal],
-                            })
-                          }
-                          className={`${CHIP} ${
-                            selected
-                              ? 'border-[var(--a1)]/40 bg-[var(--a1)]/10 text-[var(--text)]'
-                              : 'border-[var(--line)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]'
-                          }`}
-                        >
-                          {selected && <Check size={13} className="mr-1.5 text-[var(--a1)]" />}
-                          {goal}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <p className={LABEL}>When do you want to start?</p>
-                  <div className="flex flex-wrap gap-2">
-                    {START.map((start) => (
-                      <button
-                        key={start}
-                        type="button"
-                        onClick={() => setBrandForm({ ...brandForm, start })}
-                        className={`${CHIP} ${
-                          brandForm.start === start
-                            ? 'border-transparent bg-[var(--text)] text-[var(--page)]'
-                            : 'border-[var(--line)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {start}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {brandError && (
-                  <p className="mt-4 rounded-lg border border-[var(--err)]/30 bg-[var(--err)]/10 px-3 py-2.5 text-[12.5px] font-medium text-[var(--err)]">
-                    {brandError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
+                Start a campaign
+                <ArrowRight size={16} />
+              </button>
+              <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
+                Prefer to talk first?{' '}
+                <a
+                  href={contactLink('Hi Mhomho, I’d like to talk about a campaign.')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]"
                 >
-                  Get my campaign plan
-                  <ArrowRight size={16} />
-                </button>
-
-                <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
-                  Prefer to talk first?{' '}
-                  <a
-                    href={whatsappLink('Hi Mhomho, I’d like to talk about a campaign.')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]"
-                  >
-                    WhatsApp the team
-                  </a>
-                </p>
-              </form>
-            )}
+                  Email the team
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ============================== PARTNERS ============================== */}
-      <section id="partners" className="scroll-mt-20 border-b border-[var(--line)] py-14 sm:py-16">
-        <div className="mx-auto flex w-full max-w-[1200px] flex-col items-start justify-between gap-7 px-5 sm:px-8 lg:flex-row lg:items-center">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--a1)]">
-              Partners
-            </p>
-            <h2 className="font-display mt-2 text-[28px] font-bold leading-tight tracking-[-0.02em] sm:text-[32px]">
-              Bring your clients into the crowd.
-            </h2>
-            <p className="mt-2 max-w-[62ch] text-[13.5px] leading-relaxed text-[var(--muted)]">
-              Agencies, managers, media houses and venues — partner with Mhomho to give your
-              clients distribution at scale.
-            </p>
+      <section id="partners" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-24">
+        <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
+          <div className="glass-panel flex flex-col items-start justify-between gap-8 rounded-[28px] p-7 sm:p-10 lg:flex-row lg:items-center">
+            <div>
+              <h2 className="font-display text-[28px] font-semibold leading-tight tracking-[-0.04em] sm:text-[34px]">
+                Bring your clients into the crowd.
+              </h2>
+              <p className="mt-3 max-w-[62ch] text-[13.5px] leading-relaxed text-[var(--muted)]">
+                Agencies, managers, media houses and venues — partner with Mhomho to give your
+                clients distribution at scale.
+              </p>
+            </div>
+            <a
+              href={contactLink('Hi Mhomho, I’d like to partner with you.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[13.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
+            >
+              Partner with us
+              <ArrowRight size={15} />
+            </a>
           </div>
-          <a
-            href={whatsappLink('Hi Mhomho, I’d like to partner with you.')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[13.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
-          >
-            Partner with us
-            <ArrowRight size={15} />
-          </a>
         </div>
       </section>
 
       {/* ============================== FAQ ============================== */}
-      <section className="py-20 sm:py-24">
-        <div className="mx-auto grid w-full max-w-[1200px] gap-10 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+      <section className="py-20 sm:py-32">
+        <div className="mx-auto grid w-full max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
           <SectionHeading
-            eyebrow="Questions"
             title={
               <>
                 The short
@@ -1738,30 +1314,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 answers.
               </>
             }
-            copy="Still unsure? Message us on WhatsApp and a human will reply."
+            copy="Still unsure? Email support@mhomho.work and a human will reply."
           />
 
           <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {[
               {
                 q: 'What is Campaign Zero?',
-                a: 'Campaign Zero is the entry challenge for new creators. Follow a Mhomho social page, post at least 3 clips featuring Mhomho, and get 1,000+ views on one clip. Submit the links in your account and an admin verifies the views before unlocking the dashboard.',
+                a: 'Campaign Zero is the entry challenge for new creators. You get 15 days from sign-up. Follow a Mhomho social page, post at least 1 clip featuring Mhomho (up to 3; extras optional), and get 500+ views on one clip. Submit the links in your account and an admin verifies the views before unlocking the dashboard. Paid campaigns still require 1,000+ verified views per clip. If the window expires, start a new one and try again.',
               },
               {
-                q: 'Is delivery really guaranteed?',
-                a: 'Yes. Every campaign is planned against a guaranteed delivery target based on your budget. You are buying the outcome of hundreds of accounts posting about you — not a single post and a hope. Delivery is tracked and you only pay for verified delivery.',
+                q: 'How does billing work?',
+                a: 'You’re billed for delivery that checks out. Every campaign is planned against a delivery target based on your budget, tracked clip by clip, and clips under 1,000 views aren’t billed.',
               },
               {
-                q: 'What does the AI actually analyze?',
-                a: 'We analyze sentiment across the comment sections of hundreds of posts in each campaign — not just the view count. That helps us understand internet trends in Zimbabwe, what people are interested in, what they doubt, and what they want to see next.',
-              },
-              {
-                q: 'Do I need a sales funnel?',
-                a: 'No. If you run a campaign with Mhomho and don’t have one, we’ll build a conversion-ready funnel for free — landing page, offer, tracking and follow-up.',
+                q: 'What do I get at the end?',
+                a: 'A campaign report: the clips, view counts, spend, and a summary of what the comments said.',
               },
               {
                 q: 'How many creators will post my product?',
-                a: 'Hundreds of accounts per campaign, matched to your niche. Depending on budget and category it can be hundreds or even thousands of clips. The goal is always the same: put your product in front of as many different audiences as possible.',
+                a: 'It depends on your budget and niche. We match creators to the category and aim to put your product in front of as many different audiences as possible.',
               },
               {
                 q: 'How is the creator CPM decided?',
@@ -1799,37 +1371,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ============================== CTA ============================== */}
-      <section className="px-5 pb-20 sm:px-8">
-        <div className="relative mx-auto max-w-[1200px] overflow-hidden rounded-[26px] border border-[var(--line)] bg-[var(--surface)] px-6 py-12 sm:px-12 sm:py-16">
+      <section className="px-5 pb-24 sm:px-8 sm:pb-32">
+        <div className="glass-panel relative mx-auto max-w-[1200px] overflow-hidden rounded-[30px] px-6 py-14 sm:px-12 sm:py-20">
           <div
-            className="pointer-events-none absolute -right-24 -top-24 h-[360px] w-[360px] rounded-full opacity-40 blur-3xl"
-            style={{ background: 'var(--grad)' }}
+            aria-hidden="true"
+            className="landing-orb parallax-fast right-[-10%] top-[-30%] h-[420px] w-[420px] opacity-70"
+            style={{ background: 'radial-gradient(circle, rgba(255,159,10,0.24), transparent 70%)' }}
           />
-          <div className="relative flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
+          <div className="relative flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-center">
             <div>
-              <h2 className="font-display max-w-[20ch] text-[30px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[40px]">
-                Activate your crowd.
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--faint)]">
+                Start here.
+              </p>
+              <h2 className="font-display mt-5 max-w-[20ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.05em] sm:text-[46px]">
+                Start with one brief.
               </h2>
-              <p className="mt-3 max-w-[52ch] text-[14.5px] leading-relaxed text-[var(--muted)]">
-                Brands get a crowd. Creators get paid. One brief puts your product in front of
-                hundreds of different audiences — guaranteed delivery, creators paid from a base
-                $1 CPM, and a free funnel if you need one.
+              <p className="mt-4 max-w-[52ch] text-[14.5px] leading-relaxed text-[var(--muted)]">
+                Brands get a crowd. Creators get paid. Tell us what you’re launching and we’ll build
+                the plan.
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <a
-                href="#brands"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[13.5px] font-bold text-[var(--ink)] no-underline"
+              <button
+                type="button"
+                onClick={openBrandFlow}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[13.5px] font-bold text-[var(--ink)] cursor-pointer"
               >
                 Start a campaign
                 <ArrowRight size={15} />
-              </a>
-              <a
-                href="#creators"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--line-strong)] px-6 text-[13.5px] font-semibold text-[var(--text)] no-underline hover:border-[var(--muted)]"
+              </button>
+              <button
+                type="button"
+                onClick={openCreatorFlow}
+                className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--line-strong)] px-6 text-[13.5px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--muted)] cursor-pointer"
               >
                 Get paid to post
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -1839,16 +1416,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className="border-t border-[var(--line)]">
         <div className="mx-auto grid w-full max-w-[1200px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
-            <MhomhoLogo className="h-14 w-auto" />
+            <MhomhoLogo className="h-12 w-auto" />
             <p className="mt-4 max-w-[36ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
-              Activate your crowd. Too many to ignore. Hundreds of creator accounts posting about
-              your product, creator payouts from a base $1 CPM, and AI that learns from every
-              campaign.
+              Activate your crowd. Become impossible to ignore.
+            </p>
+            <a
+              href={APK_DOWNLOAD_URL}
+              download
+              className="press mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--a1)] px-5 text-[12.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
+            >
+              <Download size={16} strokeWidth={2.5} />
+              Download Android app
+            </a>
+            <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--faint)]">
+              Direct APK · Free · Android 6+
             </p>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
               Platform
             </p>
             <div className="mt-4 flex flex-col gap-2.5 text-[12.5px]">
@@ -1861,11 +1447,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <a href="#how" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 How it works
               </a>
+              <a href="#earnings" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
+                Creator earnings
+              </a>
               <a href="#crowd" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 Activate your crowd
               </a>
-              <a href="#awards" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
-                Creator Awards
+              <a href="#proof" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
+                Brand proof
               </a>
               <a href="#why" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 Intelligence
@@ -1873,8 +1462,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <a href="#creators" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 Creator applications
               </a>
+              <a
+                href="/creator-guide"
+                onClick={openGuide}
+                className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
+              >
+                <FileText size={12} className="text-[var(--a1)]" />
+                Creator guide
+                <span className="rounded-full border border-[var(--line)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">
+                  PDF
+                </span>
+              </a>
               <a href="#partners" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 Partner with us
+              </a>
+              <a
+                href="/resources"
+                className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
+              >
+                <BookOpen size={12} className="text-[var(--a1)]" />
+                Commercial Envoy programme
               </a>
               <button
                 type="button"
@@ -1887,17 +1494,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
               Contact
             </p>
             <div className="mt-4 flex flex-col gap-2.5 text-[12.5px]">
               <a
-                href={whatsappLink('Hi Mhomho, I’d like to know more.')}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:support@mhomho.work"
                 className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
               >
-                WhatsApp +263 78 620 5197
+                support@mhomho.work
                 <ArrowUpRight size={12} />
               </a>
               <span className="text-[var(--muted)]">Harare, Zimbabwe</span>
@@ -1906,12 +1511,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="border-t border-[var(--line)]">
-          <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2 px-5 py-5 text-[11.5px] text-[var(--faint)] sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-5 py-5 text-[11.5px] text-[var(--faint)] sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <span>© {new Date().getFullYear()} Mhomho Media. All rights reserved.</span>
-            <span>Built in Harare, for Zimbabwe.</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <a href="#/terms" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
+                Terms of Service
+              </a>
+              <a href="#/privacy" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
+                Privacy Policy
+              </a>
+              <span>Built in Harare, for Africa.</span>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* Mobile app-style persistent action bar. */}
+      <div className="glass-nav fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={openCreatorFlow}
+            className="press inline-flex h-12 items-center justify-center rounded-full bg-gradient-mhomho text-[12.5px] font-bold text-[var(--ink)] cursor-pointer"
+          >
+            Get paid to post
+          </button>
+          <button
+            type="button"
+            onClick={openBrandFlow}
+            className="press glass-panel inline-flex h-12 items-center justify-center rounded-full text-[12.5px] font-semibold text-[var(--text)] cursor-pointer"
+          >
+            Start a campaign
+          </button>
+        </div>
+      </div>
+
+      {flow === 'creator' && (
+        <CreatorSignupFlow
+          onClose={() => setFlow(null)}
+          onCreatorApplySuccess={onCreatorApplySuccess}
+          onOpenSignIn={onOpenSignIn}
+        />
+      )}
+      {flow === 'brand' && <BrandBriefFlow onClose={() => setFlow(null)} />}
     </div>
   );
 };

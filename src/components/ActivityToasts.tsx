@@ -96,7 +96,7 @@ export const ActivityToasts: React.FC<ActivityToastsProps> = ({ enabled, showHan
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-3 bottom-[78px] z-[70] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[360px]"
+      className="pointer-events-none fixed inset-x-3 bottom-[78px] z-[70] hidden flex-col items-stretch gap-2 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:flex sm:w-[360px]"
       aria-live="polite"
       role="status"
     >

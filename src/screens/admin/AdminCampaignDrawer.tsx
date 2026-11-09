@@ -1,13 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, Search, X } from 'lucide-react';
+import { Copy, Link2, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { Tag, type TagVariant } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
 import {
   campaignStatusLabel,
+  type BrandReportTokenDoc,
   type CampaignMemberDetail,
   type DatabaseState,
 } from '../../lib/firebase.ts';
-import { fetchCampaignMembers, setCampaignStatus } from '../../lib/api.ts';
+import {
+  createBrandToken,
+  fetchBrandTokens,
+  fetchCampaignMembers,
+  revokeBrandToken,
+  setCampaignStatus,
+} from '../../lib/api.ts';
 import { formatCents } from '../../lib/money.ts';
 import { absoluteTime, initials, relativeTime } from '../../lib/relativeTime.ts';
 
@@ -62,6 +69,14 @@ export const AdminCampaignDrawer: React.FC<AdminCampaignDrawerProps> = ({
   const [error, setError] = useState('');
   const [busyStatus, setBusyStatus] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [reportTokens, setReportTokens] = useState<BrandReportTokenDoc[]>([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [reportLabel, setReportLabel] = useState('Brand report');
+  const [reportDays, setReportDays] = useState(90);
+  const [newReportUrl, setNewReportUrl] = useState('');
+  const [copiedReportUrl, setCopiedReportUrl] = useState('');
 
   const searchRef = useRef('');
   const offsetRef = useRef(0);
@@ -89,6 +104,27 @@ export const AdminCampaignDrawer: React.FC<AdminCampaignDrawerProps> = ({
     },
     [campaignId]
   );
+
+  const loadReports = useCallback(async () => {
+    if (!campaignId) return;
+    setReportLoading(true);
+    setReportError('');
+    const result = await fetchBrandTokens(campaignId);
+    setReportLoading(false);
+    if (!result.success || !result.data) {
+      setReportError(result.success ? 'Could not load report links.' : result.error);
+      return;
+    }
+    setReportTokens(result.data.tokens);
+  }, [campaignId]);
+
+  useEffect(() => {
+    setReportTokens([]);
+    setNewReportUrl('');
+    setCopiedReportUrl('');
+    setReportError('');
+    void loadReports();
+  }, [campaignId, loadReports]);
 
   // Reload (debounced) whenever the campaign or the search term changes.
   useEffect(() => {
@@ -133,6 +169,47 @@ export const AdminCampaignDrawer: React.FC<AdminCampaignDrawerProps> = ({
     const result = await setCampaignStatus(campaignId, status);
     setBusyStatus(false);
     if (!result.success) setError(result.error || 'That status change was rejected.');
+  };
+
+  const createReport = async () => {
+    if (reportBusy) return;
+    setReportBusy(true);
+    setReportError('');
+    setCopiedReportUrl('');
+    const result = await createBrandToken(campaignId, reportLabel, reportDays);
+    setReportBusy(false);
+    if (!result.success || !result.data) {
+      setReportError(result.success ? 'Could not create the report link.' : result.error);
+      return;
+    }
+    setNewReportUrl(result.data.url);
+    await loadReports();
+  };
+
+  const copyReport = async (url: string) => {
+    try {
+      await window.navigator.clipboard.writeText(url);
+      setCopiedReportUrl(url);
+      window.setTimeout(() => setCopiedReportUrl((current) => (current === url ? '' : current)), 2500);
+    } catch {
+      window.prompt('Copy this report link:', url);
+    }
+  };
+
+  const revokeReport = async (token: BrandReportTokenDoc) => {
+    if (reportBusy) return;
+    if (!window.confirm(`Revoke "${token.label || 'this report link'}"? Anyone using it will lose access.`)) {
+      return;
+    }
+    setReportBusy(true);
+    setReportError('');
+    const result = await revokeBrandToken(campaignId, token.id);
+    setReportBusy(false);
+    if (!result.success) {
+      setReportError(result.error || 'Could not revoke the report link.');
+      return;
+    }
+    await loadReports();
   };
 
   const committed = stats?.poolUsedCents ?? 0;
@@ -255,6 +332,141 @@ export const AdminCampaignDrawer: React.FC<AdminCampaignDrawerProps> = ({
               {error}
             </div>
           )}
+
+          <section className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-[14px] font-bold">
+                  <Link2 size={14} className="text-[var(--a1)]" />
+                  Brand report
+                </h3>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">
+                  Share aggregate views, platform mix and creators joined. No creator identities
+                  are exposed.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadReports()}
+                disabled={reportLoading}
+                className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw size={11} className={reportLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={reportLabel}
+                onChange={(event) => setReportLabel(event.target.value)}
+                placeholder="Link label"
+                maxLength={120}
+                className="min-w-0 flex-1 rounded-[10px] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-[12px] text-[var(--text)] outline-none focus:border-[var(--a1)]"
+              />
+              <select
+                value={reportDays}
+                onChange={(event) => setReportDays(Number(event.target.value))}
+                className="rounded-[10px] border border-[var(--line)] bg-[var(--bg)] px-2.5 py-2 text-[12px] text-[var(--text)] outline-none focus:border-[var(--a1)]"
+              >
+                <option value={30}>30 days</option>
+                <option value={90}>90 days</option>
+                <option value={365}>1 year</option>
+              </select>
+              <Button
+                size="sm"
+                fullWidth={false}
+                disabled={reportBusy || reportLabel.trim().length < 2}
+                onClick={() => void createReport()}
+              >
+                {reportBusy ? 'Working…' : 'Create link'}
+              </Button>
+            </div>
+
+            {reportError && (
+              <p className="mt-2 text-[11.5px] font-semibold text-[var(--err)]">{reportError}</p>
+            )}
+
+            {newReportUrl && (
+              <div className="mt-3 rounded-[10px] border border-[var(--ok)]/35 bg-[var(--ok)]/8 p-2.5">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--ok)]">
+                  Copy this link now — it is only shown once
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    readOnly
+                    value={newReportUrl}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="min-w-0 flex-1 rounded-[8px] border border-[var(--line)] bg-[var(--bg)] px-2.5 py-2 text-[11px] text-[var(--text)]"
+                  />
+                  <Button
+                    size="sm"
+                    fullWidth={false}
+                    onClick={() => void copyReport(newReportUrl)}
+                  >
+                    <Copy size={12} />
+                    {copiedReportUrl === newReportUrl ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 overflow-hidden rounded-[10px] border border-[var(--line)]">
+              {reportLoading ? (
+                <p className="px-3 py-3 text-center text-[11.5px] text-[var(--muted)]">
+                  Loading report links…
+                </p>
+              ) : reportTokens.length === 0 ? (
+                <p className="px-3 py-3 text-center text-[11.5px] text-[var(--muted)]">
+                  No report links yet.
+                </p>
+              ) : (
+                <div className="divide-y divide-[var(--line)]">
+                  {reportTokens.map((token) => {
+                    const status = token.revokedAt
+                      ? 'revoked'
+                      : token.active
+                        ? 'active'
+                        : 'expired';
+                    return (
+                      <div key={token.id} className="flex items-start gap-2 px-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-[12px] font-bold">
+                              {token.label || 'Untitled link'}
+                            </p>
+                            <Tag variant={status === 'active' ? 'ok' : status === 'expired' ? 'warn' : 'err'}>
+                              {status}
+                            </Tag>
+                          </div>
+                          <p className="mt-0.5 text-[10.5px] text-[var(--faint)]">
+                            Created {absoluteTime(token.createdAt)} ·{' '}
+                            {token.expiresAt ? `Expires ${absoluteTime(token.expiresAt)}` : 'Never expires'}
+                          </p>
+                          <p className="text-[10.5px] text-[var(--faint)]">
+                            {token.lastViewedAt
+                              ? `Last viewed ${relativeTime(token.lastViewedAt, now)}`
+                              : 'Never viewed'}
+                          </p>
+                        </div>
+                        {token.active && (
+                          <button
+                            type="button"
+                            onClick={() => void revokeReport(token)}
+                            disabled={reportBusy}
+                            aria-label={`Revoke ${token.label || 'report link'}`}
+                            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--line)] text-[var(--muted)] hover:border-[var(--err)] hover:text-[var(--err)] disabled:opacity-50 cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
 
           <div className="mt-5 flex items-center justify-between gap-3">
             <h3 className="text-[14px] font-bold">

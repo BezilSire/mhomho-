@@ -13,6 +13,12 @@ import { testEnv } from './helpers.ts';
 /** Reverse dependency order so `DROP TABLE` never trips a foreign key. */
 const TABLES = [
   'd1_migrations',
+  'ambassador_reviews',
+  'ambassador_profiles',
+  'ambassador_documents',
+  'ambassador_applications',
+  'ambassador_id_sequence',
+  'link_previews',
   'forum_replies',
   'forum_threads',
   'notification_reads',
@@ -36,6 +42,7 @@ const TABLES = [
   'sessions',
   'audit_events',
   'idempotency_keys',
+  'invite_codes',
   'accounts',
   'enquiries',
   'rate_limits',

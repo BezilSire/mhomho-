@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
+import { LinkPreviewCard } from '../../components/LinkPreviewCard.tsx';
 import {
   DatabaseState,
   ClipDoc,
@@ -25,8 +26,9 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
 
   const openApproveModal = (clip: ClipDoc) => {
     setSelectedClip(clip);
-    // Prefill with publicViews or claimedViews
-    setVerifiedViewsInput(String(clip.publicViews || clip.claimedViews));
+    // Prefill from a previously observed count, then from the auto snapshot.
+    const knownViews = clip.publicViews || clip.preview?.views;
+    setVerifiedViewsInput(knownViews ? String(knownViews) : '');
     setVerifyModalAction('approve');
   };
 
@@ -122,8 +124,8 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
 
               <div className="text-[13px] text-[var(--muted)]">
                 {clip.flagged && clip.averageViews
-                  ? `${clip.platform} · claimed ${clip.claimedViews.toLocaleString()} · avg ${clip.averageViews.toLocaleString()}`
-                  : `${clip.platform} · claimed ${clip.claimedViews.toLocaleString()} · public ${clip.publicViews?.toLocaleString() || clip.claimedViews.toLocaleString()}`}
+                  ? `${clip.platform} · avg ${clip.averageViews.toLocaleString()}`
+                  : `${clip.platform} · awaiting verification`}
               </div>
 
               {clip.flagged && clip.spikeReason && (
@@ -161,6 +163,12 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
                   Check the live public view count on {selectedClip.platform}. Minimum 1,000 views required to qualify.
                 </p>
 
+                <LinkPreviewCard
+                  url={selectedClip.link}
+                  preview={selectedClip.preview}
+                  autoFetch={false}
+                />
+
                 <div className="mb-4">
                   <label className="block text-[13px] font-semibold text-[var(--muted)] mb-1">
                     Verified Public Views
@@ -171,9 +179,6 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
                     onChange={(e) => setVerifiedViewsInput(e.target.value)}
                     className="w-full px-3 py-2 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold"
                   />
-                  <div className="text-[12px] text-[var(--muted)] mt-1">
-                    Claimed by creator: {selectedClip.claimedViews.toLocaleString()}
-                  </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -214,7 +219,6 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
                 <div className="text-[13px] text-[var(--muted)] space-y-2 mb-4">
                   <div><strong>Creator:</strong> {selectedClip.creatorHandle}</div>
                   <div><strong>Platform:</strong> {selectedClip.platform}</div>
-                  <div><strong>Claimed Views:</strong> {selectedClip.claimedViews.toLocaleString()}</div>
                   <div>
                     <strong>Post Link:</strong>{' '}
                     {isAllowedSocialUrl(selectedClip.link) ? (
@@ -230,6 +234,12 @@ export const AdminVerificationQueue: React.FC<AdminVerificationQueueProps> = ({ 
                       <span className="break-all">{selectedClip.link}</span>
                     )}
                   </div>
+                  <LinkPreviewCard
+                    url={selectedClip.link}
+                    preview={selectedClip.preview}
+                    autoFetch={false}
+                    className="mb-0"
+                  />
                   <div className="pt-2">
                     <span className="block text-[12px] font-semibold text-[var(--muted)] mb-1">Analytics Proof:</span>
                     {selectedClip.screenshotUrl ? (

@@ -9,6 +9,10 @@ import {
   DEFAULT_MONEY_CONFIG,
   percentToBasisPoints,
 } from '../../../shared/money.ts';
+import {
+  CAMPAIGN_ZERO_MIN_VIEWS,
+  CAMPAIGN_ZERO_REQUIRED_CLIPS,
+} from '../../../shared/campaign.ts';
 import { assertTransition, settlementReady, type CampaignStatus } from '../campaigns.ts';
 import {
   badRequest,
@@ -69,7 +73,8 @@ export async function handleApproveCreator(ctx: Ctx): Promise<Response> {
   if (account.status !== 'applied') throw conflict('This application is not awaiting approval.');
 
   const profile = await ctx.env.DB.prepare(
-    `SELECT campaign_zero_follow_confirmed, campaign_zero_submitted_at
+    `SELECT campaign_zero_follow_confirmed, campaign_zero_submitted_at,
+            campaign_zero_deadline_at
        FROM creator_profiles WHERE account_id = ?`
   )
     .bind(ctx.params.id)
@@ -79,22 +84,47 @@ export async function handleApproveCreator(ctx: Ctx): Promise<Response> {
     throw badRequest('Campaign Zero is incomplete: the creator has not confirmed a follow.');
   }
   if (!profile.campaign_zero_submitted_at) {
+    if (
+      Number(profile.campaign_zero_deadline_at || 0) > 0 &&
+      Number(profile.campaign_zero_deadline_at) < Date.now()
+    ) {
+      throw badRequest('The creator’s 15-day Campaign Zero window has expired.');
+    }
     throw badRequest('The creator has not submitted Campaign Zero for review.');
   }
 
   const clips = await ctx.env.DB.prepare(
-    `SELECT claimed_views FROM creator_campaign_zero_clips WHERE account_id = ?`
+    `SELECT id, url, preview_views FROM creator_campaign_zero_clips WHERE account_id = ?`
   )
     .bind(ctx.params.id)
     .all<Row>();
   const rows = clips.results ?? [];
-  if (rows.length < 3) throw badRequest('Campaign Zero needs three clip links.');
-  if (!rows.some((row) => num(row.claimed_views) >= 1000)) {
-    throw badRequest('Campaign Zero needs one clip with at least 1,000 views.');
+  if (rows.length < CAMPAIGN_ZERO_REQUIRED_CLIPS) {
+    throw badRequest('Campaign Zero needs at least one clip link.');
+  }
+
+  const input = await body<{ verifiedClipId: string; verifiedViews: number }>(ctx, {
+    verifiedClipId: { type: 'string', required: true, min: 3, max: 120 },
+    verifiedViews: {
+      type: 'int',
+      required: true,
+      min: CAMPAIGN_ZERO_MIN_VIEWS,
+      max: 10_000_000_000,
+    },
+  });
+
+  const verifiedClip = rows.find((row) => str(row.id) === input.verifiedClipId);
+  if (!verifiedClip) {
+    throw badRequest('Select one of this creator’s Campaign Zero clips.');
   }
 
   const now = Date.now();
   await ctx.env.DB.batch([
+    ctx.env.DB.prepare(
+      `UPDATE creator_campaign_zero_clips
+          SET verified_views = ?, verified_by = ?, verified_at = ?
+        WHERE id = ? AND account_id = ?`
+    ).bind(input.verifiedViews, admin.id, now, input.verifiedClipId, ctx.params.id),
     ctx.env.DB.prepare(
       `UPDATE accounts SET status = 'approved', updated_at = ? WHERE id = ? AND status = 'applied'`
     ).bind(now, ctx.params.id),
@@ -110,7 +140,15 @@ export async function handleApproveCreator(ctx: Ctx): Promise<Response> {
     entityType: 'account',
     entityId: ctx.params.id,
     before: { status: 'applied' },
-    after: { status: 'approved' },
+    after: {
+      status: 'approved',
+      verifiedClipId: input.verifiedClipId,
+      verifiedViews: input.verifiedViews,
+      snapshotViews:
+        verifiedClip.preview_views === null || verifiedClip.preview_views === undefined
+          ? null
+          : num(verifiedClip.preview_views),
+    },
     requestId: ctx.requestId,
     ipHash: await hashIp(ctx.env, ctx.request),
   });
@@ -130,7 +168,7 @@ interface SubmissionContext {
 
 async function loadSubmission(ctx: Ctx): Promise<SubmissionContext | null> {
   const row = await ctx.env.DB.prepare(
-    `SELECT id, campaign_id, creator_id, status, platform, claimed_views
+    `SELECT id, campaign_id, creator_id, status, platform
        FROM submissions WHERE id = ?`
   )
     .bind(ctx.params.id)
@@ -245,7 +283,7 @@ export async function handleVerifySubmission(ctx: Ctx): Promise<Response> {
       ).bind(
         // Only views that were accepted for payment count as "verified" for
         // brand reporting; a below-threshold rejection must not be billed.
-        belowThreshold ? 0 : input.observedViews,
+        belowThreshold ? 0 : verifiedViews,
         earnings.eligibleViews,
         earnings.shortfallCents,
         now,
@@ -927,18 +965,7 @@ export async function handleCampaignPoster(ctx: Ctx): Promise<Response> {
   const objectKey = `campaign/${date}/${campaign.id}-${newId('obj').slice(-8)}.${sniffed.extension}`;
   const assetId = newId('asset');
 
-  await ctx.env.MEDIA.put(objectKey, buffer, {
-    httpMetadata: {
-      contentType: sniffed.contentType,
-      cacheControl: 'public, max-age=3600',
-      contentDisposition: 'inline',
-    },
-    customMetadata: {
-      ownerId: admin.id,
-      assetId,
-      visibility: 'public',
-    },
-  });
+  await ctx.env.PROOFS.put(objectKey, buffer);
 
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(

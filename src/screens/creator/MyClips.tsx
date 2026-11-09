@@ -21,12 +21,19 @@ export const MyClips: React.FC<MyClipsProps> = ({
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
-      <div className="flex justify-between items-center mb-[14px]">
-        <h2 className="text-[22px] font-extrabold leading-[1.2] m-0">
-          My Clips
-        </h2>
-        <Button size="sm" fullWidth={false} onClick={onSubmitNew}>
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-8 pt-5 sm:px-[18px] sm:pt-[22px]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-[26px] font-extrabold leading-[1.12] tracking-[-0.03em]">
+            My Clips
+          </h2>
+          <p className="mt-1 text-[12.5px] text-[var(--muted)]">
+            {clips.length === 0
+              ? 'Your submissions will appear here.'
+              : `${clips.length} submission${clips.length === 1 ? '' : 's'} tracked.`}
+          </p>
+        </div>
+        <Button size="sm" fullWidth={false} onClick={onSubmitNew} className="whitespace-nowrap">
           + Submit clip
         </Button>
       </div>
@@ -73,7 +80,7 @@ export const MyClips: React.FC<MyClipsProps> = ({
               <div className="text-[13px] text-[var(--muted)]">
                 {clip.status === 'verified' || clip.status === 'approved'
                   ? `${formatViews(clip.verifiedViews || clip.publicViews)} verified views`
-                  : `Claimed ${formatViews(clip.claimedViews)} views · submitted ${clip.createdAt}`}
+                  : `Awaiting verification · submitted ${clip.createdAt}`}
               </div>
 
               {(clip.status === 'verified' || clip.status === 'approved') && clip.earningsCents > 0 && (

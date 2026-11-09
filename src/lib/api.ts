@@ -19,9 +19,11 @@ import {
   getDatabaseState,
   setDatabaseState,
   type ActivityItem,
+  type BrandReportTokenDoc,
   type BrandViewDoc,
   type CampaignMemberDetail,
   type DatabaseState,
+  type LinkPreview,
   type Viewer,
 } from './firebase.ts';
 import type {
@@ -168,6 +170,20 @@ export async function apiHealth(): Promise<boolean> {
 /* Authentication                                                      */
 /* ------------------------------------------------------------------ */
 
+export interface SignupConfig {
+  mode: 'auto' | 'on' | 'off';
+  threshold: number;
+  creatorCount: number;
+  remaining: number;
+  inviteRequired: boolean;
+  inviteCodeTtlDays: number;
+}
+
+/** Public gate status used by the sign-up form. No account data is exposed. */
+export async function fetchSignupConfig(): Promise<ApiResult<SignupConfig>> {
+  return request<SignupConfig>('GET', '/api/auth/signup-config');
+}
+
 export interface RegisterInput {
   name: string;
   email: string;
@@ -177,6 +193,8 @@ export interface RegisterInput {
   followers: number;
   whatsappNumber: string;
   password: string;
+  /** Required only while the creator invite gate is active. */
+  inviteCode?: string;
 }
 
 export async function registerCreator(input: RegisterInput): Promise<ApiResult<{ uid: string }>> {
@@ -216,6 +234,287 @@ export async function loginAdmin(email: string, password: string): Promise<ApiRe
   return { success: true, data: result.data.viewer };
 }
 
+/* ------------------------------------------------------------------ */
+/* MHOMHO Ambassadors                                                  */
+/* ------------------------------------------------------------------ */
+
+export type AmbassadorStatus =
+  | 'submitted'
+  | 'under_review'
+  | 'needs_info'
+  | 'approved'
+  | 'rejected'
+  | 'withdrawn'
+  | 'suspended';
+
+export interface AmbassadorApplication {
+  id: string;
+  reference: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  territory: string | null;
+  languages: string[];
+  sectors: string[];
+  experience: string;
+  motivation: string;
+  personalStatement: string;
+  socialLinks: Record<string, string>;
+  consentTerms: boolean;
+  consentPrivacy: boolean;
+  status: AmbassadorStatus;
+  requestedInfo: string | null;
+  applicantResponse: string | null;
+  createdAt: number;
+  updatedAt: number;
+  approvedAt: number | null;
+  accountStatus: 'applied' | 'approved' | 'rejected' | 'suspended';
+  adminNotes?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: number | null;
+  username?: string | null;
+  ambassadorId?: string | null;
+  profileStatus?: string | null;
+}
+
+export interface AmbassadorProfile {
+  ambassadorId: string;
+  username: string;
+  publicName: string;
+  title: string;
+  bio: string;
+  country: string;
+  city: string;
+  languages: string[];
+  sectors: string[];
+  contactEmail: string | null;
+  contactWhatsapp: string | null;
+  socialLinks: Record<string, string>;
+  photoAssetId: string | null;
+  photoUrl: string | null;
+  status: 'draft' | 'published' | 'hidden' | 'suspended';
+  publishedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AmbassadorDocument {
+  id: string;
+  kind: 'document' | 'photo';
+  originalName: string | null;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: number;
+  url: string;
+}
+
+export interface AmbassadorMe {
+  accountStatus: 'applied' | 'approved' | 'rejected' | 'suspended';
+  application: AmbassadorApplication | null;
+  profile: AmbassadorProfile | null;
+  documents: AmbassadorDocument[];
+}
+
+export interface AmbassadorApplyInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  territory?: string;
+  languages: string[];
+  sectors: string[];
+  experience?: string;
+  motivation?: string;
+  personalStatement?: string;
+  socialLinks: Record<string, string>;
+  password: string;
+  consentTerms: boolean;
+  consentPrivacy: boolean;
+}
+
+export async function applyAmbassador(
+  input: AmbassadorApplyInput
+): Promise<ApiResult<AmbassadorMe>> {
+  const result = await request<BootstrapPayload>('POST', '/api/ambassadors/apply', input);
+  if (!result.success) return result;
+  if (result.data) applyBootstrap(result.data);
+  const me = await fetchAmbassadorMe();
+  return me;
+}
+
+export async function loginAmbassador(
+  email: string,
+  password: string
+): Promise<ApiResult<Viewer>> {
+  const result = await request<BootstrapPayload>('POST', '/api/ambassadors/login', {
+    email,
+    password,
+  });
+  if (!result.success) return result;
+  if (!result.data) return { success: false, error: 'The server did not return a session.' };
+  applyBootstrap(result.data);
+  if (!result.data.viewer) return { success: false, error: 'Sign-in did not create a session.' };
+  return { success: true, data: result.data.viewer };
+}
+
+export async function fetchAmbassadorMe(): Promise<ApiResult<AmbassadorMe>> {
+  return request<AmbassadorMe>('GET', '/api/ambassadors/me');
+}
+
+export async function updateAmbassadorApplication(
+  input: Partial<
+    Pick<
+      AmbassadorApplyInput,
+      | 'fullName'
+      | 'phone'
+      | 'city'
+      | 'country'
+      | 'territory'
+      | 'languages'
+      | 'sectors'
+      | 'experience'
+      | 'motivation'
+      | 'socialLinks'
+    >
+  > & { applicantResponse?: string }
+): Promise<ApiResult<{ application: AmbassadorApplication }>> {
+  return request('PATCH', '/api/ambassadors/application', input);
+}
+
+export async function uploadAmbassadorFile(
+  file: File,
+  kind: 'document' | 'photo'
+): Promise<ApiResult<{ document: AmbassadorDocument }>> {
+  if (file.size === 0) return { success: false, error: 'The selected file is empty.' };
+  if (file.size > MAX_PROOF_BYTES) {
+    return { success: false, error: 'Files must be under 5 MB.' };
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': file.type || 'application/octet-stream',
+    Accept: 'application/json',
+    'X-File-Name': encodeURIComponent(file.name),
+  };
+  const csrf = getCsrfToken();
+  if (!csrf) return { success: false, error: 'Sign in again before uploading.' };
+  headers['X-CSRF-Token'] = csrf;
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `/api/ambassadors/documents?kind=${kind === 'photo' ? 'photo' : 'document'}`,
+      {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: file,
+      }
+    );
+  } catch {
+    return { success: false, error: 'You appear to be offline. Check your connection and try again.' };
+  }
+
+  const payload = (await parseEnvelope(response)) as ApiEnvelope<{ document: AmbassadorDocument }>;
+  if (!response.ok) {
+    return {
+      success: false,
+      error: errorMessage(payload, response.status),
+      code: payload.error?.code,
+      status: response.status,
+    };
+  }
+  return { success: true, data: payload.data };
+}
+
+export async function updateAmbassadorProfile(input: {
+  publicName?: string;
+  bio?: string;
+  country?: string;
+  city?: string;
+  languages?: string[];
+  sectors?: string[];
+  contactEmail?: string | null;
+  contactWhatsapp?: string | null;
+  socialLinks?: Record<string, string>;
+  photoAssetId?: string | null;
+}): Promise<ApiResult<{ profile: AmbassadorProfile }>> {
+  return request('PATCH', '/api/ambassadors/profile', input);
+}
+
+export async function publishAmbassadorProfile(): Promise<
+  ApiResult<{ profile: AmbassadorProfile }>
+> {
+  return request('POST', '/api/ambassadors/profile/publish');
+}
+
+export async function fetchPublicAmbassador(username: string): Promise<
+  ApiResult<{
+    profile: AmbassadorProfile;
+    officialTitle: string;
+    officialDescription: string;
+    verified: boolean;
+  }>
+> {
+  return request('GET', `/api/public/ambassadors/${encodeURIComponent(username)}`);
+}
+
+export interface AdminAmbassadorApplication extends AmbassadorApplication {
+  username: string | null;
+  ambassadorId: string | null;
+  profileStatus: string | null;
+}
+
+export interface AdminAmbassadorList {
+  items: AdminAmbassadorApplication[];
+  counts: {
+    total: number;
+    submitted: number;
+    underReview: number;
+    needsInfo: number;
+    approved: number;
+    rejected: number;
+  };
+}
+
+export async function listAdminAmbassadorApplications(): Promise<
+  ApiResult<AdminAmbassadorList>
+> {
+  return request<AdminAmbassadorList>('GET', '/api/admin/ambassadors/applications');
+}
+
+export async function getAdminAmbassadorApplication(id: string): Promise<
+  ApiResult<{
+    application: AdminAmbassadorApplication;
+    documents: AmbassadorDocument[];
+    reviews: Array<{
+      id: string;
+      action: string;
+      note: string | null;
+      actorEmail: string | null;
+      createdAt: number;
+    }>;
+    profile: AmbassadorProfile | null;
+  }>
+> {
+  return request('GET', `/api/admin/ambassadors/applications/${encodeURIComponent(id)}`);
+}
+
+export async function decideAdminAmbassador(
+  id: string,
+  action: 'note' | 'request_info' | 'approve' | 'reject' | 'suspend' | 'reinstate',
+  note?: string
+): Promise<ApiResult> {
+  return request(
+    'POST',
+    `/api/admin/ambassadors/applications/${encodeURIComponent(id)}/decision`,
+    { action, note }
+  );
+}
+
 export async function logout(): Promise<void> {
   try {
     await request('POST', '/api/auth/logout');
@@ -238,7 +537,6 @@ export async function joinCampaign(campaignId: string): Promise<ApiResult> {
 export interface ClipSubmissionInput {
   platform: 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook';
   postUrl: string;
-  claimedViews: number;
   proofAssetId?: string | null;
 }
 
@@ -247,7 +545,6 @@ export interface SubmitClipInput {
   /** Legacy single-clip shape. Prefer `clips`. */
   platform?: 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook';
   postUrl?: string;
-  claimedViews?: number;
   proofAssetId?: string | null;
   /** Up to two clips, each on a different platform. */
   clips?: ClipSubmissionInput[];
@@ -259,9 +556,18 @@ export async function submitClip(input: SubmitClipInput): Promise<ApiResult<{ su
   return result;
 }
 
+/** Best-effort preview. The endpoint returns `available: false` on any failure. */
+export async function previewLink(
+  url: string
+): Promise<ApiResult<{ available: boolean; preview: LinkPreview | null }>> {
+  return request<{ available: boolean; preview: LinkPreview | null }>('POST', '/api/links/preview', {
+    url,
+  });
+}
+
 export interface CampaignZeroInput {
   followConfirmed: boolean;
-  clips: Array<{ url: string; claimedViews: number }>;
+  clips: Array<{ url: string }>;
 }
 
 export async function saveCampaignZero(input: CampaignZeroInput): Promise<ApiResult> {
@@ -272,6 +578,12 @@ export async function saveCampaignZero(input: CampaignZeroInput): Promise<ApiRes
 
 export async function submitCampaignZero(): Promise<ApiResult> {
   const result = await request('POST', '/api/campaign-zero/submit');
+  if (result.success) await refreshData();
+  return result;
+}
+
+export async function restartCampaignZero(): Promise<ApiResult<{ deadlineAt?: string }>> {
+  const result = await request<{ deadlineAt?: string }>('POST', '/api/campaign-zero/restart');
   if (result.success) await refreshData();
   return result;
 }
@@ -380,13 +692,62 @@ export async function uploadProof(file: File): Promise<ApiResult<{ assetId: stri
 /* Admin actions                                                       */
 /* ------------------------------------------------------------------ */
 
-export async function approveCreator(creatorId: string): Promise<ApiResult> {
+export interface ApproveCreatorInput {
+  verifiedClipId: string;
+  verifiedViews: number;
+}
+
+export async function approveCreator(
+  creatorId: string,
+  input: ApproveCreatorInput
+): Promise<ApiResult> {
   const result = await request(
     'POST',
-    `/api/admin/creators/${encodeURIComponent(creatorId)}/approve`
+    `/api/admin/creators/${encodeURIComponent(creatorId)}/approve`,
+    input
   );
   if (result.success) await refreshData();
   return result;
+}
+
+export type InviteMode = 'auto' | 'on' | 'off';
+export type InviteCodeStatus = 'active' | 'used' | 'expired' | 'revoked';
+
+export interface InviteCodeSummary {
+  id: string;
+  /** Last four characters, safe to show in a list. */
+  hint: string;
+  label: string | null;
+  createdAt: number;
+  expiresAt: number;
+  usedAt: number | null;
+  usedBy: string | null;
+  revokedAt: number | null;
+  status: InviteCodeStatus;
+}
+
+export interface AdminInvitesData extends SignupConfig {
+  codes: InviteCodeSummary[];
+}
+
+export async function fetchAdminInvites(): Promise<ApiResult<AdminInvitesData>> {
+  return request<AdminInvitesData>('GET', '/api/admin/invites');
+}
+
+export async function createInviteCode(
+  label?: string
+): Promise<ApiResult<{ id: string; code: string; hint: string; label: string | null; expiresAt: number }>> {
+  return request('POST', '/api/admin/invites', {
+    label: label?.trim() ? label.trim() : undefined,
+  });
+}
+
+export async function revokeInviteCode(id: string): Promise<ApiResult> {
+  return request('POST', `/api/admin/invites/${encodeURIComponent(id)}/revoke`);
+}
+
+export async function setInviteMode(mode: InviteMode): Promise<ApiResult<SignupConfig>> {
+  return request<SignupConfig>('PATCH', '/api/admin/invite-settings', { mode });
 }
 
 export async function verifyClip(
@@ -647,11 +1008,30 @@ export async function createBrandToken(
   campaignId: string,
   label?: string,
   expiresInDays?: number
-): Promise<ApiResult<{ token: string; path: string }>> {
-  return request<{ token: string; path: string }>(
+): Promise<ApiResult<{ token: string; path: string; url: string }>> {
+  return request<{ token: string; path: string; url: string }>(
     'POST',
     `/api/admin/campaigns/${encodeURIComponent(campaignId)}/brand-token`,
     { label: label?.trim() ? label.trim() : undefined, expiresInDays }
+  );
+}
+
+export async function fetchBrandTokens(
+  campaignId: string
+): Promise<ApiResult<{ tokens: BrandReportTokenDoc[] }>> {
+  return request<{ tokens: BrandReportTokenDoc[] }>(
+    'GET',
+    `/api/admin/campaigns/${encodeURIComponent(campaignId)}/brand-tokens`
+  );
+}
+
+export async function revokeBrandToken(
+  campaignId: string,
+  tokenId: string
+): Promise<ApiResult> {
+  return request(
+    'DELETE',
+    `/api/admin/campaigns/${encodeURIComponent(campaignId)}/brand-tokens/${encodeURIComponent(tokenId)}`
   );
 }
 

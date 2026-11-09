@@ -9,7 +9,12 @@
  */
 export interface Env {
   DB: D1Database;
-  MEDIA: R2Bucket;
+  /**
+   * Proof screenshots and campaign posters. Workers KV is used instead of R2 so
+   * the deployment needs no payment method; values are capped at 25 MiB and the
+   * Worker only ever reads them after an authorisation check.
+   */
+  PROOFS: KVNamespace;
   ASSETS: Fetcher;
 
   ENVIRONMENT: string;
@@ -22,6 +27,10 @@ export interface Env {
 
   ADMIN_SETUP_TOKEN?: string;
   IP_PEPPER?: string;
+  /** Optional YouTube Data API key; enables view/like counts on YouTube links. */
+  YOUTUBE_API_KEY?: string;
+  /** Test-only: skip outbound preview requests. */
+  LINK_PREVIEWS_DISABLED?: string;
   /**
    * Secret suffix for the operations console. The shell is served only at
    * `/console/<ADMIN_PATH>`; every other `/console/*` request is a 404.

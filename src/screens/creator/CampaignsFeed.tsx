@@ -53,10 +53,20 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
-      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
-        Campaigns
-      </h2>
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-8 pt-5 sm:px-[18px] sm:pt-[22px]">
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[26px] font-extrabold leading-[1.12] tracking-[-0.03em]">
+            Campaigns
+          </h2>
+          <p className="mt-1 text-[12.5px] text-[var(--muted)]">
+            Join a brief. Post a clip. Get paid.
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10.5px] font-semibold text-[var(--muted)]">
+          {campaigns.length} live
+        </span>
+      </div>
 
       {errorMsg && (
         <div className="p-3 mb-3 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
@@ -96,23 +106,23 @@ export const CampaignsFeed: React.FC<CampaignsFeedProps> = ({
             <Card
               key={camp.id}
               onClick={() => onSelectCampaign(camp.id)}
-              className="cursor-pointer hover:border-[var(--muted)] transition-colors"
+              className="tap-card cursor-pointer hover:border-[var(--muted)]"
             >
               {camp.posterUrl && (
                 <img
                   src={camp.posterUrl}
                   alt=""
-                  className="mb-3 h-32 w-full rounded-xl object-cover"
+                  className="mb-3 aspect-[16/9] w-full rounded-xl object-cover"
                   loading="lazy"
                 />
               )}
 
-              <div className="flex justify-between items-center gap-2 mb-1">
-                <b className="truncate text-[15px]">{camp.title}</b>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <b className="min-w-0 truncate text-[15.5px]">{camp.title}</b>
                 <Tag variant={isOpen ? 'ok' : 'err'}>{statusText}</Tag>
               </div>
 
-              <div className="text-[13px] text-[var(--muted)]">{camp.niche}</div>
+              <div className="text-[12.5px] text-[var(--muted)]">{camp.niche}</div>
 
               <ProgressBar percentage={poolPercent} />
 

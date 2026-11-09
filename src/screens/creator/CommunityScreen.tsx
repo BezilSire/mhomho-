@@ -711,20 +711,22 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({ currentUid }) 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[18px]">
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-8 pt-5 sm:px-[18px] sm:pt-[22px]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
             Approved creators
           </p>
-          <h2 className="font-display mt-1 text-[23px] font-bold leading-tight">Community</h2>
+          <h2 className="font-display mt-1 text-[26px] font-bold leading-tight tracking-[-0.03em]">
+            Community
+          </h2>
         </div>
         {notice && !selectedId ? (
           <span className="text-[10.5px] font-semibold text-[var(--ok)]">{notice}</span>
         ) : null}
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1">
+      <div className="sticky top-0 z-10 -mx-4 mb-4 grid grid-cols-3 gap-1 border-b border-[var(--line)] bg-[var(--page)]/95 px-4 py-2 backdrop-blur-xl sm:-mx-[18px] sm:px-[18px]">
         {SECTION_LABELS.map((item) => {
           const active = section === item.id;
           return (
@@ -735,7 +737,7 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({ currentUid }) 
                 setSection(item.id);
                 setNotice('');
               }}
-              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold transition-colors cursor-pointer ${
+              className={`press inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-2 text-[11px] font-bold transition-colors cursor-pointer ${
                 active
                   ? 'bg-[var(--surface-2)] text-[var(--text)]'
                   : 'text-[var(--muted)] hover:text-[var(--text)]'
@@ -767,7 +769,7 @@ const FilterButton: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`h-7 shrink-0 rounded-full px-2.5 text-[10.5px] font-semibold transition-colors cursor-pointer ${
+    className={`press h-9 shrink-0 rounded-full px-3 text-[11px] font-semibold transition-colors cursor-pointer ${
       active
         ? 'bg-[var(--text)] text-[var(--page)]'
         : 'border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]'
@@ -781,7 +783,7 @@ const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="mb-3 inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--line)] px-3 text-[11px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
+    className="press mb-3 inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3 text-[11px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
   >
     <ArrowLeft size={12} />
     All discussions

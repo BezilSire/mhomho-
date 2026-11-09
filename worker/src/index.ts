@@ -16,6 +16,7 @@ import {
   handleDeleteAccount,
   handleJoinCampaign,
   handleRequestPayout,
+  handleRestartCampaignZero,
   handleSaveCampaignZero,
   handleSubmitCampaignZero,
   handleSubmitClip,
@@ -64,7 +65,31 @@ import {
   handleBrandReport,
   handleCreateBrandToken,
   handleCreateEnquiry,
+  handleListBrandTokens,
+  handleRevokeBrandToken,
 } from './routes/public.ts';
+import {
+  handleAdminInvites,
+  handleCreateInvite,
+  handleInviteMode,
+  handleRevokeInvite,
+  handleSignupConfig,
+} from './routes/invites.ts';
+import { handleLinkPreview } from './routes/links.ts';
+import {
+  handleAdminAmbassadorDecision,
+  handleAdminAmbassadorGet,
+  handleAdminAmbassadorList,
+  handleAmbassadorApply,
+  handleAmbassadorApplicationUpdate,
+  handleAmbassadorAssetRead,
+  handleAmbassadorDocumentUpload,
+  handleAmbassadorLogin,
+  handleAmbassadorMe,
+  handleAmbassadorProfilePublish,
+  handleAmbassadorProfileUpdate,
+  handlePublicAmbassadorProfile,
+} from './routes/ambassadors.ts';
 import { runScheduled } from './cron.ts';
 
 const router = new Router();
@@ -90,9 +115,22 @@ router
   .get('/api/support/tickets/:id', handleGetTicket)
   .post('/api/support/tickets/:id/messages', handleReplyTicket)
   .patch('/api/admin/support/tickets/:id', handleUpdateTicket)
-  .post('/api/auth/register', handleRegister)
-  .post('/api/auth/login', handleCreatorLogin)
+  .get('/api/auth/signup-config', handleSignupConfig)
+  .post('/api/links/preview', handleLinkPreview)
+  .post('/api/auth/register', handleRegister)  .post('/api/auth/login', handleCreatorLogin)
   .post('/api/auth/admin/login', handleAdminLogin)
+  .post('/api/ambassadors/apply', handleAmbassadorApply)
+  .post('/api/ambassadors/login', handleAmbassadorLogin)
+  .get('/api/ambassadors/me', handleAmbassadorMe)
+  .patch('/api/ambassadors/application', handleAmbassadorApplicationUpdate)
+  .post('/api/ambassadors/documents', handleAmbassadorDocumentUpload)
+  .patch('/api/ambassadors/profile', handleAmbassadorProfileUpdate)
+  .post('/api/ambassadors/profile/publish', handleAmbassadorProfilePublish)
+  .get('/api/ambassador-assets/:id', handleAmbassadorAssetRead)
+  .get('/api/public/ambassadors/:username', handlePublicAmbassadorProfile)
+  .get('/api/admin/ambassadors/applications', handleAdminAmbassadorList)
+  .get('/api/admin/ambassadors/applications/:id', handleAdminAmbassadorGet)
+  .post('/api/admin/ambassadors/applications/:id/decision', handleAdminAmbassadorDecision)
   .post('/api/auth/logout', handleLogout)
   .post('/api/auth/password', handleChangePassword)
   .post('/api/setup/admin', handleAdminSetup)
@@ -102,6 +140,7 @@ router
   .post('/api/submissions', handleSubmitClip)
   .post('/api/campaign-zero', handleSaveCampaignZero)
   .post('/api/campaign-zero/submit', handleSubmitCampaignZero)
+  .post('/api/campaign-zero/restart', handleRestartCampaignZero)
   .patch('/api/profile', handleUpdateProfile)
   .post('/api/uploads/proof', handleProofUpload)
   .get('/api/assets/:id', handleAssetRead)
@@ -118,6 +157,12 @@ router
   .post('/api/admin/campaigns/:id/poster', handleCampaignPoster)
   .patch('/api/admin/campaigns/:id/status', handleCampaignStatus)
   .post('/api/admin/campaigns/:id/brand-token', handleCreateBrandToken)
+  .get('/api/admin/campaigns/:id/brand-tokens', handleListBrandTokens)
+  .delete('/api/admin/campaigns/:id/brand-tokens/:tokenId', handleRevokeBrandToken)
+  .get('/api/admin/invites', handleAdminInvites)
+  .post('/api/admin/invites', handleCreateInvite)
+  .post('/api/admin/invites/:id/revoke', handleRevokeInvite)
+  .patch('/api/admin/invite-settings', handleInviteMode)
   .patch('/api/admin/enquiries/:id', handleEnquiryStatus);
 
 const CONSOLE_CSP =
@@ -177,13 +222,17 @@ async function serveConsoleShell(request: Request, env: Env, url: URL): Promise<
   headers.set('Cache-Control', 'no-store');
   headers.set('X-Robots-Tag', 'noindex, nofollow');
   headers.set('Content-Security-Policy', CONSOLE_CSP);
-  return withSecurityHeaders(
+  const response = withSecurityHeaders(
     new Response(request.method === 'HEAD' ? null : asset.body, {
       status: 200,
       headers,
     }),
     env
   );
+  // Do not leak the secret console path through Referer headers on same-origin
+  // API calls or navigations.
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  return response;
 }
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {

@@ -21,6 +21,14 @@ export default defineConfig(() => {
       sourcemap: false,
     },
     server: {
+      // Temporary preview tunnels are common during mobile QA.
+      allowedHosts: [
+        '.lhr.life',
+        '.localhost.run',
+        '.pinggy.link',
+        '.serveo.net',
+        '.trycloudflare.com',
+      ],
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify - file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

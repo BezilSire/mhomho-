@@ -86,7 +86,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
       <button
         type="button"
         onClick={() => void handleOpen()}
-        className={`relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer ${className}`}
+        className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer sm:h-9 sm:w-9 ${className}`}
         title="Notifications"
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
       >
@@ -109,7 +109,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
               if (event.target === event.currentTarget) setOpen(false);
             }}
           >
-          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-soft)] sm:rounded-[22px]">
+          <div className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] border border-[var(--line)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-soft)] sm:rounded-[22px] sm:pb-0">
+            <div className="sheet-handle mt-2 sm:hidden" />
             <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3.5">
               <div>
                 <p className="font-display text-[15px] font-bold leading-tight">Notifications</p>
@@ -139,7 +140,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="app-scroll flex-1 overflow-y-auto">
               {loading && items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-[12px] text-[var(--muted)]">Loading…</p>
               ) : error ? (

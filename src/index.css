@@ -8,6 +8,9 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -21,11 +24,104 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "cv11", "ss01";
+  overflow-x: clip;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100%;
+}
+
+button,
+[role='button'],
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  touch-action: manipulation;
 }
 
 ::selection {
   background: rgba(255, 159, 10, 0.28);
   color: var(--text);
+}
+
+/* iOS Safari zooms the page when a focused field is under 16px. */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ===== Mobile app shell ===== */
+/* Scroll surfaces inside the app use momentum scrolling and never show a
+   desktop scrollbar. Content still scrolls normally. */
+.app-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.app-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Native-feeling press feedback. Use on buttons, cards and list rows. */
+.press {
+  transition: transform 0.16s var(--ease), opacity 0.16s var(--ease);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.tap-card {
+  transition: transform 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.tap-card:active {
+  transform: scale(0.985);
+}
+
+/* Safe areas for notched Android/iOS screens. */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Small grab handle used by bottom sheets. */
+.sheet-handle {
+  width: 38px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+
+/* Hover lift is meaningless on touch screens and can leave cards stuck in a
+   hovered state after a tap. Disable it where there is no hover. */
+@media (hover: none) {
+  .lift:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--line);
+  }
+}
+
+/* Standalone/PWA mode should feel edge-to-edge. */
+@media (display-mode: standalone) {
+  body {
+    background-color: var(--page);
+  }
 }
 
 /* Custom Scrollbar */
@@ -77,6 +173,65 @@ body {
     radial-gradient(52% 44% at 50% 0%, rgba(255, 159, 10, 0.20) 0%, rgba(240, 25, 27, 0.08) 38%, transparent 72%);
 }
 
+/* ===== Landing page editorial surface ===== */
+.landing-shell {
+  --parallax-slow: 0px;
+  --parallax-fast: 0px;
+}
+
+.landing-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.parallax-slow {
+  transform: translate3d(0, var(--parallax-slow), 0);
+}
+
+.parallax-fast {
+  transform: translate3d(0, var(--parallax-fast), 0);
+}
+
+/* Frosted surfaces used sparingly: rate cards, nav, CTA, bottom bar. */
+.glass-panel {
+  background: rgba(18, 17, 16, 0.72);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 78%, transparent),
+    color-mix(in srgb, var(--bg) 56%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 30px 80px -40px rgba(0, 0, 0, 0.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  backdrop-filter: blur(24px) saturate(1.15);
+}
+
+.glass-nav {
+  background: rgba(8, 7, 6, 0.72);
+  background: color-mix(in srgb, var(--page) 72%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .glass-panel {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 30px 80px -50px rgba(21, 17, 14, 0.22);
+  }
+}
+
+:root[data-theme="light"] .glass-panel {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 30px 80px -50px rgba(21, 17, 14, 0.22);
+}
+
 /* Hairline grid used sparingly behind the hero */
 .grid-lines {
   background-image:
@@ -110,8 +265,46 @@ body {
 .rise-3 { animation-delay: 0.2s; }
 .rise-4 { animation-delay: 0.28s; }
 
+/* Slow drift for layered hero cards. Uses `translate` so it composes with rotation. */
+@keyframes float-card {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+.float-card {
+  animation: float-card 8s ease-in-out infinite;
+}
+.float-card-delayed {
+  animation-delay: -3.5s;
+}
+
+/* Live payout ticker */
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+.ticker-track {
+  animation: marquee 34s linear infinite;
+  will-change: transform;
+}
+.marquee-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+/* Ambient orb drift. Uses `translate` so it composes with the parallax transform. */
+@keyframes orb-drift {
+  0% { translate: 0 0; }
+  100% { translate: 26px -20px; }
+}
+.orb-drift {
+  animation: orb-drift 14s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .rise, .lift { animation: none; transition: none; }
+  .rise, .lift, .float-card, .ticker-track, .orb-drift {
+    animation: none;
+    transition: none;
+  }
   .lift:hover { transform: none; }
+  .marquee-wrap:hover .ticker-track { animation-play-state: running; }
 }

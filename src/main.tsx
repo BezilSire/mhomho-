@@ -2,24 +2,14 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Safely clear any legacy service worker in background without blocking rendering
-try {
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        registration.unregister().catch(() => {});
-      }
-    }).catch(() => {});
-  }
-  if (typeof window !== 'undefined' && 'caches' in window) {
-    caches.keys().then((names) => {
-      for (const name of names) {
-        caches.delete(name).catch(() => {});
-      }
-    }).catch(() => {});
-  }
-} catch {
-  // Ignore any security or sandbox access exceptions in iframes
+// Register the PWA service worker in production. The worker caches the app
+// shell and static assets, but never API responses or the admin console.
+if (import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // The app still works online if registration is blocked.
+    });
+  });
 }
 
 const rootEl = document.getElementById('root');

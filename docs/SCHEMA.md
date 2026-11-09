@@ -1,7 +1,7 @@
 # MHOMHO — Data Model (D1 / SQLite)
 
-Date: 2026-10-24
-Migration: `migrations/0001_init.sql` + `migrations/0002_withdrawals.sql` + `migrations/0003_activity.sql`
+Date: 2026-10-30
+Migration: `migrations/0001_init.sql` through `migrations/0010_ambassadors.sql`
 
 All timestamps are **Unix epoch milliseconds** (`INTEGER`). All money is
 **integer US cents** and `currency` is constrained to `'USD'`. No floating point
@@ -30,7 +30,14 @@ campaigns ──1:1── campaign_counters
    ├──1:N── campaign_assets
    └──1:N── brand_report_tokens
 
-enquiries, audit_events, rate_limits, app_config, idempotency_keys — standalone
+accounts ──1:N── invite_codes (created_by; optional accounts.invite_code_id)
+
+accounts ──1:1── ambassador_applications ──1:N── ambassador_documents
+accounts ──1:1── ambassador_profiles ──0..1── ambassador_documents (photo_asset_id)
+ambassador_applications ──1:N── ambassador_reviews
+ambassador_id_sequence ── standalone single-row counter
+
+enquiries, audit_events, rate_limits, app_config, idempotency_keys, link_previews — standalone
 ```
 
 ## 2. Accounts and identity
@@ -45,14 +52,39 @@ One row per login identity.
 | `email` | As entered, for display. |
 | `email_normalized` | Lowercased; **UNIQUE**; used for login. |
 | `password_hash` / `password_salt` | PBKDF2-SHA256, hex. Never leaves the Worker. |
-| `password_iterations` | `CHECK >= 100000`, default 210000. |
+| `password_iterations` | `CHECK >= 100000`, schema default 210000; the application always writes 100000 (Cloudflare's production ceiling) and verifies using the stored value. |
 | `role` | `creator \| admin \| business`. |
 | `status` | `applied \| approved \| rejected \| suspended`. |
 | `session_version` | Bumped by "revoke all sessions"; session rows carry a role snapshot. |
 | `last_login_at` | Nullable. |
 | `deleted_at` | Set when the creator self-deletes; PII is anonymised and sessions revoked. |
+| `invite_code_id` | Nullable. The invite claimed at registration, if the gate was active. The trigger validates the claim; no foreign key, to avoid a cycle with `invite_codes.created_by`. |
 
 Indexes: `(role, status)`, `(created_at DESC)`.
+
+### `invite_codes`
+
+Single-use creator invites. Sign-up is open until the roster reaches 3,000
+creator accounts, or until an administrator forces invite-only mode. The raw
+code is returned once at creation; only a SHA-256 hash and a four-character hint
+are stored.
+
+| Column | Notes |
+| --- | --- |
+| `id` | `TEXT` primary key, prefixed (`inv_…`). |
+| `code_hash` | SHA-256 of the normalised code. **UNIQUE**. |
+| `code_hint` | Last four characters, shown in the admin list. |
+| `label` | Optional operator note. |
+| `created_by` | Admin account that issued the code. |
+| `created_at` / `expires_at` | Epoch ms. Codes expire after 30 days. |
+| `used_at` / `used_by` | Set atomically with the account insert. |
+| `revoked_at` | Set by an administrator; used codes cannot be revoked. |
+
+`app_config.creator_invite_mode` is `auto`, `on` or `off`.
+`app_config.creator_invite_threshold` defaults to `3000`. The
+`accounts_creator_invite_required` trigger closes the gate, and
+`accounts_creator_invite_valid` guarantees the account claimed the invite in the
+same batch.
 
 ### `creator_profiles`
 
@@ -61,16 +93,24 @@ Indexes: `(role, status)`, `(created_at DESC)`.
 | `account_id` | PK, FK → `accounts`, `ON DELETE RESTRICT`. |
 | `display_name`, `handle`, `handle_normalized` | `UNIQUE (handle_normalized, platform)`. |
 | `platform` | `TikTok \| Instagram \| YouTube \| Facebook`. |
-| `avatar_key` | One of 16 preset keys; default `sun`. No uploaded image or R2 object. |
+| `avatar_key` | One of 16 preset keys; default `sun`. No uploaded image or KV object. |
 | `niche`, `followers`, `whatsapp_number`, `ecocash_number` | Contact/payout data; never sent to anonymous users. |
 | `campaign_zero_follow_confirmed` | `0/1`; admin approval requires `1`. |
-| `campaign_zero_submitted_at`, `approved_at` | Timestamps. |
+| `campaign_zero_submitted_at` | Set when proof is submitted; locks the proof. |
+| `campaign_zero_deadline_at` | Sign-up + 15 days. An expired attempt must be restarted before saving or submitting. |
+| `approved_at` | Set when an admin approves the creator. |
 
 ### `creator_campaign_zero_clips`
 
-Exactly three rows per applicant (`position` 0–2, `UNIQUE (account_id, position)`).
+One to three rows per applicant (`position` 0–2, `UNIQUE (account_id, position)`).
+At least one row is required to save or submit; the other two are optional.
 `url_normalized` is globally **UNIQUE**, so the same post cannot seed two
-applications.
+applications. The creator submits links only; admins verify the live view count
+before approval (at least 500 views). `claimed_views` is legacy and written as
+`0`. The `preview_*` columns hold the best-effort snapshot captured at save time.
+On approval the Worker requires `verified_views >= 500` for the selected clip
+and stores `verified_views`, `verified_by` and `verified_at`; the approval API
+rejects a missing count, a count below 500, or a clip owned by another creator.
 
 ### `sessions`
 
@@ -149,10 +189,20 @@ out of sync with the membership it describes.
 | `campaign_id`, `creator_id` | Composite FK → `campaign_members`; a non-member cannot submit. |
 | `platform` | Same enum as profiles. |
 | `post_url`, `post_url_normalized` | Normalised URL is **UNIQUE** across the whole system. |
-| `claimed_views` | Creator's claim; never used for payment. |
+| `claimed_views` | Legacy creator claim, written as `0`; never used for payment or approval. |
+| `preview_title`, `preview_author`, `preview_thumbnail_url`, `preview_provider` | Best-effort oEmbed snapshot stored at submission time. |
+| `preview_views`, `preview_likes`, `preview_source`, `preview_fetched_at` | Optional counts and source. Only YouTube provides official counts (Data API v3); admins still verify manually. |
 | `proof_asset_id` | Points at a private `campaign_assets` row (not a FK, by design: assets may be purged). |
 | `status` | `submitted \| approved \| rejected \| withdrawn`. |
 | `review_note`, `reviewed_by`, `reviewed_at` | Manual review trail. |
+
+### `link_previews`
+
+Short-lived cache keyed by the canonical post URL (`url_key`). Only fixed
+platform oEmbed/API hosts are contacted; redirects are refused and each request
+has a 4-second timeout. `expires_at` is one hour after `fetched_at`. A failed
+lookup returns `available: false` and is never written, so the form can always
+fall back to manual review.
 
 ### `submission_reviews`
 
@@ -235,7 +285,7 @@ credits on that campaign.
 | Column | Notes |
 | --- | --- |
 | `kind` | `poster \| brand_logo \| brand_material \| proof_screenshot`. |
-| `object_key` | UNIQUE R2 key; generated server-side, never client-supplied. |
+| `object_key` | UNIQUE KV key; generated server-side, never client-supplied. |
 | `content_type` | Sniffed from magic bytes for uploads. |
 | `size_bytes` | `CHECK > 0`. |
 | `checksum_sha256` | Integrity reference. |
@@ -316,6 +366,56 @@ Append-only creator replies. `status` is `active` or `hidden`; body length is
 authors are `ON DELETE RESTRICT` like other attributed content. Hiding a reply
 keeps the text for moderation and adjusts the thread's `reply_count`.
 
+## 6A. Ambassadors (Phase 1)
+
+Ambassador accounts reuse the existing `business` role. That role is excluded
+from creator login and from every creator campaign, submission and payout API.
+Public surfaces always say "MHOMHO Ambassador" or "Commercial Envoy"; they never
+expose the internal `business` role name. No financial tables are involved.
+
+### `ambassador_applications`
+
+One row per applicant account. `reference` is the public application reference
+(`AMB-YYYY-XXXXXX`); `account_id` is unique. Status is `submitted`,
+`under_review`, `needs_info`, `approved`, `rejected`, `withdrawn` or
+`suspended`. `admin_notes`, `reviewed_by` and `reviewed_at` are private and are
+only returned by admin endpoints. `requested_info` and `applicant_response`
+support the "more information" loop. `languages`, `sectors` and `social_links`
+are JSON text validated by `json_valid`.
+
+### `ambassador_documents`
+
+Private application documents and public profile photographs. `kind` is
+`document` or `photo`; `visibility` is `private` or `public`, and a database
+`CHECK` forbids public documents. Files live in the existing `PROOFS` KV
+namespace; the row stores the object key, sniffed content type, size and optional
+SHA-256 checksum. `application_id` is null for photographs.
+
+### `ambassador_profiles`
+
+Created in `draft` status by admin approval. `ambassador_id` is the public
+`MH-AMB-000001` identifier and `username` is the public route segment. MHOMHO
+controls `title`, `ambassador_id`, `status` and the verified badge; ambassadors
+may edit `public_name`, `bio`, location, languages, sectors, public contact
+details, social links and their photograph. `photo_asset_id` references an
+`ambassador_documents` row with `kind = 'photo'`.
+
+### `ambassador_reviews`
+
+Append-only private review history (`note`, `request_info`, `approve`, `reject`,
+`suspend`, `reinstate`) with the acting admin account and timestamp.
+
+### `ambassador_id_sequence`
+
+Single-row counter. Approval advances it once with
+`UPDATE ... RETURNING next_value - 1` and formats the result as
+`MH-AMB-` plus six digits.
+
+Public profile visibility requires both `ambassador_profiles.status =
+'published'` and the linked `accounts.status = 'approved'`. Suspending or
+rejecting an appointment hides the profile immediately; the public endpoint
+returns `404` rather than presenting an inactive appointment as authorised.
+
 ## 7. Integrity guards (triggers)
 
 | Trigger | Effect |
@@ -343,6 +443,13 @@ ledger insert.
 6. `payout_allocations` per campaign never exceed that creator's credits.
 7. Proof screenshots are always `private`.
 8. Deleting a ledger row is impossible.
+9. An ambassador profile is publicly visible only when the profile is
+   `published` and the account is `approved`.
+10. An application document is never publicly readable; only the owner and an
+    approved admin may read it.
+11. An ambassador can receive at most one profile and one Ambassador ID.
+12. Public profile responses never include admin notes, review history or
+    application documents.
 
 The Vitest suite asserts 1–7 directly, including a concurrent-verification race
 that must produce one payment and a non-zero shortfall (or a clean `409`).

@@ -8,6 +8,7 @@ import { LineChart } from '../../components/LineChart.tsx';
 import { Button } from '../../components/Button.tsx';
 import { DatabaseState } from '../../lib/firebase.ts';
 import { formatCents, formatViews, formatPercent } from '../../lib/money.ts';
+import { absoluteTime } from '../../lib/relativeTime.ts';
 
 export interface BrandCampaignPageProps {
   token: string;
@@ -48,11 +49,13 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
     brandDoc.budgetCents
   );
 
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Hi Mhomho, checking in on our campaign "${brandDoc.title}". Delivered: ${formatViews(brandDoc.verifiedViews)} of ${formatViews(brandDoc.guaranteedViews)} guaranteed views.`
-    );
-    window.open(`https://wa.me/263786205197?text=${text}`, '_blank');
+  const platformMix = brandDoc.platformMix ?? [];
+  const topPlatform = platformMix.find((platform) => platform.verifiedViews > 0);
+
+  const handleEmail = () => {
+    const body = `Hi Mhomho, checking in on our campaign "${brandDoc.title}". Delivered: ${formatViews(brandDoc.verifiedViews)} of ${formatViews(brandDoc.guaranteedViews)} guaranteed views.`;
+    const subject = encodeURIComponent(`Campaign check-in: ${brandDoc.title}`);
+    window.location.href = `mailto:support@mhomho.work?subject=${subject}&body=${encodeURIComponent(body)}`;
   };
 
   const handleTopUpSubmit = (e: React.FormEvent) => {
@@ -74,9 +77,14 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
         <Tag variant="ok">Live</Tag>
       </div>
 
-      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
+      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-1">
         {brandDoc.title}
       </h2>
+      <p className="mb-[14px] text-[11px] text-[var(--faint)]">
+        {brandDoc.lastUpdatedAt
+          ? `Views updated ${absoluteTime(brandDoc.lastUpdatedAt)}`
+          : 'No verified views yet'}
+      </p>
 
       {/* Main Delivery Ring Card */}
       <Card>
@@ -101,6 +109,55 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
         <Tile label="Clips live" value={brandDoc.clipsLive} />
       </TilesContainer>
 
+      {/* Platform mix */}
+      <Card>
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <b className="block text-[14px]">Verified views by platform</b>
+            <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+              Based on where each approved clip was posted.
+            </p>
+          </div>
+          {topPlatform && <Tag variant="ok">{topPlatform.platform}</Tag>}
+        </div>
+
+        {brandDoc.verifiedViews === 0 ? (
+          <p className="py-2 text-[12px] text-[var(--muted)]">
+            No views have been verified yet. This section fills in as clips are reviewed.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {platformMix.map((platform) => (
+              <div key={platform.platform}>
+                <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                  <span className="font-semibold">{platform.platform}</span>
+                  <span className="tabular-nums">
+                    <b>{formatViews(platform.verifiedViews)}</b>{' '}
+                    <span className="text-[11px] text-[var(--muted)]">
+                      {platform.sharePct.toFixed(1)}%
+                    </span>
+                  </span>
+                </div>
+                <div className="mt-1 h-[6px] overflow-hidden rounded-full bg-[var(--surface-2)]">
+                  <div
+                    className="h-full rounded-full bg-gradient-mhomho"
+                    style={{ width: `${platform.sharePct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-[var(--faint)]">
+                  {platform.clips} approved clip{platform.clips === 1 ? '' : 's'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center justify-between border-t border-[var(--line)] pt-2.5 text-[12px]">
+          <span className="text-[var(--muted)]">Total</span>
+          <b className="tabular-nums">{formatViews(brandDoc.verifiedViews)}</b>
+        </div>
+      </Card>
+
       {/* Budget Used Card */}
       <Card>
         <div className="flex justify-between items-center text-[13px] mb-1">
@@ -114,7 +171,7 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
 
       {/* Views Over Time Chart */}
       <Card>
-        <b className="block text-[14px] mb-2">Views over time</b>
+        <b className="block text-[14px] mb-2">Verified views over time</b>
         <LineChart data={brandDoc.viewsSeries} height={80} />
       </Card>
 
@@ -123,8 +180,8 @@ export const BrandCampaignPage: React.FC<BrandCampaignPageProps> = ({
         <Button onClick={() => setShowTopUpModal(true)}>
           Top up this campaign
         </Button>
-        <Button variant="ghost" onClick={handleWhatsApp}>
-          WhatsApp Mhomho
+        <Button variant="ghost" onClick={handleEmail}>
+          Email Mhomho
         </Button>
       </div>
 

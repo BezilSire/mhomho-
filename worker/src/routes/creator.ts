@@ -8,7 +8,13 @@ import { cookieSecurity, newId, sessionCookieName } from '../auth.ts';
 import { sha256Hex, verifyPassword } from '../crypto.ts';
 import { DEFAULT_MONEY_CONFIG } from '../../../shared/money.ts';
 import { AVATAR_KEYS, normalizeAvatarKey, type AvatarKey } from '../../../shared/community.ts';
+import {
+  CAMPAIGN_ZERO_MAX_CLIPS,
+  CAMPAIGN_ZERO_REQUIRED_CLIPS,
+  CAMPAIGN_ZERO_WINDOW_MS,
+} from '../../../shared/campaign.ts';
 import { getCampaignByIdOrThrow, planPayoutAllocations } from '../repo.ts';
+import { getLinkPreview } from '../linkPreview.ts';
 import { validate } from '../validation.ts';
 import {
   body,
@@ -82,14 +88,12 @@ export async function handleJoinCampaign(ctx: Ctx): Promise<Response> {
 interface ClipSubmission {
   platform: (typeof PLATFORMS)[number];
   postUrl: string;
-  claimedViews: number;
   proofAssetId?: string | null;
 }
 
 const CLIP_SCHEMA = {
   platform: { type: 'string', required: true, values: PLATFORMS },
   postUrl: { type: 'string', required: true, min: 10, max: 2048 },
-  claimedViews: { type: 'int', required: true, min: 0, max: 10_000_000_000 },
   proofAssetId: { type: 'string', min: 3, max: 120, nullable: true },
 } as const;
 
@@ -102,7 +106,6 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
     campaignId: string;
     platform?: string;
     postUrl?: string;
-    claimedViews?: number;
     proofAssetId?: string | null;
     clips?: unknown[];
   }>(ctx, {
@@ -110,7 +113,6 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
     clips: { type: 'array', max: 2, items: { type: 'object' } },
     platform: { type: 'string', values: PLATFORMS },
     postUrl: { type: 'string', min: 10, max: 2048 },
-    claimedViews: { type: 'int', min: 0, max: 10_000_000_000 },
     proofAssetId: { type: 'string', min: 3, max: 120, nullable: true },
   });
 
@@ -120,14 +122,13 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
   if (input.clips) {
     rawClips = input.clips;
   } else {
-    if (!input.platform || !input.postUrl || input.claimedViews === undefined) {
+    if (!input.platform || !input.postUrl) {
       throw badRequest('Add at least one clip.');
     }
     rawClips = [
       {
         platform: input.platform,
         postUrl: input.postUrl,
-        claimedViews: input.claimedViews,
         proofAssetId: input.proofAssetId,
       },
     ];
@@ -162,7 +163,6 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
     platform: (typeof PLATFORMS)[number];
     canonicalUrl: string;
     identity: string;
-    claimedViews: number;
     proofAssetId: string | null;
   }> = [];
 
@@ -201,20 +201,26 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
       platform: parsed.platform,
       canonicalUrl: parsed.canonicalUrl,
       identity: parsed.identity,
-      claimedViews: clip.claimedViews,
       proofAssetId,
     });
   }
 
+  const previews = await Promise.all(
+    prepared.map((clip) => getLinkPreview(ctx.env, clip.canonicalUrl).catch(() => null))
+  );
+
   const now = Date.now();
   try {
     await ctx.env.DB.batch(
-      prepared.map((clip) =>
-        ctx.env.DB.prepare(
+      prepared.map((clip, index) => {
+        const preview = previews[index];
+        return ctx.env.DB.prepare(
           `INSERT INTO submissions
              (id, campaign_id, creator_id, platform, post_url, post_url_normalized, claimed_views,
-              proof_asset_id, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?)`
+              proof_asset_id, preview_title, preview_author, preview_thumbnail_url, preview_provider,
+              preview_views, preview_likes, preview_source, preview_fetched_at,
+              status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?)`
         ).bind(
           clip.submissionId,
           campaign.id,
@@ -222,12 +228,20 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
           clip.platform,
           clip.canonicalUrl,
           clip.identity,
-          clip.claimedViews,
+          0,
           clip.proofAssetId,
+          preview?.title ?? null,
+          preview?.author ?? null,
+          preview?.thumbnailUrl ?? null,
+          preview?.provider ?? null,
+          preview?.views ?? null,
+          preview?.likes ?? null,
+          preview?.source ?? null,
+          preview?.fetchedAt ?? null,
           now,
           now
-        )
-      )
+        );
+      })
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -250,7 +264,6 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
       submissions: prepared.map((clip) => ({
         submissionId: clip.submissionId,
         platform: clip.platform,
-        claimedViews: clip.claimedViews,
         postIdentity: clip.identity,
       })),
     },
@@ -270,11 +283,11 @@ export async function handleSubmitClip(ctx: Ctx): Promise<Response> {
 
 interface CampaignZeroInput {
   followConfirmed: boolean;
-  clips: Array<{ url: string; claimedViews: number }>;
+  clips: Array<{ url: string }>;
 }
 
 function validateCampaignZeroClips(clips: CampaignZeroInput['clips']) {
-  const normalized: Array<{ url: string; identity: string; claimedViews: number }> = [];
+  const normalized: Array<{ url: string; identity: string }> = [];
   const seen = new Set<string>();
 
   for (const clip of clips) {
@@ -293,11 +306,16 @@ function validateCampaignZeroClips(clips: CampaignZeroInput['clips']) {
     normalized.push({
       url: parsed.canonicalUrl,
       identity: parsed.identity,
-      claimedViews: Math.max(0, Math.floor(Number(clip.claimedViews) || 0)),
     });
   }
 
   return normalized;
+}
+
+function campaignZeroWindowExpired(profile: Row): boolean {
+  const submittedAt = Number(profile.campaign_zero_submitted_at || 0);
+  const deadlineAt = Number(profile.campaign_zero_deadline_at || 0);
+  return !submittedAt && deadlineAt > 0 && deadlineAt < Date.now();
 }
 
 export async function handleSaveCampaignZero(ctx: Ctx): Promise<Response> {
@@ -312,13 +330,14 @@ export async function handleSaveCampaignZero(ctx: Ctx): Promise<Response> {
     clips: {
       type: 'array',
       required: true,
-      max: 3,
+      max: CAMPAIGN_ZERO_MAX_CLIPS,
       items: { type: 'object' },
     },
   });
 
   const profile = await ctx.env.DB.prepare(
-    `SELECT campaign_zero_submitted_at FROM creator_profiles WHERE account_id = ?`
+    `SELECT campaign_zero_submitted_at, campaign_zero_deadline_at
+       FROM creator_profiles WHERE account_id = ?`
   )
     .bind(account.id)
     .first<Row>();
@@ -326,8 +345,17 @@ export async function handleSaveCampaignZero(ctx: Ctx): Promise<Response> {
   if (profile.campaign_zero_submitted_at) {
     throw badRequest('Your Campaign Zero proof is already under review.');
   }
+  if (campaignZeroWindowExpired(profile)) {
+    throw badRequest('Your 15-day Campaign Zero window has expired. Start again to get a new window.');
+  }
 
   const clips = validateCampaignZeroClips(input.clips);
+  if (clips.length === 0) {
+    throw badRequest('Add at least one clip link before saving.');
+  }
+  const previews = await Promise.all(
+    clips.map((clip) => getLinkPreview(ctx.env, clip.url).catch(() => null))
+  );
   const now = Date.now();
 
   const statements = [
@@ -340,12 +368,31 @@ export async function handleSaveCampaignZero(ctx: Ctx): Promise<Response> {
   ];
 
   clips.forEach((clip, index) => {
+    const preview = previews[index];
     statements.push(
       ctx.env.DB.prepare(
         `INSERT INTO creator_campaign_zero_clips
-           (id, account_id, position, url, url_normalized, claimed_views, added_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).bind(newId('cz'), account.id, index, clip.url, clip.identity, clip.claimedViews, now)
+           (id, account_id, position, url, url_normalized, claimed_views,
+            preview_title, preview_author, preview_thumbnail_url, preview_provider,
+            preview_views, preview_likes, preview_source, preview_fetched_at, added_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        newId('cz'),
+        account.id,
+        index,
+        clip.url,
+        clip.identity,
+        0,
+        preview?.title ?? null,
+        preview?.author ?? null,
+        preview?.thumbnailUrl ?? null,
+        preview?.provider ?? null,
+        preview?.views ?? null,
+        preview?.likes ?? null,
+        preview?.source ?? null,
+        preview?.fetchedAt ?? null,
+        now
+      )
     );
   });
 
@@ -370,29 +417,30 @@ export async function handleSubmitCampaignZero(ctx: Ctx): Promise<Response> {
   }
 
   const profile = await ctx.env.DB.prepare(
-    `SELECT campaign_zero_follow_confirmed, campaign_zero_submitted_at
+    `SELECT campaign_zero_follow_confirmed, campaign_zero_submitted_at,
+            campaign_zero_deadline_at
        FROM creator_profiles WHERE account_id = ?`
   )
     .bind(account.id)
     .first<Row>();
   if (!profile) throw notFound('Creator profile not found.');
   if (profile.campaign_zero_submitted_at) return json({ ok: true, alreadySubmitted: true });
+  if (campaignZeroWindowExpired(profile)) {
+    throw badRequest('Your 15-day Campaign Zero window has expired. Start again to get a new window.');
+  }
   if (Number(profile.campaign_zero_follow_confirmed) !== 1) {
     throw badRequest('Confirm that you follow a Mhomho social page.');
   }
 
   const clips = await ctx.env.DB.prepare(
-    `SELECT claimed_views FROM creator_campaign_zero_clips WHERE account_id = ? ORDER BY position`
+    `SELECT 1 FROM creator_campaign_zero_clips WHERE account_id = ? ORDER BY position`
   )
     .bind(account.id)
     .all<Row>();
   const rows = clips.results ?? [];
 
-  if (rows.length < 3) {
-    throw badRequest('Add three clip links before submitting for review.');
-  }
-  if (!rows.some((row) => Number(row.claimed_views) >= 1000)) {
-    throw badRequest('One clip needs at least 1,000 views before you can submit.');
+  if (rows.length < CAMPAIGN_ZERO_REQUIRED_CLIPS) {
+    throw badRequest('Add at least one clip link before submitting for review.');
   }
 
   const now = Date.now();
@@ -413,6 +461,68 @@ export async function handleSubmitCampaignZero(ctx: Ctx): Promise<Response> {
   });
 
   return json({ ok: true });
+}
+
+export async function handleRestartCampaignZero(ctx: Ctx): Promise<Response> {
+  guardMutation(ctx);
+  const account = requireCreator(ctx);
+  if (account.status !== 'applied') {
+    throw badRequest('This application has already been reviewed.');
+  }
+
+  const limit = await consumeRateLimit(
+    ctx.env,
+    `campaign-zero-restart:${account.id}`,
+    5,
+    60 * 60
+  );
+  if (!limit.allowed) {
+    throw tooMany('Too many Campaign Zero restarts. Try again later.', limit.retryAfterSeconds);
+  }
+
+  const profile = await ctx.env.DB.prepare(
+    `SELECT campaign_zero_submitted_at, campaign_zero_deadline_at
+       FROM creator_profiles WHERE account_id = ?`
+  )
+    .bind(account.id)
+    .first<Row>();
+  if (!profile) throw notFound('Creator profile not found.');
+  if (profile.campaign_zero_submitted_at) {
+    throw badRequest('Your Campaign Zero proof is already under review.');
+  }
+
+  const deadlineAt = Number(profile.campaign_zero_deadline_at || 0);
+  if (deadlineAt > Date.now()) {
+    throw badRequest('Your 15-day Campaign Zero window is still open.');
+  }
+
+  const now = Date.now();
+  const nextDeadlineAt = now + CAMPAIGN_ZERO_WINDOW_MS;
+  await ctx.env.DB.batch([
+    ctx.env.DB.prepare(
+      `UPDATE creator_profiles
+          SET campaign_zero_follow_confirmed = 0,
+              campaign_zero_submitted_at = NULL,
+              campaign_zero_deadline_at = ?,
+              updated_at = ?
+        WHERE account_id = ?`
+    ).bind(nextDeadlineAt, now, account.id),
+    ctx.env.DB.prepare(`DELETE FROM creator_campaign_zero_clips WHERE account_id = ?`).bind(account.id),
+  ]);
+
+  await recordAudit(ctx.env, {
+    actorId: account.id,
+    actorRole: 'creator',
+    action: 'campaign_zero.restart',
+    entityType: 'account',
+    entityId: account.id,
+    before: { deadlineAt: deadlineAt || null },
+    after: { deadlineAt: nextDeadlineAt },
+    requestId: ctx.requestId,
+    ipHash: await hashIp(ctx.env, ctx.request),
+  });
+
+  return json({ ok: true, deadlineAt: new Date(nextDeadlineAt).toISOString() });
 }
 
 export async function handleUpdateProfile(ctx: Ctx): Promise<Response> {

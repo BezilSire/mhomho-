@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "work.mhomho.app",
+      "sha256_cert_fingerprints": [
+        "F4:D3:15:C6:12:46:4F:22:35:48:67:9C:D0:A2:1D:67:A8:54:21:5C:5D:D7:16:CA:D8:4F:22:0C:08:DF:7D:D7"
+      ]
+    }
+  }
+]

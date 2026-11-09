@@ -1,10 +1,12 @@
 import React from 'react';
+import { ArrowUpRight, Megaphone, Video, Wallet } from 'lucide-react';
 import { Card } from '../../components/Card.tsx';
 import { Tile, TilesContainer } from '../../components/Tile.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { ProgressBar } from '../../components/ProgressBar.tsx';
 import { ListRow } from '../../components/ListRow.tsx';
 import { Button } from '../../components/Button.tsx';
+import { CampaignBriefCountdown } from './CampaignBriefCountdown.tsx';
 import {
   DatabaseState,
   calculateCreatorBalances,
@@ -16,6 +18,7 @@ export interface CreatorHomeProps {
   currentUid: string;
   onNavigateToCampaign: (campaignId: string) => void;
   onNavigateToTab: (tab: 'campaigns' | 'clips' | 'earnings' | 'profile') => void;
+  onSubmitClip?: () => void;
 }
 
 export const CreatorHome: React.FC<CreatorHomeProps> = ({
@@ -23,6 +26,7 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
   currentUid,
   onNavigateToCampaign,
   onNavigateToTab,
+  onSubmitClip,
 }) => {
   const creatorPublic = db.creatorsPublic[currentUid];
   const creatorPrivate = db.creatorsPrivate[currentUid];
@@ -47,18 +51,42 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
     .slice(0, 3);
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-8 pt-5 sm:px-[18px] sm:pt-[22px]">
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
           Overview
         </span>
         <Tag variant="ok">Approved</Tag>
       </div>
 
-      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
+      <h2 className="text-[26px] font-extrabold leading-[1.12] tracking-[-0.03em]">
         Hey {firstName}
       </h2>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted)]">
+        Campaigns, clips and EcoCash — all in one place.
+      </p>
+
+      {/* App-style quick actions */}
+      <div className="mb-4 mt-5 grid grid-cols-3 gap-2">
+        <QuickAction
+          icon={<Megaphone size={17} />}
+          label="Campaigns"
+          onClick={() => onNavigateToTab('campaigns')}
+        />
+        <QuickAction
+          icon={<Video size={17} />}
+          label="Submit clip"
+          onClick={onSubmitClip ?? (() => onNavigateToTab('clips'))}
+        />
+        <QuickAction
+          icon={<Wallet size={17} />}
+          label="Earnings"
+          onClick={() => onNavigateToTab('earnings')}
+        />
+      </div>
+
+      <CampaignBriefCountdown />
 
       {/* Tiles: Owed to you (gradient) & Paid so far */}
       <TilesContainer>
@@ -77,30 +105,41 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
       {activeCampaign && activeStats && (
         <Card
           onClick={() => onNavigateToCampaign(activeCampaign.id)}
-          className="cursor-pointer hover:border-[var(--muted)] transition-colors"
+          className="tap-card cursor-pointer hover:border-[var(--muted)]"
         >
-          <div className="flex justify-between items-center gap-2">
-            <b>{activeCampaign.title}</b>
-            <span className="text-[13px] text-[var(--muted)]">
+          {activeCampaign.posterUrl && (
+            <img
+              src={activeCampaign.posterUrl}
+              alt=""
+              className="mb-3 aspect-[16/9] w-full rounded-xl object-cover"
+              loading="lazy"
+            />
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <b className="min-w-0 truncate">{activeCampaign.title}</b>
+            <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--muted)]">
               {activeCampaign.daysLeft} days left
             </span>
           </div>
 
           <ProgressBar percentage={poolFillPercent} />
 
-          <div className="text-[13px] text-[var(--muted)]">
-            {poolFillPercent}% full · {activeStats.joinedCount} creators joined
+          <div className="flex items-center justify-between gap-2 text-[12.5px] text-[var(--muted)]">
+            <span>
+              {poolFillPercent}% full · {activeStats.joinedCount} creators joined
+            </span>
+            <ArrowUpRight size={14} className="shrink-0 text-[var(--faint)]" />
           </div>
         </Card>
       )}
 
       {/* Latest Clips Section */}
-      <div className="flex justify-between items-center text-[13px] text-[var(--muted)] mt-4 mb-1">
+      <div className="mb-1 mt-5 flex items-center justify-between gap-3 text-[13px] text-[var(--muted)]">
         <span>Latest clips</span>
         <button
           type="button"
           onClick={() => onNavigateToTab('clips')}
-          className="text-[12px] font-semibold text-[var(--text)] hover:underline cursor-pointer"
+          className="press inline-flex min-h-8 items-center rounded-full px-2 text-[12px] font-semibold text-[var(--text)] hover:underline cursor-pointer"
         >
           View all
         </button>
@@ -108,9 +147,9 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
 
       <Card>
         {creatorClips.length === 0 ? (
-          <div className="text-center py-4 text-[var(--muted)] text-[13px]">
+          <div className="py-4 text-center text-[13px] text-[var(--muted)]">
             No clips submitted yet.
-            <div className="mt-2">
+            <div className="mt-3">
               <Button size="sm" onClick={() => onNavigateToTab('campaigns')}>
                 Explore Campaigns
               </Button>
@@ -145,7 +184,7 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
                   <div className="truncate">
                     <b>Clip {idx + 1} · {clip.platform}</b>
                     {clip.verifiedViews > 0 && (
-                      <div className="text-[12px] text-[var(--muted)] font-normal">
+                      <div className="text-[12px] font-normal text-[var(--muted)]">
                         {clip.verifiedViews.toLocaleString()} views
                       </div>
                     )}
@@ -160,3 +199,20 @@ export const CreatorHome: React.FC<CreatorHomeProps> = ({
     </div>
   );
 };
+
+const QuickAction: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}> = ({ icon, label, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="press flex min-h-[78px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-1.5 py-3 text-[11px] font-semibold text-[var(--text)]"
+  >
+    <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--grad-soft)] text-[var(--a1)]">
+      {icon}
+    </span>
+    <span className="max-w-full truncate">{label}</span>
+  </button>
+);

@@ -13,7 +13,7 @@ import { Tag } from '../../components/Tag.tsx';
 import { Avatar } from '../../components/Avatar.tsx';
 import { FunnelBar, FunnelStage } from '../../components/FunnelBar.tsx';
 import {
-  CAMPAIGN_ZERO_MIN_CLIPS,
+  CAMPAIGN_ZERO_MAX_CLIPS,
   CAMPAIGN_ZERO_MIN_VIEWS,
   DatabaseState,
   calculateTotalOwedCents,
@@ -40,7 +40,12 @@ function whatsappLink(number?: string, handle?: string): string {
   const text = encodeURIComponent(
     `Hi${handle ? ` ${handle}` : ''}, this is Mhomho operations. We’re reviewing your Campaign Zero submission.`
   );
-  return digits ? `https://wa.me/${digits}?text=${text}` : `https://wa.me/263786205197?text=${text}`;
+  return digits ? `https://wa.me/${digits}?text=${text}` : '';
+}
+
+interface VerificationDraft {
+  clipId: string;
+  views: string;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -55,7 +60,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [expandedUid, setExpandedUid] = useState<string | null>(
     pendingCreators.length === 1 ? pendingCreators[0].uid : null
   );
-  const [verified, setVerified] = useState<Record<string, boolean>>({});
+  const [verificationDrafts, setVerificationDrafts] = useState<
+    Record<string, VerificationDraft>
+  >({});
   const [approvalError, setApprovalError] = useState<{ uid: string; message: string } | null>(
     null
   );
@@ -117,9 +124,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     },
   ];
 
-  const handleApprove = async (uid: string) => {
+  const handleApprove = async (uid: string, draft: VerificationDraft) => {
     setApprovalError(null);
-    const result = await approveCreator(uid);
+    const views = Number(draft.views);
+    if (!draft.clipId || !Number.isInteger(views) || views < CAMPAIGN_ZERO_MIN_VIEWS) {
+      setApprovalError({
+        uid,
+        message: `Select a clip and enter at least ${CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} verified views.`,
+      });
+      return;
+    }
+    const result = await approveCreator(uid, {
+      verifiedClipId: draft.clipId,
+      verifiedViews: views,
+    });
     if (!result.success) {
       setApprovalError({ uid, message: result.error || 'Could not approve this applicant.' });
     }
@@ -186,7 +204,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div>
               <h3 className="text-[14px] font-bold text-[var(--text)]">Roster pipeline</h3>
               <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">
-                Creators must follow a Mhomho page, post {CAMPAIGN_ZERO_MIN_CLIPS} clips and reach{' '}
+                Creators must follow a Mhomho page, post at least one clip (up to{' '}
+                {CAMPAIGN_ZERO_MAX_CLIPS}; extras optional) and reach{' '}
                 {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} views on one before approval.
               </p>
             </div>
@@ -222,9 +241,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 const evaluation = evaluateCampaignZero(creator.campaignZero);
                 const clips = creator.campaignZero?.clips ?? [];
                 const submitted = Boolean(creator.campaignZero?.submittedAt);
+                const expired = Boolean(creator.campaignZero?.expired) && !submitted;
                 const canApprove = evaluation.complete && evaluation.submitted;
                 const isExpanded = expandedUid === creator.uid;
-                const checked = Boolean(verified[creator.uid]);
+                const draft = verificationDrafts[creator.uid] ?? {
+                  clipId: clips[0]?.id ?? '',
+                  views: '',
+                };
+                const verifiedViews = Number(draft.views);
+                const hasValidVerification =
+                  Boolean(draft.clipId) &&
+                  draft.views.trim() !== '' &&
+                  Number.isInteger(verifiedViews) &&
+                  verifiedViews >= CAMPAIGN_ZERO_MIN_VIEWS;
                 const privateDoc = db.creatorsPrivate[creator.uid];
 
                 return (
@@ -255,6 +284,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="flex shrink-0 items-center gap-2">
                         {submitted ? (
                           <Tag variant="warn">In review</Tag>
+                        ) : expired ? (
+                          <Tag variant="err">Window expired</Tag>
                         ) : (
                           <Tag variant="warn">Proof needed</Tag>
                         )}
@@ -284,17 +315,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         Follow
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[9.5px] font-semibold text-[var(--muted)]">
-                        {evaluation.clipCount}/{CAMPAIGN_ZERO_MIN_CLIPS} clips
+                        {evaluation.clipCount}/{CAMPAIGN_ZERO_MAX_CLIPS} clips
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${
-                          evaluation.hasQualifyingClip
+                          evaluation.clipCount >= 1
                             ? 'bg-[var(--ok)]/10 text-[var(--ok)]'
                             : 'bg-[var(--surface-2)] text-[var(--faint)]'
                         }`}
                       >
-                        {evaluation.hasQualifyingClip ? <Check size={9} /> : <X size={9} />}
-                        1K views
+                        {evaluation.clipCount >= 1 ? <Check size={9} /> : <X size={9} />}
+                        Link added
                       </span>
                     </div>
 
@@ -302,17 +333,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface-2)]/60 p-3.5">
                         {!submitted ? (
                           <div className="flex items-start gap-2.5">
-                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--warn)]/12 text-[var(--warn)]">
+                            <span
+                              className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full ${
+                                expired
+                                  ? 'bg-[var(--err)]/12 text-[var(--err)]'
+                                  : 'bg-[var(--warn)]/12 text-[var(--warn)]'
+                              }`}
+                            >
                               <ShieldCheck size={12} />
                             </span>
                             <div>
                               <p className="text-[12px] font-semibold text-[var(--text)]">
-                                Campaign Zero is still in progress
+                                {expired
+                                  ? 'Campaign Zero window expired'
+                                  : 'Campaign Zero is still in progress'}
                               </p>
                               <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">
-                                The creator has not submitted proof yet. You can only approve after
-                                all three requirements are submitted.
+                                {expired
+                                  ? 'The creator did not submit proof within their 15-day window. They must start a new window before you can approve.'
+                                  : 'The creator has not submitted proof yet. You can only approve after at least one qualifying clip is submitted.'}
                               </p>
+                              {creator.campaignZero?.deadlineAt && (
+                                <p className="mt-1 text-[10.5px] text-[var(--faint)]">
+                                  Window {expired ? 'ended' : 'closes'}{' '}
+                                  {formatDate(creator.campaignZero.deadlineAt)}
+                                </p>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -339,46 +385,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     Clip {index + 1} · {clip.url.replace(/^https?:\/\//, '')}
                                   </span>
                                   <span className="flex shrink-0 items-center gap-1.5">
-                                    <span
-                                      className={`font-bold tabular-nums ${
-                                        clip.claimedViews >= CAMPAIGN_ZERO_MIN_VIEWS
-                                          ? 'text-[var(--ok)]'
-                                          : 'text-[var(--muted)]'
-                                      }`}
-                                    >
-                                      {clip.claimedViews.toLocaleString()}
-                                    </span>
+                                    {clip.preview?.views !== null &&
+                                      clip.preview?.views !== undefined && (
+                                        <span className="text-[10px] font-semibold text-[var(--muted)]">
+                                          Snapshot · {clip.preview.views.toLocaleString()} views
+                                        </span>
+                                      )}
                                     <ArrowUpRight size={11} className="text-[var(--faint)]" />
                                   </span>
                                 </a>
                               ))}
                             </div>
 
-                            <a
-                              href={whatsappLink(privateDoc?.whatsappNumber, creator.handle)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-2.5 inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[var(--muted)] no-underline hover:text-[var(--text)]"
-                            >
-                              <MessageCircle size={11} />
-                              Message {privateDoc?.name || creator.handle} on WhatsApp
-                            </a>
+                            {privateDoc?.whatsappNumber && (
+                              <a
+                                href={whatsappLink(privateDoc?.whatsappNumber, creator.handle)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2.5 inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[var(--muted)] no-underline hover:text-[var(--text)]"
+                              >
+                                <MessageCircle size={11} />
+                                Message {privateDoc?.name || creator.handle} on WhatsApp
+                              </a>
+                            )}
 
-                            <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-[var(--line)] pt-3 text-[10.5px] leading-relaxed text-[var(--muted)]">
-                              <input
-                                type="checkbox"
-                                checked={checked}
+                            <div className="mt-3 space-y-2 border-t border-[var(--line)] pt-3">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
+                                Verify live views
+                              </p>
+                              <select
+                                value={draft.clipId}
                                 onChange={(event) =>
-                                  setVerified((current) => ({
+                                  setVerificationDrafts((current) => ({
                                     ...current,
-                                    [creator.uid]: event.target.checked,
+                                    [creator.uid]: {
+                                      ...(current[creator.uid] ?? draft),
+                                      clipId: event.target.value,
+                                    },
                                   }))
                                 }
-                                className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--a1)]"
-                              />
-                              I checked the live public views. One clip has at least{' '}
-                              {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} views.
-                            </label>
+                                className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] px-2 text-[11px] text-[var(--text)]"
+                              >
+                                {clips.length === 0 && <option value="">No clips saved</option>}
+                                {clips.map((clip, index) => (
+                                  <option key={clip.id ?? index} value={clip.id ?? ''}>
+                                    Clip {index + 1} ·{' '}
+                                    {clip.url.replace(/^https?:\/\//, '').slice(0, 42)}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={CAMPAIGN_ZERO_MIN_VIEWS}
+                                  step={1}
+                                  value={draft.views}
+                                  onChange={(event) =>
+                                    setVerificationDrafts((current) => ({
+                                      ...current,
+                                      [creator.uid]: {
+                                        ...(current[creator.uid] ?? draft),
+                                        views: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  placeholder={`e.g. ${CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()}`}
+                                  className="h-9 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--bg)] px-2.5 text-[11.5px] font-semibold text-[var(--text)]"
+                                />
+                                <span className="shrink-0 text-[10px] text-[var(--faint)]">
+                                  min {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-[10px] leading-relaxed text-[var(--faint)]">
+                                Open the link, check the live public count, and enter it here. The
+                                count and your admin ID are saved with the approval.
+                              </p>
+                            </div>
 
                             {approvalError?.uid === creator.uid && (
                               <p className="mt-2 rounded-lg border border-[var(--err)]/30 bg-[var(--err)]/10 px-2.5 py-2 text-[10.5px] leading-relaxed text-[var(--err)]">
@@ -388,18 +470,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                             <button
                               type="button"
-                              onClick={() => handleApprove(creator.uid)}
-                              disabled={!canApprove || !checked}
+                              onClick={() => handleApprove(creator.uid, draft)}
+                              disabled={!canApprove || !hasValidVerification}
                               className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-mhomho text-[11.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 cursor-pointer"
                             >
                               <Check size={12} />
                               Verify & approve
                             </button>
-                            {!canApprove && (
+                            {!canApprove ? (
                               <p className="mt-1.5 text-center text-[10px] text-[var(--faint)]">
                                 Approval is blocked until Campaign Zero is complete.
                               </p>
-                            )}
+                            ) : !hasValidVerification ? (
+                              <p className="mt-1.5 text-center text-[10px] text-[var(--faint)]">
+                                Enter the verified view count to enable approval.
+                              </p>
+                            ) : null}
                           </>
                         )}
                       </div>

@@ -14,13 +14,15 @@
     "test:watch": "vitest",
     "db:migrate:local": "wrangler d1 migrations apply mhomho-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply mhomho-db --remote",
-    "deploy:dry": "wrangler deploy --dry-run"
+    "deploy:dry": "wrangler deploy --dry-run",
+    "guide:pdf": "tsx scripts/generate-creator-guide.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^8.3.0"

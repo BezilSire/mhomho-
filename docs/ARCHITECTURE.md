@@ -1,7 +1,8 @@
 # MHOMHO — Implemented Architecture
 
 Date: 2026-10-26
-Status: implemented and locally verified; **not deployed to production**.
+Status: implemented, locally verified, and deployed to production at
+`https://mhomho.work` (Cloudflare Workers + D1 + Workers KV).
 
 This document describes what is in the repository now. The pre-change audit lives
 in [`ARCHITECTURE-AUDIT.md`](./ARCHITECTURE-AUDIT.md); the data model is in
@@ -22,10 +23,10 @@ Browser (React 19 SPA)
 Cloudflare Worker  ── /api/*  ──►  Router ──► route handlers
    │                                   │
    │  everything else                  ├─► D1  (system of record)
-   ▼                                   ├─► R2  (private proof + brand assets)
+   ▼                                   ├─► KV  (private proof + brand assets)
 Static assets (dist/client)            └─► audit_events (append-only)
    │
-   └─ /api/assets/:id ──► Worker reads R2 after an authorisation check
+   └─ /api/assets/:id ──► Worker reads KV after an authorisation check
 ```
 
 Why one Worker instead of Pages + a separate API:
@@ -51,6 +52,7 @@ it is not implemented.
 | `worker/src/crypto.ts` | PBKDF2-SHA256 (210k iterations), random tokens, SHA-256, constant-time compare. |
 | `worker/src/validation.ts` | Declarative body schema validator (types, bounds, enums, nullability, unknown-key rejection). |
 | `worker/src/urls.ts` | Social-post URL allowlist, canonicalisation and post identity. |
+| `worker/src/linkPreview.ts` | Fixed-host oEmbed previews plus optional YouTube Data API counts; short-lived D1 cache. |
 | `worker/src/rateLimit.ts` | D1 fixed-window counters. |
 | `worker/src/audit.ts` | Append-only audit writer. |
 | `worker/src/campaigns.ts` | Campaign state machine and lifecycle description. |
@@ -65,14 +67,20 @@ it is not implemented.
 | `src/lib/sessionStore.ts` | In-memory session state and subscriber list. |
 | `src/lib/firebase.ts` | Compatibility façade: now a projection store, no persistence. |
 | `src/components/Avatar.tsx` | Preset avatar renderer and picker; initials fallback. |
+| `src/components/LinkPreviewCard.tsx` | Debounced best-effort preview for a pasted post link. |
 | `src/screens/creator/CommunityScreen.tsx` | Creator New creators, leaderboard and forum surfaces. |
 | `src/screens/admin/AdminCommunity.tsx` | Recent sign-ups, leaderboard preview and forum moderation. |
+| `src/screens/public/LegalPage.tsx` | Public Terms of Service and Privacy Policy at `#/terms` and `#/privacy`. |
 | `migrations/0001_init.sql` | Schema, constraints, ledger and counter triggers. |
 | `migrations/0002_withdrawals.sql` | `accounts.deleted_at`, unique payout references, one open withdrawal per creator. |
 | `migrations/0003_activity.sql` | Index on `campaign_members (joined_at DESC)` for the activity feed. |
 | `migrations/0004_support_notifications.sql` | Support tickets/messages and notification broadcasts/read state. |
 | `migrations/0005_community.sql` | Preset avatar key, forum tables and observation-time index. |
-| `tests/` | Vitest suites against real workerd + D1 + R2. |
+| `migrations/0006_campaign_zero_window.sql` | 15-day Campaign Zero deadline, backfilled from sign-up time. |
+| `migrations/0007_invite_codes.sql` | Single-use creator invite codes, gate config and the threshold trigger. |
+| `migrations/0008_link_previews.sql` | Preview cache and stored snapshot columns on submissions and Campaign Zero clips. |
+| `migrations/0009_campaign_zero_verification.sql` | Admin-verified view count, admin ID and timestamp on Campaign Zero clips. |
+| `tests/` | Vitest suites against real workerd + D1 + KV. |
 | `scripts/e2e-smoke.mjs` | HTTP smoke test against a running build. |
 | `public/_headers` | Static-asset security headers and CSP. |
 
@@ -111,7 +119,11 @@ The client **does** receive, from `GET /api/bootstrap`, a role-scoped snapshot:
 | admin | all campaigns, all submissions, all ledger/payout rows, creator contact details, enquiries. |
 
 `creatorsPrivate` is empty for anonymous and for creators other than the viewer.
-Brand reports are built from a separate, deliberately narrow query.
+Brand reports are built from a separate, deliberately narrow query. They expose
+accepted verified views, creators joined, approved clips, budget use and a
+platform mix based on where each approved clip was posted. The headline, chart
+and platform rows all use `view_observations.verified_views`, so they reconcile.
+No creator identity, handle, post URL or individual earning is returned.
 
 ## 5. Command surface
 
@@ -149,18 +161,32 @@ not part of bootstrap.
 | `POST` | `/api/auth/logout` | session | Origin always; CSRF when signed in; revokes the session. |
 | `POST` | `/api/auth/password` | session | Verifies current password; revokes every other session. |
 | `POST` | `/api/setup/admin` | one-time token | Refuses once any admin exists. |
+| `POST` | `/api/ambassadors/apply` | – | Origin + IP rate limit; creates a `business` account in `applied` status, saves the application, issues `AMB-YYYY-XXXXXX`, notifies admins and starts a session. |
+| `POST` | `/api/ambassadors/login` | - | Email only; Origin + IP and per-account rate limits; creator login rejects `business`. |
+| `GET` | `/api/ambassadors/me` | ambassador | Application, documents and profile for the signed-in ambassador; never returns admin notes. |
+| `PATCH` | `/api/ambassadors/application` | ambassador | Edits an application only while `submitted` or `needs_info`; saves an applicant response and returns it to review. |
+| `POST` | `/api/ambassadors/documents` | ambassador | PDF/PNG/JPEG/WebP, magic-byte checked, 5 MiB, 20/hour. Documents are private; photographs are public only after publication. |
+| `GET` | `/api/ambassador-assets/:id` | optional | Owner or approved admin for private files; public photograph only when the profile is published and the account approved. |
+| `PATCH` | `/api/ambassadors/profile` | approved ambassador | Public name, bio, location, languages, sectors, contact details, social links and photograph. Title, ID, status and badge stay server-controlled. |
+| `POST` | `/api/ambassadors/profile/publish` | approved ambassador | Requires a photograph and a biography of at least 20 characters; sets `published`. |
+| `GET` | `/api/public/ambassadors/:username` | – | Published profile only; returns `404` for draft, suspended, rejected or missing appointments. |
+| `GET` | `/api/admin/ambassadors/applications` | admin | Applications with status counts and profile metadata. |
+| `GET` | `/api/admin/ambassadors/applications/:id` | admin | Full application, private documents, review history and profile. |
+| `POST` | `/api/admin/ambassadors/applications/:id/decision` | admin | Private note, request information, approve (issues Ambassador ID + draft profile), reject, suspend or reinstate; audited. |
 | `POST` | `/api/campaigns/:id/join` | creator | Server checks status, cutoffs, pool closure, terms. |
-| `POST` | `/api/submissions` | approved creator | Membership + cutoff + URL allowlist + duplicate post. Accepts one clip or up to two clips on different platforms. |
-| `POST` | `/api/campaign-zero` | creator | Saves exactly three clips. |
-| `POST` | `/api/campaign-zero/submit` | creator | Submits the application for review. |
+| `POST` | `/api/submissions` | approved creator | Membership + cutoff + URL allowlist + duplicate post. Accepts one clip or up to two clips on different platforms. Stores a best-effort preview snapshot. |
+| `POST` | `/api/links/preview` | creator | Best-effort oEmbed preview for a pasted link; fixed hosts only, rate limited, never blocks submission. |
+| `POST` | `/api/campaign-zero` | creator | Saves one to three clips; at least one clip link is required. Rejected after the 15-day deadline. |
+| `POST` | `/api/campaign-zero/submit` | creator | Submits proof for review; requires a follow confirmation and at least one clip link inside the 15-day window. Views are verified by an admin. |
+| `POST` | `/api/campaign-zero/restart` | creator | Starts a new 15-day window after an expired attempt; clears prior clips. |
 | `PATCH` | `/api/profile` | creator | Name, niche, followers, platform, payout numbers and a preset avatar key. |
 | `POST` | `/api/payouts` | approved creator | EcoCash withdrawal request; reserves balance, one open request. |
 | `POST` | `/api/account/delete` | creator | Password + `DELETE`; anonymises, writes off unpaid balance, revokes sessions. |
 | `POST` | `/api/uploads/proof` | creator | PNG/JPEG/WebP, magic-byte checked, private. |
 | `GET` | `/api/assets/:id` | optional | Public assets open; private assets owner/admin only. |
 | `POST` | `/api/enquiries` | – | Origin + IP rate limit. |
-| `GET` | `/api/brand/:token` | token | Hashed token, expiry/revocation, no PII. |
-| `POST` | `/api/admin/creators/:id/approve` | admin | Requires complete Campaign Zero. |
+| `GET` | `/api/brand/:token` | token | Hashed token, expiry/revocation, accepted-view aggregates and platform mix, no PII. |
+| `POST` | `/api/admin/creators/:id/approve` | admin | Requires follow confirmation, a submitted Campaign Zero, and `verifiedClipId` + `verifiedViews >= 500`. Stores the count, admin ID and timestamp. |
 | `POST` | `/api/admin/submissions/:id/verify` | admin | Manual observation → earnings → ledger. |
 | `POST` | `/api/admin/submissions/:id/reject` | admin | Records a review row; no payment. |
 | `POST` | `/api/admin/payouts` | admin | Balance-checked, reference-idempotent, allocated per campaign. |
@@ -169,7 +195,9 @@ not part of bootstrap.
 | `GET` | `/api/admin/campaigns/:id/members` | admin | Paginated joiners with join time, platform, niche, review state, clips, views and earnings. |
 | `POST` | `/api/admin/campaigns/:id/poster` | admin | Uploads/replaces a public campaign poster (PNG/JPEG/WebP, magic-byte checked). |
 | `PATCH` | `/api/admin/campaigns/:id/status` | admin | State-machine validated. |
-| `POST` | `/api/admin/campaigns/:id/brand-token` | admin | Returns the raw token once; stores only its hash. |
+| `POST` | `/api/admin/campaigns/:id/brand-token` | admin | Returns the raw token and brand-facing URL once; stores only its hash. |
+| `GET` | `/api/admin/campaigns/:id/brand-tokens` | admin | Link metadata only; raw tokens are never returned again. |
+| `DELETE` | `/api/admin/campaigns/:id/brand-tokens/:tokenId` | admin | Revokes one link; audited. |
 | `PATCH` | `/api/admin/enquiries/:id` | admin | Funnel status. |
 
 ## 6. Campaign lifecycle
@@ -302,7 +330,7 @@ domain-level (see `SECURITY.md` § Known gaps).
 
 - **Avatars.** `creator_profiles.avatar_key` stores one of 16 preset keys. The
   avatar art is code shipped with the SPA; there is no profile-photo upload,
-  no R2 object and no extra storage cost. Missing keys fall back to initials on
+  no KV object and no extra storage cost. Missing keys fall back to initials on
   a deterministic colour.
 - **Leaderboard.** The current month is calculated in Africa/Harare (fixed
   UTC+2). The query sums `view_observations.verified_views` for `is_current = 1`
@@ -325,7 +353,7 @@ domain-level (see `SECURITY.md` § Known gaps).
 | Name | Type | Purpose |
 | --- | --- | --- |
 | `DB` | D1 binding | System of record. |
-| `MEDIA` | R2 binding | Private proofs and brand assets. |
+| `PROOFS` | KV binding | Private proofs and brand assets. |
 | `ASSETS` | Assets binding | SPA delivery + fallback. |
 | `ENVIRONMENT` | var | `production` enables HSTS. `Secure` cookies are set on every HTTPS request regardless. |
 | `APP_ORIGIN` | var | Exact allowed Origin for mutations. |

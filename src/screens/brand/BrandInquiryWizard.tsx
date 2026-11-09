@@ -157,14 +157,13 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
     setStep((prev) => Math.max(0, prev - 1));
   };
 
-  const handleWhatsAppSend = () => {
+  const handleEmailSend = () => {
     if (!submittedBrief) return;
-    const text = encodeURIComponent(
-      `Hi Mhomho, I’d like to book a call.${
-        answers.times.length ? ` Best time: ${answers.times.join(', ')}.` : ''
-      }\n\n${submittedBrief}`
-    );
-    window.open(`https://wa.me/263786205197?text=${text}`, '_blank');
+    const body = `Hi Mhomho, I’d like to book a call.${
+      answers.times.length ? ` Best time: ${answers.times.join(', ')}.` : ''
+    }\n\n${submittedBrief}`;
+    const subject = encodeURIComponent('Mhomho campaign brief');
+    window.location.href = `mailto:support@mhomho.work?subject=${subject}&body=${encodeURIComponent(body)}`;
   };
 
   // Step 6: Summary / Send Brief
@@ -175,7 +174,7 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
           Your campaign brief is ready!
         </h3>
         <p className="text-[13px] text-[var(--muted)] mb-4">
-          Tap below to book a discovery call or message our team directly on WhatsApp.
+          Tap below to email this brief to our team at support@mhomho.work.
         </p>
 
         <div className="bg-[var(--bg)] p-3 rounded-[10px] border border-[var(--line)] text-[12px] font-mono whitespace-pre-wrap break-words mb-4 text-[var(--text)]">
@@ -206,8 +205,8 @@ export const BrandInquiryWizard: React.FC<{ onComplete?: () => void }> = ({ onCo
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
-          <Button onClick={handleWhatsAppSend}>
-            Book Call on WhatsApp
+          <Button onClick={handleEmailSend}>
+            Email the brief
           </Button>
           <Button
             variant="ghost"

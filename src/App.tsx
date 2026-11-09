@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ArrowLeft,
   Home,
   LayoutDashboard,
   Megaphone,
@@ -36,8 +35,14 @@ import { AdminDashboard } from './screens/admin/AdminDashboard.tsx';
 import { AdminCampaigns } from './screens/admin/AdminCampaigns.tsx';
 import { AdminPayouts } from './screens/admin/AdminPayouts.tsx';
 import { AdminEnquiries } from './screens/admin/AdminEnquiries.tsx';
+import { AdminSecurity } from './screens/admin/AdminSecurity.tsx';
 import { AdminAccess } from './screens/admin/AdminAccess.tsx';
 import { LandingPage } from './screens/public/LandingPage.tsx';
+import { AppEntryScreen } from './screens/public/AppEntryScreen.tsx';
+import { CreatorSignupFlow } from './screens/public/LandingSignupFlows.tsx';
+import { CreatorGuidePage } from './screens/public/CreatorGuidePage.tsx';
+import { LegalPage, type LegalDoc } from './screens/public/LegalPage.tsx';
+import { SetupPage } from './screens/public/SetupPage.tsx';
 import { LoginModal } from './screens/auth/LoginModal.tsx';
 import {
   authenticateCreator,
@@ -49,6 +54,8 @@ import {
 import { getSession, subscribeToSession, type AuthSession } from './lib/sessionStore.ts';
 import { fetchBrandReport } from './lib/api.ts';
 import { TabBar, CreatorTabId } from './components/TabBar.tsx';
+import { AccountMenu } from './components/AccountMenu.tsx';
+import { AdminNav } from './components/AdminNav.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { BrandMark } from './components/BrandMark.tsx';
 import { MhomhoLogo } from './components/MhomhoLogo.tsx';
@@ -58,17 +65,37 @@ import { SupportCenter } from './components/SupportCenter.tsx';
 import { AdminSupport } from './screens/admin/AdminSupport.tsx';
 import { AdminNotifications } from './screens/admin/AdminNotifications.tsx';
 import { AdminCommunity } from './screens/admin/AdminCommunity.tsx';
+import { AdminInvites } from './screens/admin/AdminInvites.tsx';
+import { AdminAmbassadors } from './screens/admin/AdminAmbassadors.tsx';
+import { AmbassadorApplyPage } from './screens/public/AmbassadorApplyPage.tsx';
+import { AmbassadorPortalPage } from './screens/public/AmbassadorPortalPage.tsx';
+import { AmbassadorProfilePage } from './screens/public/AmbassadorProfilePage.tsx';
+import { ResourcesPage } from './screens/public/ResourcesPage.tsx';
 
-export type MainViewMode = 'landing' | 'creator' | 'admin' | 'brand';
+export type MainViewMode =
+  | 'landing'
+  | 'creator'
+  | 'admin'
+  | 'brand'
+  | 'legal'
+  | 'setup'
+  | 'guide'
+  | 'resources'
+  | 'ambassadorApply'
+  | 'ambassadorPortal'
+  | 'ambassadorProfile';
 export type AdminTabId =
   | 'dashboard'
+  | 'ambassadors'
   | 'queue'
   | 'campaigns'
   | 'payouts'
   | 'enquiries'
   | 'community'
+  | 'invites'
   | 'support'
-  | 'notifications';
+  | 'notifications'
+  | 'security';
 
 const CREATOR_NAV: { id: CreatorTabId; label: string; icon: React.ElementType }[] = [
   { id: 'home', label: 'Home', icon: Home },
@@ -81,14 +108,77 @@ const CREATOR_NAV: { id: CreatorTabId; label: string; icon: React.ElementType }[
 
 const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
   { id: 'dashboard', label: 'Overview' },
+  { id: 'ambassadors', label: 'Ambassadors' },
   { id: 'queue', label: 'Clip verification' },
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'payouts', label: 'Payouts' },
   { id: 'enquiries', label: 'Brand enquiries' },
   { id: 'community', label: 'Community' },
+  { id: 'invites', label: 'Invites' },
   { id: 'support', label: 'Support' },
   { id: 'notifications', label: 'Notifications' },
+  { id: 'security', label: 'Security' },
 ];
+
+/** The Android TWA and installed-app entry point opens the creator experience. */
+function isAppLocation(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.location.hostname === 'app.mhomho.work' ||
+    window.location.pathname.replace(/\/+$/, '') === '/app'
+  );
+}
+
+/** The launch checklist lives on its own subdomain and at /setup. */
+function isSetupLocation(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.location.hostname === 'setup.mhomho.work' ||
+    window.location.pathname.replace(/\/+$/, '') === '/setup'
+  );
+}
+
+/** The creator guide is a public page on the main site only. */
+function isGuideLocation(): boolean {
+  if (typeof window === 'undefined' || isAppLocation()) return false;
+  const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+  return path === '/creator-guide' || path === '/guide';
+}
+
+/** The resources page is a public page on the main site only. */
+function isResourcesLocation(): boolean {
+  if (typeof window === 'undefined' || isAppLocation()) return false;
+  const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+  return path === '/resources';
+}
+
+type AmbassadorLocation =
+  | { kind: 'apply' }
+  | { kind: 'portal' }
+  | { kind: 'profile'; username: string };
+
+/** Public ambassador routes live on the main site, never on the app host. */
+function ambassadorLocationFromLocation(): AmbassadorLocation | null {
+  if (typeof window === 'undefined' || isAppLocation()) return null;
+  const path = window.location.pathname.replace(/\/+$/, '');
+  const parts = path.split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  const root = parts[0].toLowerCase();
+  if (root !== 'ambassadors' && root !== 'envoys') return null;
+  const leaf = parts[1] ?? '';
+  if (!leaf) return { kind: 'apply' };
+  if (leaf.toLowerCase() === 'apply') return { kind: 'apply' };
+  if (leaf.toLowerCase() === 'portal' || leaf.toLowerCase() === 'login') {
+    return { kind: 'portal' };
+  }
+  if (parts.length > 2) return null;
+  return { kind: 'profile', username: decodeURIComponent(leaf) };
+}
+
+function clearAmbassadorLocation(): void {
+  if (typeof window === 'undefined' || !ambassadorLocationFromLocation()) return;
+  window.history.replaceState(null, '', '/');
+}
 
 /** Brand report links arrive as ?report=<token> or #brand/<token>. */
 function brandTokenFromLocation(): string {
@@ -100,14 +190,57 @@ function brandTokenFromLocation(): string {
   return hash.startsWith('brand/') ? hash.slice('brand/'.length) : '';
 }
 
+/** Legal pages are public, shareable hash routes so they work on static hosting. */
+function legalDocFromLocation(): LegalDoc | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash.replace(/^#\/?/, '').replace(/\/+$/, '').toLowerCase();
+  if (hash === 'terms' || hash === 'terms-of-service') return 'terms';
+  if (hash === 'privacy' || hash === 'privacy-policy') return 'privacy';
+  return null;
+}
+
+function clearLegalLocation(): void {
+  if (typeof window === 'undefined' || !legalDocFromLocation()) return;
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${window.location.search}`
+  );
+}
+
+function clearAppLocation(): void {
+  if (typeof window === 'undefined' || !isAppLocation()) return;
+  window.history.replaceState(null, '', `/${window.location.search}`);
+}
+
+function clearGuideLocation(): void {
+  if (typeof window === 'undefined' || !isGuideLocation()) return;
+  window.history.replaceState(null, '', `/${window.location.search}`);
+}
+
 export default function App() {
   const [db, setDb] = useState<DatabaseState>(getDatabaseState());
   const [session, setSession] = useState<AuthSession | null>(() => getSession());
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState('');
+  const [legalDoc, setLegalDoc] = useState<LegalDoc | null>(() => legalDocFromLocation());
   const [viewMode, setViewMode] = useState<MainViewMode>(() => {
+    if (isSetupLocation()) return 'setup';
     if (isAdminLocation()) return 'admin';
-    return brandTokenFromLocation() ? 'brand' : 'landing';
+    if (isGuideLocation()) return 'guide';
+    if (isResourcesLocation()) return 'resources';
+    const ambassador = ambassadorLocationFromLocation();
+    if (ambassador?.kind === 'apply') return 'ambassadorApply';
+    if (ambassador?.kind === 'portal') return 'ambassadorPortal';
+    if (ambassador?.kind === 'profile') return 'ambassadorProfile';
+    if (legalDocFromLocation()) return 'legal';
+    if (brandTokenFromLocation()) return 'brand';
+    if (isAppLocation() && getSession()?.role === 'creator') return 'creator';
+    return 'landing';
+  });
+  const [ambassadorUsername, setAmbassadorUsername] = useState<string>(() => {
+    const ambassador = ambassadorLocationFromLocation();
+    return ambassador?.kind === 'profile' ? ambassador.username : '';
   });
 
   // Creator portal navigation state
@@ -125,9 +258,11 @@ export default function App() {
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Modals
+  // Modals and app-only navigation
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showCreatorSignup, setShowCreatorSignup] = useState<boolean>(false);
   const [showSupport, setShowSupport] = useState<boolean>(false);
+  const authOverlayOpen = showLoginModal || showCreatorSignup;
 
   useEffect(() => {
     const unsubscribe = subscribeToDatabase(() => {
@@ -138,6 +273,31 @@ export default function App() {
 
   useEffect(() => subscribeToSession(() => setSession(getSession())), []);
 
+  // Sign-in and sign-up are in-app screens. Keep one history entry while either
+  // is open so Android back returns to the app entry screen, and switching
+  // between the two never bounces the creator out of the app.
+  useEffect(() => {
+    if (!authOverlayOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.history.pushState({ ...(window.history.state || {}), mhomhoAuth: true }, '');
+
+    const onPopState = () => {
+      if (!window.history.state?.mhomhoAuth) {
+        setShowLoginModal(false);
+        setShowCreatorSignup(false);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('popstate', onPopState);
+      if (window.history.state?.mhomhoAuth) window.history.back();
+    };
+  }, [authOverlayOpen]);
+
   // Load the session and the anonymous projection once at boot. The UI stays
   // behind a splash until the server answers, so no portal can flash open on a
   // stale client-side guess.
@@ -147,7 +307,11 @@ export default function App() {
       .then((next) => {
         if (cancelled) return;
         setSession(next);
-        if (next?.role === 'creator') setViewMode('creator');
+        if (next?.role === 'creator') {
+          setShowLoginModal(false);
+          setShowCreatorSignup(false);
+          setViewMode((current) => (current === 'landing' ? 'creator' : current));
+        }
       })
       .catch(() => {
         if (!cancelled) setBootError('We could not reach the server. Check your connection and reload.');
@@ -168,6 +332,11 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    // Keep Android's status bar and the browser toolbar in sync with the app.
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) {
+      themeColor.setAttribute('content', theme === 'dark' ? '#080706' : '#F4F1EC');
+    }
   }, [theme]);
 
   // The admin console shell is served only at the server-gated
@@ -175,16 +344,82 @@ export default function App() {
   // credentials are still required even if the URL is discovered.
   useEffect(() => {
     const syncLocation = () => {
+      if (isSetupLocation()) {
+        setShowLoginModal(false);
+        setLegalDoc(null);
+        setViewMode('setup');
+        return;
+      }
+
       if (isAdminLocation()) {
         setShowLoginModal(false);
+        setLegalDoc(null);
         setViewMode('admin');
-      } else {
-        setViewMode((current) => (current === 'admin' ? 'landing' : current));
+        return;
       }
+
+      if (isGuideLocation()) {
+        setShowLoginModal(false);
+        setShowCreatorSignup(false);
+        setLegalDoc(null);
+        setViewMode('guide');
+        return;
+      }
+
+      if (isResourcesLocation()) {
+        setShowLoginModal(false);
+        setShowCreatorSignup(false);
+        setLegalDoc(null);
+        setViewMode('resources');
+        return;
+      }
+
+      const ambassador = ambassadorLocationFromLocation();
+      if (ambassador) {
+        setShowLoginModal(false);
+        setShowCreatorSignup(false);
+        setLegalDoc(null);
+        setAmbassadorUsername(ambassador.kind === 'profile' ? ambassador.username : '');
+        setViewMode(
+          ambassador.kind === 'apply'
+            ? 'ambassadorApply'
+            : ambassador.kind === 'portal'
+              ? 'ambassadorPortal'
+              : 'ambassadorProfile'
+        );
+        return;
+      }
+
+      const nextLegalDoc = legalDocFromLocation();
+      if (nextLegalDoc) {
+        setShowLoginModal(false);
+        setLegalDoc(nextLegalDoc);
+        setViewMode('legal');
+        return;
+      }
+
+      setLegalDoc(null);
+      setAmbassadorUsername('');
+      setViewMode((current) =>
+        current === 'admin' ||
+        current === 'legal' ||
+        current === 'setup' ||
+        current === 'guide' ||
+        current === 'resources' ||
+        current === 'ambassadorApply' ||
+        current === 'ambassadorPortal' ||
+        current === 'ambassadorProfile'
+          ? 'landing'
+          : current
+      );
     };
     syncLocation();
     window.addEventListener('popstate', syncLocation);
-    return () => window.removeEventListener('popstate', syncLocation);
+    window.addEventListener('hashchange', syncLocation);
+    return () => {
+      window.removeEventListener('popstate', syncLocation);
+      window.removeEventListener('hashchange', syncLocation);
+    };
   }, []);
 
   // Sessions are short-lived and expire in the background. The server enforces
@@ -196,7 +431,7 @@ export default function App() {
       void endSession();
       if (session.role === 'admin') clearAdminLocation();
       setSession(null);
-      setViewMode('landing');
+      setViewMode((current) => (current === 'legal' ? current : 'landing'));
     };
 
     const remaining = session.expiresAt - Date.now();
@@ -208,51 +443,153 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [session]);
 
-  // Always enter a portal at the top of the page.
+  // Always enter a portal or legal page at the top.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
-  }, [viewMode]);
+  }, [viewMode, legalDoc]);
+
+  useEffect(() => {
+    document.title =
+      viewMode === 'setup'
+        ? 'Setup — Mhomho Media'
+        : viewMode === 'guide'
+        ? 'Creator Guide — Mhomho Media'
+        : viewMode === 'resources'
+        ? 'Commercial Envoy programme — Mhomho Media'
+        : viewMode === 'ambassadorApply'
+        ? 'Become an MHOMHO Ambassador — Mhomho Media'
+        : viewMode === 'ambassadorPortal'
+        ? 'Ambassador portal — Mhomho Media'
+        : viewMode === 'ambassadorProfile'
+        ? 'MHOMHO Ambassador — Mhomho Media'
+        : viewMode === 'legal' && legalDoc
+        ? `${legalDoc === 'terms' ? 'Terms of Service' : 'Privacy Policy'} — Mhomho Media`
+        : isAppLocation()
+        ? 'Mhomho — Creator app'
+        : 'Mhomho Media — Activate your crowd. Get paid to post.';
+  }, [viewMode, legalDoc]);
 
   const currentCreatorUid = session?.role === 'creator' ? session.uid : '';
   const currentCreator = currentCreatorUid ? db.creatorsPublic[currentCreatorUid] : undefined;
   const isRejected = currentCreator?.status === 'rejected';
   const adminAuthed = session?.role === 'admin';
+  const inApp = isAppLocation();
+
+  // The mobile app bar shows the current screen, the way a native app does.
+  const creatorSectionLabel = isSubmittingClip
+    ? 'Submit clip'
+    : activeCampaignDetailId
+    ? 'Campaign brief'
+    : CREATOR_NAV.find((item) => item.id === creatorTab)?.label ?? 'Creator';
 
   const queuePendingCount = Object.values(db.clips).filter((c) => c.status === 'submitted').length;
   const enquiriesCount = Object.values(db.enquiries).filter((e) => e.status === 'new').length;
   const applicantsCount = Object.values(db.creatorsPublic).filter((c) => c.status === 'applied').length;
 
   const goPublic = () => {
+    // The app subdomain and /app are app-only. Nothing inside the installed
+    // app may bounce the creator out to the marketing site.
+    if (isAppLocation()) {
+      clearLegalLocation();
+      setLegalDoc(null);
+      setViewMode(session?.role === 'creator' ? 'creator' : 'landing');
+      setActiveCampaignDetailId(null);
+      setIsSubmittingClip(false);
+      setShowLoginModal(false);
+      setShowCreatorSignup(false);
+      return;
+    }
     clearAdminLocation();
+    clearLegalLocation();
+    clearGuideLocation();
+    clearAppLocation();
+    clearAmbassadorLocation();
+    setLegalDoc(null);
     setViewMode('landing');
     setActiveCampaignDetailId(null);
     setIsSubmittingClip(false);
     setShowLoginModal(false);
+    setShowCreatorSignup(false);
   };
 
   const signOut = () => {
+    const inApp = isAppLocation();
     void endSession();
-    clearAdminLocation();
+    if (inApp) {
+      clearLegalLocation();
+    } else {
+      clearAdminLocation();
+      clearLegalLocation();
+      clearGuideLocation();
+      clearAppLocation();
+      clearAmbassadorLocation();
+    }
+    setLegalDoc(null);
     setSession(null);
     setViewMode('landing');
     setCreatorTab('home');
     setActiveCampaignDetailId(null);
     setIsSubmittingClip(false);
     setShowLoginModal(false);
+    setShowCreatorSignup(false);
   };
 
   const openCreator = () => {
+    clearGuideLocation();
     setViewMode('creator');
     setCreatorTab('home');
     setActiveCampaignDetailId(null);
     setIsSubmittingClip(false);
   };
 
+  const openGuide = () => {
+    if (isAppLocation()) return;
+    clearAdminLocation();
+    clearLegalLocation();
+    setLegalDoc(null);
+    setShowLoginModal(false);
+    setShowCreatorSignup(false);
+    setViewMode('guide');
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/creator-guide');
+    }
+  };
+
+  const openAmbassadorApply = () => {
+    if (isAppLocation()) return;
+    clearAdminLocation();
+    clearLegalLocation();
+    clearGuideLocation();
+    clearAppLocation();
+    setLegalDoc(null);
+    setShowLoginModal(false);
+    setShowCreatorSignup(false);
+    setAmbassadorUsername('');
+    setViewMode('ambassadorApply');
+    window.history.pushState(null, '', '/ambassadors/apply');
+  };
+
+  const openAmbassadorPortal = () => {
+    if (isAppLocation()) return;
+    clearAdminLocation();
+    clearLegalLocation();
+    clearGuideLocation();
+    clearAppLocation();
+    setLegalDoc(null);
+    setShowLoginModal(false);
+    setShowCreatorSignup(false);
+    setAmbassadorUsername('');
+    setViewMode('ambassadorPortal');
+    window.history.pushState(null, '', '/ambassadors/portal');
+  };
+
   const handleCreatorApplySuccess = (_newUid: string) => {
     const next = getSession();
     if (next?.role === 'creator') setSession(next);
+    setShowCreatorSignup(false);
+    setShowLoginModal(false);
     openCreator();
   };
 
@@ -267,6 +604,8 @@ export default function App() {
     const next = getSession();
     if (!next) return { success: false, error: 'The server did not create a session.' };
     setSession(next);
+    setShowLoginModal(false);
+    setShowCreatorSignup(false);
     openCreator();
     return { success: true };
   };
@@ -285,7 +624,11 @@ export default function App() {
     }
   }, [session, db.creatorsPublic]);
 
-  if (booting) {
+  if (viewMode === 'setup') {
+    return <SetupPage />;
+  }
+
+  if (booting && viewMode !== 'legal' && viewMode !== 'guide') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--page)] px-6 text-center font-montserrat text-[var(--text)]">
         <BrandMark size={44} />
@@ -299,7 +642,7 @@ export default function App() {
     );
   }
 
-  if (bootError) {
+  if (bootError && viewMode !== 'legal' && viewMode !== 'guide') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--page)] px-6 text-center font-montserrat text-[var(--text)]">
         <BrandMark size={44} />
@@ -358,80 +701,135 @@ export default function App() {
       : 'Shared with the brand';
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--page)] font-montserrat text-[var(--text)]">
+    <div
+      className={`flex flex-col overflow-x-clip bg-[var(--page)] font-montserrat text-[var(--text)] ${
+        viewMode === 'creator' ? 'h-[100dvh] overflow-hidden overscroll-none' : 'min-h-[100dvh]'
+      }`}
+    >
       <OfflineIndicator />
       <ActivityToasts
-        enabled={viewMode !== 'brand'}
+        enabled={viewMode === 'creator' || viewMode === 'admin'}
         showHandles={db.viewer?.role === 'creator' || db.viewer?.role === 'admin'}
       />
 
       {/* ======================================================== */}
       {/* 1. PUBLIC SITE                                           */}
       {/* ======================================================== */}
-      {viewMode === 'landing' ? (
-        <LandingPage
-          db={db}
-          onCreatorApplySuccess={handleCreatorApplySuccess}
+      {viewMode === 'guide' ? (
+        <CreatorGuidePage
+          onBack={goPublic}
+          onApply={() => setShowCreatorSignup(true)}
           onOpenSignIn={() => setShowLoginModal(true)}
         />
+      ) : viewMode === 'resources' ? (
+        <ResourcesPage onBack={goPublic} onApply={openAmbassadorApply} />
+      ) : viewMode === 'legal' && legalDoc ? (
+        <LegalPage doc={legalDoc} onBack={goPublic} />
+      ) : viewMode === 'ambassadorApply' ? (
+        <AmbassadorApplyPage onBack={goPublic} onOpenPortal={openAmbassadorPortal} />
+      ) : viewMode === 'ambassadorPortal' ? (
+        <AmbassadorPortalPage onBack={goPublic} onApply={openAmbassadorApply} />
+      ) : viewMode === 'ambassadorProfile' ? (
+        <AmbassadorProfilePage
+          username={ambassadorUsername}
+          onBack={goPublic}
+          onApply={openAmbassadorApply}
+        />
+      ) : viewMode === 'landing' ? (
+        inApp ? (
+          <AppEntryScreen
+            onSignIn={() => setShowLoginModal(true)}
+            onApply={() => setShowCreatorSignup(true)}
+          />
+        ) : (
+          <LandingPage
+            db={db}
+            onCreatorApplySuccess={handleCreatorApplySuccess}
+            onOpenSignIn={() => setShowLoginModal(true)}
+            onOpenGuide={openGuide}
+          />
+        )
       ) : (
         /* ======================================================== */
         /* 2. AUTHENTICATED PORTAL                                  */
         /* ======================================================== */
         <>
-          <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--page)]/85 backdrop-blur-xl">
-            <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8">
-              <div className="flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goPublic}
-                  className="flex shrink-0 items-center gap-2.5 text-inherit cursor-pointer"
-                  title="Back to the public site"
-                >
-                  <MhomhoLogo className="h-7 w-auto sm:h-8" />
-                </button>
+          <header className="safe-top sticky top-0 z-40 shrink-0 border-b border-[var(--line)] bg-[var(--page)]/90 backdrop-blur-xl">
+            <div className="mx-auto flex h-[52px] w-full max-w-[1200px] items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-8">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                {inApp ? (
+                  <span className="flex shrink-0 items-center gap-2.5">
+                    <MhomhoLogo className="h-6 w-auto sm:h-8" />
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={goPublic}
+                    className="press flex shrink-0 items-center gap-2.5 text-inherit cursor-pointer"
+                    title="Back to the public site"
+                  >
+                    <MhomhoLogo className="h-6 w-auto sm:h-8" />
+                  </button>
+                )}
 
                 <span className="hidden h-5 w-px bg-[var(--line)] sm:block" />
 
                 <div className="min-w-0">
-                  <p className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)]">
+                  <p className="hidden text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--faint)] sm:block">
                     {portalLabel}
                   </p>
-                  <p className="truncate text-[12.5px] font-semibold text-[var(--text)]">
-                    {portalContext}
+                  <p className="truncate text-[13px] font-semibold text-[var(--text)] sm:text-[12.5px]">
+                    {viewMode === 'creator' ? creatorSectionLabel : portalContext}
                   </p>
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 {viewMode === 'creator' && <NotificationBell />}
 
-                <button
-                  type="button"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  aria-label="Toggle theme"
-                >
-                  {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-                </button>
+                {(viewMode === 'creator' || viewMode === 'admin') && (
+                  <AccountMenu
+                    label={
+                      viewMode === 'creator'
+                        ? currentCreator?.handle || 'Creator'
+                        : session?.identifier || 'Operations'
+                    }
+                    sublabel={viewMode === 'creator' ? 'Creator account' : 'Mhomho operations'}
+                    handle={
+                      viewMode === 'creator' ? currentCreator?.handle : 'Operations'
+                    }
+                    avatarKey={viewMode === 'creator' ? currentCreator?.avatarKey : undefined}
+                    isAdmin={viewMode === 'admin'}
+                    active={viewMode === 'creator' && creatorTab === 'profile'}
+                    onProfile={
+                      viewMode === 'creator'
+                        ? () => {
+                            setActiveCampaignDetailId(null);
+                            setIsSubmittingClip(false);
+                            setCreatorTab('profile');
+                          }
+                        : undefined
+                    }
+                    onSupport={viewMode === 'creator' ? () => setShowSupport(true) : undefined}
+                    onPublic={goPublic}
+                    showPublicSite={!inApp}
+                    onSignOut={signOut}
+                    theme={theme}
+                    onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  />
+                )}
 
-                <button
-                  type="button"
-                  onClick={goPublic}
-                  className="hidden h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3.5 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
-                >
-                  <ArrowLeft size={13} />
-                  Public site
-                </button>
-
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="inline-flex h-9 items-center rounded-full border border-[var(--line)] px-3.5 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
-                >
-                  Sign out
-                </button>
+                {viewMode === 'brand' && (
+                  <button
+                    type="button"
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+                    title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    aria-label="Toggle theme"
+                  >
+                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+                )}
               </div>
             </div>
           </header>
@@ -440,8 +838,8 @@ export default function App() {
           {/* A. CREATOR PORTAL                                        */}
           {/* ======================================================== */}
           {viewMode === 'creator' && (
-            <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-0 sm:px-6 sm:py-7">
-              <div className="flex flex-1 flex-col overflow-hidden border-[var(--line)] bg-[var(--bg)] sm:min-h-[calc(100vh-7.75rem)] sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)]">
+            <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-0 sm:px-6 sm:py-7">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-[var(--line)] bg-[var(--bg)] sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)]">
                 {isRejected ? (
                   <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
                     <span className="grid h-14 w-14 place-items-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[var(--err)]">
@@ -449,15 +847,15 @@ export default function App() {
                     </span>
                     <h2 className="font-display mt-5 text-[24px] font-bold">Application not approved</h2>
                     <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-[var(--muted)]">
-                      We couldn’t verify this profile for the roster. Message onboarding if you think
-                      this was a mistake.
+                      We couldn’t verify this profile for the roster. Email support@mhomho.work if
+                      you think this was a mistake.
                     </p>
                     <button
                       type="button"
                       onClick={signOut}
                       className="mt-6 inline-flex h-11 items-center rounded-full bg-gradient-mhomho px-6 text-[13px] font-bold text-[var(--ink)] cursor-pointer"
                     >
-                      Back to the public site
+                      Sign out
                     </button>
                   </div>
                 ) : (
@@ -489,7 +887,7 @@ export default function App() {
                       })}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                       {isSubmittingClip ? (
                         <SubmitClip
                           initialCampaignId={submitClipCampaignId}
@@ -521,6 +919,10 @@ export default function App() {
                               currentUid={currentCreatorUid}
                               onNavigateToCampaign={(campId) => setActiveCampaignDetailId(campId)}
                               onNavigateToTab={(tab) => setCreatorTab(tab)}
+                              onSubmitClip={() => {
+                                setSubmitClipCampaignId(undefined);
+                                setIsSubmittingClip(true);
+                              }}
                             />
                           )}
 
@@ -559,7 +961,7 @@ export default function App() {
                             <CreatorProfile
                               db={db}
                               currentUid={currentCreatorUid}
-                              onLogout={goPublic}
+                              onLogout={signOut}
                               onOpenSupport={() => setShowSupport(true)}
                             />
                           )}
@@ -600,56 +1002,30 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  {ADMIN_NAV.map((tab) => {
-                    const isActive = adminTab === tab.id;
-                    const count =
-                      tab.id === 'queue'
-                        ? queuePendingCount
-                        : tab.id === 'enquiries'
-                        ? enquiriesCount
-                        : tab.id === 'dashboard'
-                        ? applicantsCount
-                        : 0;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setAdminTab(tab.id)}
-                        className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold transition-colors cursor-pointer ${
-                          isActive
-                            ? 'bg-[var(--text)] text-[var(--page)]'
-                            : 'border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {tab.label}
-                        {count > 0 && (
-                          <span
-                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                              isActive
-                                ? 'bg-[var(--page)]/15 text-[var(--page)]'
-                                : 'bg-[var(--surface-2)] text-[var(--a1)]'
-                            }`}
-                          >
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                <AdminNav
+                  tabs={ADMIN_NAV}
+                  activeTab={adminTab}
+                  counts={{
+                    queue: queuePendingCount,
+                    enquiries: enquiriesCount,
+                    dashboard: applicantsCount,
+                  }}
+                  onChange={(id) => setAdminTab(id as AdminTabId)}
+                />
               </div>
 
               <div className="flex-1">
                 {adminTab === 'dashboard' && <AdminDashboard db={db} />}
+                {adminTab === 'ambassadors' && <AdminAmbassadors />}
                 {adminTab === 'queue' && <AdminVerificationQueue db={db} />}
                 {adminTab === 'campaigns' && <AdminCampaigns db={db} />}
                 {adminTab === 'payouts' && <AdminPayouts db={db} />}
                 {adminTab === 'enquiries' && <AdminEnquiries db={db} />}
                 {adminTab === 'community' && <AdminCommunity />}
+                {adminTab === 'invites' && <AdminInvites />}
                 {adminTab === 'support' && <AdminSupport />}
                 {adminTab === 'notifications' && <AdminNotifications db={db} />}
+                {adminTab === 'security' && <AdminSecurity email={session?.identifier} />}
               </div>
             </div>
           )}
@@ -674,15 +1050,25 @@ export default function App() {
         onClose={() => setShowLoginModal(false)}
         onLogin={handleCreatorLogin}
         onApply={() => {
-          goPublic();
-          window.setTimeout(() => {
-            document.getElementById('creators')?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start',
-            });
-          }, 80);
+          setShowLoginModal(false);
+          setShowCreatorSignup(true);
         }}
       />
+
+      {showCreatorSignup && (
+        <CreatorSignupFlow
+          manageHistory={false}
+          onClose={() => setShowCreatorSignup(false)}
+          onCreatorApplySuccess={(newUid) => {
+            setShowCreatorSignup(false);
+            handleCreatorApplySuccess(newUid);
+          }}
+          onOpenSignIn={() => {
+            setShowCreatorSignup(false);
+            setShowLoginModal(true);
+          }}
+        />
+      )}
     </div>
   );
 }

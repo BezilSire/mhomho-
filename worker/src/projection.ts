@@ -51,6 +51,31 @@ function daysUntil(timestamp: number | null, now: number): number | null {
   return Math.max(0, Math.ceil((timestamp - now) / 86_400_000));
 }
 
+function previewFromRow(row: Row): {
+  title: string | null;
+  author: string | null;
+  thumbnailUrl: string | null;
+  provider: string | null;
+  views: number | null;
+  likes: number | null;
+  source: string | null;
+  fetchedAt: number;
+} | null {
+  if (row.preview_fetched_at === null || row.preview_fetched_at === undefined) return null;
+  return {
+    title: row.preview_title ? str(row.preview_title) : null,
+    author: row.preview_author ? str(row.preview_author) : null,
+    thumbnailUrl: row.preview_thumbnail_url ? str(row.preview_thumbnail_url) : null,
+    provider: row.preview_provider ? str(row.preview_provider) : null,
+    views:
+      row.preview_views === null || row.preview_views === undefined ? null : num(row.preview_views),
+    likes:
+      row.preview_likes === null || row.preview_likes === undefined ? null : num(row.preview_likes),
+    source: row.preview_source ? str(row.preview_source) : null,
+    fetchedAt: num(row.preview_fetched_at),
+  };
+}
+
 const SUBMISSION_STATUS_MAP: Record<string, string> = {
   submitted: 'submitted',
   approved: 'approved',
@@ -258,8 +283,10 @@ export async function buildBootstrap(
   }
 
   const submissionRows = await env.DB.prepare(
-    `SELECT s.id, s.campaign_id, s.creator_id, s.platform, s.post_url, s.claimed_views,
+    `SELECT s.id, s.campaign_id, s.creator_id, s.platform, s.post_url,
             s.proof_asset_id, s.status, s.review_note, s.created_at, s.updated_at,
+            s.preview_title, s.preview_author, s.preview_thumbnail_url, s.preview_provider,
+            s.preview_views, s.preview_likes, s.preview_source, s.preview_fetched_at,
             p.handle, p.followers,
             o.observed_views, o.verified_views, o.eligible_views, o.shortfall_cents, o.observed_at,
             (SELECT COALESCE(SUM(l.amount_cents), 0)
@@ -295,16 +322,16 @@ export async function buildBootstrap(
       link: str(row.post_url),
       screenshotUrl: row.proof_asset_id ? `/api/assets/${str(row.proof_asset_id)}` : '',
       proofAssetId: row.proof_asset_id ? str(row.proof_asset_id) : null,
-      claimedViews: num(row.claimed_views),
-      publicViews: hasObservation ? num(row.observed_views) : num(row.claimed_views),
+      preview: previewFromRow(row),
+      publicViews: hasObservation ? num(row.observed_views) : 0,
       verifiedViews,
       eligibleViews: num(row.eligible_views),
       averageViews,
       status: displayStatus,
-      flagged: num(row.claimed_views) >= averageViews * 5,
+      flagged: num(row.observed_views) >= averageViews * 5,
       spikeReason:
-        num(row.claimed_views) >= averageViews * 5 && followers > 0
-          ? `Claimed ${num(row.claimed_views).toLocaleString()} views vs creator average of ${averageViews.toLocaleString()}`
+        num(row.observed_views) >= averageViews * 5 && followers > 0
+          ? `Observed ${num(row.observed_views).toLocaleString()} views vs creator average of ${averageViews.toLocaleString()}`
           : null,
       earningsCents: Math.max(0, num(row.earned_cents)),
       shortfallCents: num(row.shortfall_cents),
@@ -395,7 +422,8 @@ export async function buildBootstrap(
   const creatorRows = await env.DB.prepare(
     `SELECT a.id, a.email, a.status AS account_status, a.role, a.created_at AS account_created_at,
             p.display_name, p.handle, p.platform, p.niche, p.followers, p.avatar_key,
-            p.campaign_zero_follow_confirmed, p.campaign_zero_submitted_at, p.approved_at,
+            p.campaign_zero_follow_confirmed, p.campaign_zero_submitted_at,
+            p.campaign_zero_deadline_at, p.approved_at,
             p.whatsapp_number, p.ecocash_number
        FROM accounts a
        JOIN creator_profiles p ON p.account_id = a.id
@@ -410,6 +438,8 @@ export async function buildBootstrap(
   const creatorsPrivate: Record<string, unknown> = {};
   for (const row of creatorRows.results ?? []) {
     const uid = str(row.id);
+    const submittedAt = num(row.campaign_zero_submitted_at);
+    const deadlineAt = num(row.campaign_zero_deadline_at);
     creatorsPublic[uid] = {
       uid,
       handle: str(row.handle),
@@ -422,10 +452,10 @@ export async function buildBootstrap(
       campaignZero: {
         followConfirmed: num(row.campaign_zero_follow_confirmed) === 1,
         clips: [] as unknown[],
-        submittedAt: row.campaign_zero_submitted_at
-          ? new Date(num(row.campaign_zero_submitted_at)).toISOString()
-          : undefined,
+        submittedAt: submittedAt ? new Date(submittedAt).toISOString() : undefined,
         verifiedAt: row.approved_at ? new Date(num(row.approved_at)).toISOString() : undefined,
+        deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : undefined,
+        expired: Boolean(deadlineAt && !submittedAt && deadlineAt < Date.now()),
       },
     };
     const whatsappNumber = str(row.whatsapp_number);
@@ -446,7 +476,10 @@ export async function buildBootstrap(
   const zeroRows =
     creatorId || isAdmin
       ? await env.DB.prepare(
-          `SELECT id, account_id, position, url, claimed_views, added_at
+          `SELECT id, account_id, position, url, added_at,
+                  preview_title, preview_author, preview_thumbnail_url, preview_provider,
+                  preview_views, preview_likes, preview_source, preview_fetched_at,
+                  verified_views, verified_by, verified_at
              FROM creator_campaign_zero_clips ${zeroWhere}
             ORDER BY account_id, position`
         )
@@ -459,9 +492,16 @@ export async function buildBootstrap(
     const creator = creatorsPublic[uid] as { campaignZero?: { clips: unknown[] } } | undefined;
     if (!creator?.campaignZero) continue;
     creator.campaignZero.clips.push({
+      id: str(row.id),
       url: str(row.url),
-      claimedViews: num(row.claimed_views),
       addedAt: new Date(num(row.added_at)).toISOString().slice(0, 10),
+      preview: previewFromRow(row),
+      verifiedViews:
+        row.verified_views === null || row.verified_views === undefined
+          ? null
+          : num(row.verified_views),
+      verifiedBy: row.verified_by ? str(row.verified_by) : null,
+      verifiedAt: row.verified_at ? new Date(num(row.verified_at)).toISOString() : null,
     });
   }
 

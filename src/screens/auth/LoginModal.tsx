@@ -55,12 +55,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="creator-signin-title"
     >
-      <div className="w-full max-w-sm rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+      <div className="app-scroll max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-[24px] border border-[var(--line)] bg-[var(--surface)] p-5 pb-[max(24px,env(safe-area-inset-bottom))] shadow-[var(--shadow-soft)] sm:rounded-[22px] sm:p-6 sm:pb-6">
+        <div className="sheet-handle mb-4 sm:hidden" />
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
             <BrandMark size={32} />
@@ -76,7 +77,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] cursor-pointer"
+            className="press grid h-10 w-10 place-items-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] cursor-pointer"
             aria-label="Close"
           >
             <X size={16} />
@@ -161,7 +162,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         <p className="mt-3 text-center text-[10.5px] leading-relaxed text-[var(--faint)]">
           Only approved creators can enter the dashboard. Applicants can sign in to finish Campaign
-          Zero.
+          Zero. By signing in, you agree to our{' '}
+          <a
+            href="#/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]"
+          >
+            Terms of Service
+          </a>{' '}
+          and{' '}
+          <a
+            href="#/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]"
+          >
+            Privacy Policy
+          </a>
+          .
         </p>
 
         <div className="mt-4 border-t border-[var(--line)] pt-3 text-center text-[11px] text-[var(--muted)]">

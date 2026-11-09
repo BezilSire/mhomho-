@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Card } from '../../components/Card.tsx';
 import { Button } from '../../components/Button.tsx';
+import { LinkPreviewCard } from '../../components/LinkPreviewCard.tsx';
 import { DatabaseState } from '../../lib/firebase.ts';
 import { submitClip, uploadProof, type ClipSubmissionInput } from '../../lib/api.ts';
 
@@ -19,14 +21,12 @@ const PLATFORMS: Platform[] = ['TikTok', 'Instagram', 'YouTube', 'Facebook'];
 interface ClipDraft {
   platform: Platform;
   link: string;
-  views: string;
   proofFile: File | null;
 }
 
 const emptyClip = (platform: Platform): ClipDraft => ({
   platform,
   link: '',
-  views: '',
   proofFile: null,
 });
 
@@ -51,9 +51,7 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const secondHasData = Boolean(
-    clips[1].link.trim() || clips[1].views.trim() || clips[1].proofFile
-  );
+  const secondHasData = Boolean(clips[1].link.trim() || clips[1].proofFile);
 
   const updateClip = (index: number, patch: Partial<ClipDraft>) => {
     setClips((current) => {
@@ -73,10 +71,6 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
 
   const validateClip = (clip: ClipDraft, label: string): string | null => {
     if (!clip.link.trim()) return `${label}: enter your live clip URL.`;
-    const views = parseInt(clip.views, 10);
-    if (isNaN(views) || views < 1) return `${label}: enter your current claimed view count.`;
-    if (views < 1000) return `${label}: posts only qualify once they reach 1,000 views.`;
-    if (!clip.proofFile) return `${label}: attach a screenshot of the public view count.`;
     return null;
   };
 
@@ -113,20 +107,25 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
 
       for (let index = 0; index < drafts.length; index += 1) {
         const draft = drafts[index];
-        const upload = await uploadProof(draft.proofFile as File);
-        if (!upload.success) {
-          setErrorMsg(upload.error || 'A proof screenshot could not be uploaded.');
-          return;
+        let proofAssetId: string | null = null;
+
+        if (draft.proofFile) {
+          const upload = await uploadProof(draft.proofFile);
+          if (!upload.success) {
+            setErrorMsg(upload.error || 'A proof screenshot could not be uploaded.');
+            return;
+          }
+          if (!upload.data?.assetId) {
+            setErrorMsg('A proof screenshot could not be uploaded.');
+            return;
+          }
+          proofAssetId = upload.data.assetId;
         }
-        if (!upload.data?.assetId) {
-          setErrorMsg('A proof screenshot could not be uploaded.');
-          return;
-        }
+
         submissions.push({
           platform: draft.platform,
           postUrl: draft.link.trim(),
-          claimedViews: parseInt(draft.views, 10),
-          proofAssetId: upload.data.assetId,
+          proofAssetId,
         });
       }
 
@@ -162,7 +161,7 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
         <select
           value={clip.platform}
           onChange={(e) => updateClip(index, { platform: e.target.value as Platform })}
-          className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold mb-3 text-[14px]"
+          className="mb-3 h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 text-[14px] font-semibold text-[var(--text)]"
         >
           {PLATFORMS.map((platform) => (
             <option
@@ -180,28 +179,20 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
         </label>
         <input
           type="url"
+          inputMode="url"
           value={clip.link}
           onChange={(e) => updateClip(index, { link: e.target.value })}
           placeholder="https://tiktok.com/@yourhandle/video/..."
-          className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-normal mb-3 text-[14px]"
+          className="mb-3 h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 text-[14px] font-normal text-[var(--text)]"
+          autoComplete="off"
+          spellCheck={false}
           required={!optional}
         />
 
-        <label className="block text-[13px] font-semibold text-[var(--muted)] mb-1">
-          Current Views (Minimum 1,000)
-        </label>
-        <input
-          type="number"
-          min="1000"
-          value={clip.views}
-          onChange={(e) => updateClip(index, { views: e.target.value })}
-          placeholder="e.g. 4820"
-          className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold mb-3 text-[14px]"
-          required={!optional}
-        />
+        <LinkPreviewCard url={clip.link} />
 
         <label className="block text-[13px] font-semibold text-[var(--muted)] mb-1">
-          Analytics Screenshot (Proof)
+          Analytics screenshot (optional)
         </label>
         <div className="flex items-center gap-2">
           <input
@@ -216,7 +207,7 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
           />
           <label
             htmlFor={inputId}
-            className="px-3 py-2 rounded-[8px] border border-[var(--line)] bg-[var(--bg)] text-[13px] font-semibold cursor-pointer hover:border-[var(--muted)] text-[var(--text)]"
+            className="press inline-flex h-11 shrink-0 cursor-pointer items-center rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3.5 text-[12.5px] font-semibold text-[var(--text)] hover:border-[var(--muted)]"
           >
             Choose image
           </label>
@@ -229,21 +220,23 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-0 pt-4 sm:px-[18px] sm:pt-[22px]">
       <button
         type="button"
         onClick={onBack}
-        className="text-[13px] text-[var(--muted)] mb-2 inline-flex items-center gap-1 hover:text-[var(--text)] cursor-pointer"
+        className="press mb-2 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
       >
-        ← Back
+        <ArrowLeft size={13} />
+        Back
       </button>
 
-      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-1">
+      <h2 className="mb-1 text-[25px] font-extrabold leading-[1.15] tracking-[-0.03em]">
         Submit clips
       </h2>
-      <p className="text-[13px] text-[var(--muted)] mb-4">
+      <p className="mb-4 text-[13px] leading-relaxed text-[var(--muted)]">
         Post on one platform, then add a second clip on a different platform to increase your
-        chances. Each clip needs its own link, view count and screenshot.
+        chances. Each clip needs its own link. A screenshot is optional — our team verifies the
+        live view count.
       </p>
 
       {errorMsg && (
@@ -266,7 +259,7 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
           <select
             value={campaignId}
             onChange={(e) => setCampaignId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold text-[14px]"
+            className="h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 text-[14px] font-semibold text-[var(--text)]"
             disabled={joinedCampaigns.length === 0}
           >
             {joinedCampaigns.length === 0 ? (
@@ -293,13 +286,15 @@ export const SubmitClip: React.FC<SubmitClipProps> = ({
           </div>
         </Card>
 
-        <Button type="submit" disabled={isSubmitting || joinedCampaigns.length === 0}>
-          {isSubmitting
-            ? 'Submitting...'
-            : secondHasData
-              ? 'Submit both clips for verification'
-              : 'Submit clip for verification'}
-        </Button>
+        <div className="sticky bottom-0 z-20 -mx-4 border-t border-[var(--line)] bg-[var(--page)]/95 px-4 pb-3 pt-3 backdrop-blur-xl">
+          <Button type="submit" disabled={isSubmitting || joinedCampaigns.length === 0}>
+            {isSubmitting
+              ? 'Submitting...'
+              : secondHasData
+                ? 'Submit both clips for verification'
+                : 'Submit clip for verification'}
+          </Button>
+        </div>
       </form>
     </div>
   );

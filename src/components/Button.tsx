@@ -39,9 +39,9 @@ export const Button: React.FC<ButtonProps> = ({
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'opacity 0.15s ease',
+        transition: 'opacity 0.15s ease, transform 0.15s var(--ease)',
       }}
-      className={`select-none focus-visible:outline-2 focus-visible:outline-[var(--a1)] ${className}`}
+      className={`press select-none focus-visible:outline-2 focus-visible:outline-[var(--a1)] ${className}`}
       {...props}
     >
       {children}

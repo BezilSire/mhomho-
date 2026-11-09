@@ -1,11 +1,12 @@
 # MHOMHO — Deployment & Operations Runbook
 
 Date: 2026-10-24
-State: **not deployed**. This document is the approval-gated release plan.
+State: **deployed** at `https://mhomho.work` on Cloudflare Workers with D1 and
+Workers KV. This document remains the release and operations runbook.
 
-Everything here targets Cloudflare Workers + Static Assets + D1 + R2. No paid
-add-on is required beyond the standard Workers/D1/R2 usage, but R2 storage and
-D1 rows do incur normal account charges once used.
+Everything here targets Cloudflare Workers + Static Assets + D1 + Workers KV.
+No paid add-on and no payment method are required: the deployment stays inside
+the Workers, D1 and KV free tiers for normal early-stage usage.
 
 ---
 
@@ -16,8 +17,18 @@ One Worker named `mhomho` containing:
 - the API (`worker/src/index.ts` bundled to `dist/mhomho/index.js`);
 - the SPA (`dist/client`, served by the `ASSETS` binding);
 - the D1 binding `DB`;
-- the R2 binding `MEDIA`;
+- the KV binding `PROOFS` for proof screenshots and campaign posters;
 - the hourly cron trigger.
+
+Custom domains:
+
+- `mhomho.work` — public site and creator/admin portals;
+- `setup.mhomho.work` — owner launch checklist;
+- `app.mhomho.work` - creator app entry point, installable PWA, and signed Android APK.
+
+The public creator guide lives at `https://mhomho.work/creator-guide` and
+downloads from `/download/mhomho-creator-guide.pdf`. Regenerate the PDF after
+editing `src/content/creatorGuide.ts` with `npm run guide:pdf`.
 
 `wrangler.jsonc` is copied into `dist/mhomho/wrangler.json` by the Vite plugin,
 and `.wrangler/deploy/config.json` redirects `wrangler` commands to it. That is
@@ -28,26 +39,27 @@ why `npm run deploy:dry` works from the repository root.
 | Requirement | Check |
 | --- | --- |
 | Node.js 20+ | `node -v` |
-| Cloudflare account with Workers, D1 and R2 enabled | dashboard |
+| Cloudflare account with Workers, D1 and KV enabled | dashboard |
 | Wrangler authenticated | `npx wrangler whoami` |
 | Repository dependencies installed | `npm ci` |
 | All local checks green | `npm run typecheck && npm test && npm run build` |
 
 ## 3. One-time resource creation
 
-Run these once per Cloudflare account. They create billable resources; review
-usage pricing before proceeding.
+Run these once per Cloudflare account. Both resources have free tiers and do
+not require a payment method.
 
 ```bash
 # 1. D1 database
 npx wrangler d1 create mhomho-db
 #    → copy the printed database_id
 
-# 2. R2 bucket (private; no public bucket / custom domain)
-npx wrangler r2 bucket create mhomho-media
+# 2. KV namespace (private; no public URL)
+npx wrangler kv namespace create PROOFS
+#    → copy the printed namespace id
 ```
 
-Edit `wrangler.jsonc` and replace the placeholder:
+Edit `wrangler.jsonc` and replace both placeholders:
 
 ```jsonc
 "d1_databases": [
@@ -57,10 +69,16 @@ Edit `wrangler.jsonc` and replace the placeholder:
     "database_id": "<the id printed by d1 create>",   // was 00000000-0000-0000-0000-000000000000
     "migrations_dir": "migrations"
   }
+],
+"kv_namespaces": [
+  {
+    "binding": "PROOFS",
+    "id": "<the id printed by kv namespace create>"    // was 00000000000000000000000000000000
+  }
 ]
 ```
 
-The committed placeholder is intentional: a real account ID must never be
+The committed placeholders are intentional: real account IDs must never be
 guessed or committed by an agent.
 
 ## 4. Production configuration
@@ -98,7 +116,14 @@ Secrets are **not** in `wrangler.jsonc`:
 npx wrangler secret put ADMIN_SETUP_TOKEN
 npx wrangler secret put IP_PEPPER
 npx wrangler secret put ADMIN_PATH
+# Optional: official YouTube view/like counts in link previews.
+npx wrangler secret put YOUTUBE_API_KEY
 ```
+
+Production note: Cloudflare's WebCrypto implementation rejects PBKDF2 iteration
+counts above 100,000. The application uses exactly 100,000 and verifies existing
+password rows using their stored iteration count. Local workerd accepts higher
+values, so this ceiling is easy to miss until the first production login.
 
 `ADMIN_PATH` is the secret suffix of the operations console:
 `https://<host>/console/<ADMIN_PATH>`. Use a long random value such as
@@ -115,12 +140,16 @@ npx wrangler secret delete ADMIN_SETUP_TOKEN
 `IP_PEPPER` must remain: changing it invalidates existing IP hashes (rate-limit
 buckets and audit correlation), but does not break logins.
 
+`YOUTUBE_API_KEY` is optional. With it, previews include the official
+`viewCount`/`likeCount` from YouTube Data API v3. Without it, previews still show
+title, author and thumbnail, and submissions work unchanged.
+
 ## 5. Build
 
 ```bash
 npm ci
 npm run typecheck
-npm test            # ~5 minutes: real workerd + D1 + R2, per-test reset
+npm test            # ~5 minutes: real workerd + D1 + KV, per-test reset
 npm run build
 npm run deploy:dry  # bundles and validates config, uploads nothing
 ```
@@ -139,7 +168,7 @@ deploying code that depends on a new schema:
 npx wrangler d1 migrations apply mhomho-db --remote
 ```
 
-- `0001_init.sql` through `0005_community.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard.
+- `0001_init.sql` through `0010_ambassadors.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard. `0006` adds the 15-day Campaign Zero deadline and backfills it from each creator's sign-up time. `0007` adds single-use invite codes and seeds `creator_invite_mode=auto` with a 3,000-creator threshold; open sign-up closes automatically at that threshold, and admins can force invite-only mode early from Operations → Invites. `0008` adds the short-lived preview cache and the snapshot columns on submissions and Campaign Zero clips. `0009` adds the admin-verified Campaign Zero view count, verifier and timestamp. `0010` adds the additive Ambassador Phase 1 tables (`ambassador_applications`, `ambassador_documents`, `ambassador_profiles`, `ambassador_reviews`, `ambassador_id_sequence`); it creates no financial records and does not alter existing tables.
 - The command is idempotent: applied migrations are tracked in
   `d1_migrations`.
 - For a dry inspection: `npx wrangler d1 migrations list mhomho-db --remote`.
@@ -151,7 +180,7 @@ npx wrangler deploy
 ```
 
 Expected output: upload of one Worker, N static assets, and confirmation of the
-D1/R2 bindings and the cron trigger.
+D1/KV bindings and the cron trigger.
 
 Optional versioned release with instant rollback:
 
@@ -218,11 +247,49 @@ curl -s -o /dev/null -w '%{http_code}\n' https://<host>/api/community
 
 # 8. Cookie flags after a real admin login (browser devtools)
 # → mhomho_session: HttpOnly, Secure, SameSite=Lax
+
+# 9. Android APK direct download
+curl -sI https://app.mhomho.work/download/mhomho.apk
+# → 200, application/vnd.android.package-archive, Content-Disposition: attachment
+# → Cache-Control: no-cache so a newly signed APK is never served stale
+
+# 10. Android package metadata (retained for package/app association)
+curl -s https://app.mhomho.work/.well-known/assetlinks.json
+# → package_name work.mhomho.app and the release keystore SHA-256 fingerprint
+# The current APK is a WebView shell and does not depend on TWA verification.
+
+# 11. App entry is creator-only
+# Open https://app.mhomho.work/app with no session.
+# → creator sign-in entry, not the marketing landing page.
+
+# 12. Public creator guide
+curl -s -o /dev/null -w '%{http_code}\n' https://mhomho.work/creator-guide
+# → 200, the public guide page
+curl -sI https://mhomho.work/download/mhomho-creator-guide.pdf
+# → 200, application/pdf, Content-Disposition: attachment
 ```
+
+The Android build is `work.mhomho.app` versionCode `5`, versionName `1.0.4`.
+It opens `https://app.mhomho.work/app` in a fullscreen in-app WebView, so the
+installed app never shows a Chrome address bar. The native splash and launcher
+icon use the Mhomho crowd mark. Install it over an earlier build with the same
+release keystore. Verify on a device that the splash appears, sign-in works,
+the file picker opens for optional proof screenshots, app links stay inside the
+creator shell, and the public site plus external links open in the browser.
 
 After the first approved creator exists, sign in as that creator and confirm the
 Community tab opens, a preset avatar can be saved, and one thread plus reply can
 be posted and moderated from the admin Community tab.
+
+As an admin, open a campaign drawer, create a brand report link, copy it, and open
+it in a signed-out browser. Confirm the report shows verified views, creators
+joined, clips live and platform mix without creator identities. Refresh the
+drawer, revoke the link, and confirm the URL now returns `404`.
+
+Also open `https://<host>/#/terms` and `https://<host>/#/privacy` in a signed-out
+browser. Both pages must render even if the API is unavailable, the document
+links in the public footer must switch between them, and the creator sign-up
+checkbox must link to both.
 
 For a full HTTP flow against a local build, see §11.
 
@@ -258,13 +325,13 @@ preference:
 The ledger is append-only by trigger, so financial history survives code
 rollbacks; a bad *credit* is corrected with a new reversal row, not a delete.
 
-### R2
+### KV assets
 
 Assets are immutable (unique keys). A bad upload is marked `status='deleted'` in
 `campaign_assets` (after a code change that honours it) or removed manually:
 
 ```bash
-npx wrangler r2 object delete mhomho-media --key "<object_key>"
+npx wrangler kv key delete --namespace-id <PROOFS namespace id> "<object_key>"
 ```
 
 Deleting an object does not delete the ledger or the submission.
@@ -323,12 +390,12 @@ Expected result: `28/28 checks passed.`
 
 | Task | Action |
 | --- | --- |
-| Approve a creator | Admin console → verification queue → Approve. Requires 3 Campaign Zero clips, a follow confirmation, and one clip ≥ 1,000 views. |
+| Approve a creator | Admin console → verification queue → Approve. Requires a follow confirmation, at least one Campaign Zero clip, and one clip ≥ 500 views. The creator must have submitted inside their 15-day window. |
 | Verify a clip | Admin console → verification queue → enter the **observed public count**, an evidence note, then verify. Earnings are computed server-side. |
 | Reject a clip | Enter a note. No ledger row is written. |
 | Campaign pool exhausted | Top up the campaign (budget + pool increase atomically), then verify the remaining clips. Shortfalls are visible in the campaign stats. |
 | Record a payout | Admin console → payouts → creator, amount, reference. The amount must not exceed the balance; a reused reference returns `409`. |
-| Rotate an administrator password | No self-service reset. Use a one-off D1 statement with a fresh PBKDF2 hash, then revoke sessions. |
+| Rotate an administrator password | Admin console → **Security** → enter the current and new password. The API revokes every other session; the current device stays signed in. |
 | Suspend an account | `UPDATE accounts SET status='suspended'` — takes effect on the next request. |
 | Revoke all sessions for an account | `UPDATE accounts SET session_version=session_version+1` **and** set `revoked_at` on its sessions. |
 | Inspect the ledger | `npx wrangler d1 execute mhomho-db --remote --command "SELECT ..."` (read-only queries). |
@@ -360,7 +427,7 @@ Expected result: `28/28 checks passed.`
 - Cloudflare alert on Worker 5xx rate;
 - alert on `audit_events` write failures;
 - D1 storage/row-read alerts;
-- R2 bucket size alert;
+- KV namespace storage alert;
 - uptime check on `/api/health` and `/`.
 
 ## 14. Cost and blast radius
@@ -370,15 +437,17 @@ Expected result: `28/28 checks passed.`
 | Worker | `wrangler deploy` | Free tier covers low traffic; paid plan for production traffic. |
 | Static assets | same deploy | No separate bucket. |
 | D1 | `wrangler d1 create` | Rows grow with submissions, observations, audit. |
-| R2 | `wrangler r2 bucket create` | Only proof uploads today (≤ 5 MiB × 30/h/account). |
+| KV | `wrangler kv namespace create PROOFS` | Proof screenshots and campaign posters (≤ 5 MiB × 30/h/account). |
 | Cron | `triggers.crons` | One run per hour. |
 
-No DNS, custom domain, email, payment or third-party API is configured by this
-repository. Adding a custom domain is a separate, approval-gated change.
+The custom domain `mhomho.work` is attached as a Worker custom domain. `www` is
+not configured. Email stays on Namecheap forwarding; the MX and SPF records are
+preserved in Cloudflare DNS. No payment or third-party API is configured.
 
 ## 15. Pre-launch checklist
 
 - [ ] Real `database_id` committed (not the placeholder).
+- [ ] Real KV `PROOFS` namespace id committed (not the placeholder).
 - [ ] `ENVIRONMENT=production`.
 - [ ] `APP_ORIGIN` matches the live host exactly.
 - [ ] `ADMIN_SETUP_TOKEN`, `IP_PEPPER`, and `ADMIN_PATH` set as secrets.
@@ -387,9 +456,14 @@ repository. Adding a custom domain is a separate, approval-gated change.
 - [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run deploy:dry` green.
 - [ ] Post-deploy checks in §9 pass.
 - [ ] Preset avatar, community leaderboard and forum smoke-tested as an approved creator.
+- [ ] Ambassador flow smoke-tested end to end: apply → admin review → approve → publish → public profile.
+- [ ] Applicant document access verified: owner and admin only; public reads rejected.
+- [ ] `/ambassadors/*` and `/envoys/*` never render on `app.mhomho.work`.
+- [ ] Real test email delivered to `partnerships@mhomho.work` (the PDF is attached manually; no email provider is configured).
+- [ ] Terms (`/#/terms`) and Privacy (`/#/privacy`) pages render in a signed-out browser.
 - [ ] Backup schedule agreed.
 - [ ] Cloudflare WAF/rate limiting decision recorded.
-- [ ] Privacy notice updated for PII retention and manual review.
+- [ ] Terms and Privacy Policy reviewed by a Zimbabwean lawyer; registered business name, address and formal contact confirmed.
 - [ ] Explicit owner approval to deploy.
 
 ---

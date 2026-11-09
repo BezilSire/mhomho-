@@ -58,8 +58,7 @@ export async function handleProofUpload(ctx: Ctx): Promise<Response> {
     throw forbidden('Uploads are not available for this account.');
   }
 
-  // R2 storage is the only paid resource in this deployment, so uploads are
-  // rate limited per account as well as by size and type.
+  // Storage is rate limited per account as well as by size and type.
   const uploadLimit = await consumeRateLimit(ctx.env, `upload:${account.id}`, 30, 60 * 60);
   if (!uploadLimit.allowed) {
     throw tooMany('Too many uploads. Try again later.', uploadLimit.retryAfterSeconds);
@@ -85,18 +84,7 @@ export async function handleProofUpload(ctx: Ctx): Promise<Response> {
   const assetId = newId('asset');
   const checksum = await sha256Hex(bytesToBase64(bytes));
 
-  await ctx.env.MEDIA.put(objectKey, buffer, {
-    httpMetadata: {
-      contentType: sniffed.contentType,
-      cacheControl: 'private, no-store',
-      contentDisposition: 'inline',
-    },
-    customMetadata: {
-      ownerId: account.id,
-      assetId,
-      visibility: 'private',
-    },
-  });
+  await ctx.env.PROOFS.put(objectKey, buffer);
 
   await ctx.env.DB.prepare(
     `INSERT INTO campaign_assets
@@ -150,7 +138,7 @@ export async function handleAssetRead(ctx: Ctx): Promise<Response> {
     throw forbidden('You do not have access to this file.');
   }
 
-  const object = await ctx.env.MEDIA.get(String(row.object_key));
+  const object = await ctx.env.PROOFS.get(String(row.object_key), 'arrayBuffer');
   if (!object) throw notFound('Asset not found.');
 
   const headers = new Headers();
@@ -162,9 +150,8 @@ export async function handleAssetRead(ctx: Ctx): Promise<Response> {
     'Cache-Control',
     visibility === 'public' ? 'public, max-age=3600' : 'private, no-store'
   );
-  if (object.httpEtag) headers.set('ETag', object.httpEtag);
 
-  return new Response(object.body, { headers });
+  return new Response(object, { headers });
 }
 
 /** Public brand assets (posters, logos) are readable without a session. */

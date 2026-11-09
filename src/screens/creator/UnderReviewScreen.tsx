@@ -9,15 +9,21 @@ import {
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
+import { LinkPreviewCard } from '../../components/LinkPreviewCard.tsx';
 import {
-  CAMPAIGN_ZERO_MIN_CLIPS,
+  CAMPAIGN_ZERO_MAX_CLIPS,
   CAMPAIGN_ZERO_MIN_VIEWS,
+  CAMPAIGN_ZERO_WINDOW_DAYS,
   CampaignZeroClip,
   DatabaseState,
   evaluateCampaignZero,
   isAllowedSocialUrl,
 } from '../../lib/firebase.ts';
-import { saveCampaignZero, submitCampaignZero } from '../../lib/api.ts';
+import {
+  restartCampaignZero,
+  saveCampaignZero,
+  submitCampaignZero,
+} from '../../lib/api.ts';
 import { BrandLockup, BrandMark } from '../../components/BrandMark.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { NotificationBell } from '../../components/NotificationBell.tsx';
@@ -32,7 +38,6 @@ export interface UnderReviewScreenProps {
 
 interface ClipDraft {
   url: string;
-  views: string;
 }
 
 function formatDate(value?: string): string {
@@ -40,6 +45,10 @@ function formatDate(value?: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function emptyClipDrafts(): ClipDraft[] {
+  return Array.from({ length: CAMPAIGN_ZERO_MAX_CLIPS }, () => ({ url: '' }));
 }
 
 export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
@@ -53,9 +62,8 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
 
   const [followConfirmed, setFollowConfirmed] = useState(Boolean(saved?.followConfirmed));
   const [clips, setClips] = useState<ClipDraft[]>(() =>
-    Array.from({ length: CAMPAIGN_ZERO_MIN_CLIPS }, (_, index) => ({
+    emptyClipDrafts().map((_, index) => ({
       url: saved?.clips[index]?.url ?? '',
-      views: saved?.clips[index] ? String(saved.clips[index].claimedViews) : '',
     }))
   );
   const [error, setError] = useState('');
@@ -65,20 +73,18 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
   if (!creator) return null;
 
   const submitted = Boolean(saved?.submittedAt);
+  const expired = Boolean(saved?.expired) && !submitted;
+  const hasClipInput = clips.some((clip) => clip.url.trim().length > 0);
 
   const draftClips: CampaignZeroClip[] = clips.map((clip) => ({
     url: clip.url,
-    claimedViews: Math.max(0, Math.floor(Number(clip.views) || 0)),
     addedAt: '',
   }));
   const evaluation = evaluateCampaignZero({
     followConfirmed,
     clips: draftClips,
+    expired,
   });
-  const progress = Math.min(
-    100,
-    Math.round((evaluation.maxViews / CAMPAIGN_ZERO_MIN_VIEWS) * 100)
-  );
 
   const updateClip = (index: number, patch: Partial<ClipDraft>) => {
     setClips((current) =>
@@ -89,12 +95,17 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
   };
 
   const persist = async (): Promise<boolean> => {
+    if (expired) {
+      setError('Your 15-day window has expired. Start a new window to try again.');
+      return false;
+    }
+    if (!hasClipInput) {
+      setError('Add at least one clip link before saving.');
+      return false;
+    }
     const result = await saveCampaignZero({
       followConfirmed,
-      clips: draftClips.map((clip) => ({
-        url: clip.url,
-        claimedViews: clip.claimedViews,
-      })),
+      clips: draftClips.map((clip) => ({ url: clip.url })),
     });
     if (!result.success) {
       setError(result.error || 'Could not save your progress.');
@@ -104,6 +115,10 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
   };
 
   const handleSave = async () => {
+    if (!hasClipInput) {
+      setError('Add at least one clip link before saving.');
+      return;
+    }
     setBusy(true);
     setError('');
     setNotice('');
@@ -130,12 +145,33 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
     setNotice('Campaign Zero submitted. Your dashboard unlocks after review.');
   };
 
+  const handleRestart = async () => {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    const result = await restartCampaignZero();
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error || 'Could not start a new Campaign Zero window.');
+      return;
+    }
+    setFollowConfirmed(false);
+    setClips(emptyClipDrafts());
+    setNotice('A new 15-day window has started. Add at least one clip link and submit when it is live.');
+  };
+
   const steps = [
     { label: 'Account created', meta: 'Done', state: 'done' as const },
     {
       label: 'Campaign Zero',
-      meta: submitted ? 'Submitted' : evaluation.complete ? 'Ready to submit' : 'In progress',
-      state: submitted ? ('done' as const) : ('active' as const),
+      meta: submitted
+        ? 'Submitted'
+        : expired
+        ? 'Window expired'
+        : evaluation.complete
+        ? 'Ready to submit'
+        : 'In progress',
+      state: submitted ? ('done' as const) : expired ? ('locked' as const) : ('active' as const),
     },
     {
       label: 'Admin approval',
@@ -146,7 +182,7 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--page)]"
+      className="app-scroll fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-[var(--page)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="campaign-zero-title"
@@ -154,9 +190,9 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[420px]" />
       <div className="grid-lines pointer-events-none absolute inset-0 opacity-60" />
 
-      <div className="relative mx-auto flex min-h-full w-full max-w-[1120px] flex-col px-5 py-7 sm:px-8 sm:py-10">
-        <header className="flex items-center justify-between gap-4">
-          <BrandLockup size={32} />
+      <div className="safe-top relative mx-auto flex min-h-full w-full max-w-[1120px] flex-col px-4 pb-[max(28px,env(safe-area-inset-bottom))] pt-5 sm:px-8 sm:py-10">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <BrandLockup size={30} />
           <div className="flex items-center gap-2">
             {onOpenSupport && (
               <button
@@ -179,16 +215,18 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
               className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3.5 text-[11.5px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] cursor-pointer"
             >
               <LogOut size={13} />
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
         </header>
 
-        <div className="mt-9 grid flex-1 items-start gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-10">
+        <div className="mt-6 grid flex-1 items-start gap-5 sm:mt-9 sm:gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-10">
           {/* Status column */}
           <div className="lg:sticky lg:top-8">
             <div className="flex flex-wrap items-center gap-2">
-              <Tag variant="warn">Pending approval</Tag>
+              <Tag variant={expired ? 'err' : 'warn'}>
+                {expired ? 'Window expired' : 'Pending approval'}
+              </Tag>
               <span className="text-[11px] text-[var(--faint)]">
                 Applied {formatDate(creator.createdAt)}
               </span>
@@ -203,11 +241,22 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
               is locked.
             </h1>
             <p className="mt-3 max-w-[46ch] text-[13.5px] leading-[1.7] text-[var(--muted)]">
-              Campaign Zero is the final step before approval. Follow a Mhomho page, post{' '}
-              {CAMPAIGN_ZERO_MIN_CLIPS} clips featuring Mhomho, and get at least{' '}
-              {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} views on one of them. Then our team reviews
-              your proof.
+              Campaign Zero is the final step before approval. Follow a Mhomho page and post at
+              least one clip featuring Mhomho (up to {CAMPAIGN_ZERO_MAX_CLIPS}; the other two are
+              optional). Paste the links and our team verifies the live view count.
             </p>
+            {saved?.deadlineAt && (
+              <p
+                className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10.5px] font-semibold ${
+                  expired
+                    ? 'border-[var(--err)]/30 bg-[var(--err)]/8 text-[var(--err)]'
+                    : 'border-[var(--line)] text-[var(--muted)]'
+                }`}
+              >
+                <Clock size={11} />
+                {expired ? 'Window ended' : 'Window closes'} {formatDate(saved.deadlineAt)}
+              </p>
+            )}
 
             <div className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/85 backdrop-blur">
               {steps.map((step, index) => (
@@ -282,12 +331,14 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                   <p className="mt-1.5 max-w-[52ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
                     {submitted
                       ? 'Your proof is locked and waiting for review. We verify the public view counts before approval.'
-                      : 'Complete all three requirements below. You can save progress and finish later — nothing is visible in the portal until approval.'}
+                      : expired
+                      ? `Your ${CAMPAIGN_ZERO_WINDOW_DAYS}-day window has ended. Start a new window to try Campaign Zero again.`
+                      : `Complete the requirements below within your ${CAMPAIGN_ZERO_WINDOW_DAYS}-day window. You can save progress and finish later — nothing is visible in the portal until approval.`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="grid h-9 w-9 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-2)] text-[11px] font-bold text-[var(--muted)]">
-                    {Math.min(evaluation.clipCount, CAMPAIGN_ZERO_MIN_CLIPS)}/{CAMPAIGN_ZERO_MIN_CLIPS}
+                    {Math.min(evaluation.clipCount, CAMPAIGN_ZERO_MAX_CLIPS)}/{CAMPAIGN_ZERO_MAX_CLIPS}
                   </span>
                   <span className="text-[10px] font-medium leading-tight text-[var(--faint)]">
                     clips
@@ -298,7 +349,41 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
               </div>
             </div>
 
-            {submitted ? (
+            {expired ? (
+              <div className="px-5 py-6 sm:px-7">
+                <div className="rounded-2xl border border-[var(--err)]/30 bg-[var(--err)]/8 p-5">
+                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--err)]">
+                    <Clock size={15} />
+                    Your 15-day window ended
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--muted)]">
+                    The window closed on {formatDate(saved?.deadlineAt)} before your proof qualified.
+                    This attempt is finished. Start a new {CAMPAIGN_ZERO_WINDOW_DAYS}-day window to
+                    try again.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestart}
+                  disabled={busy}
+                  className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[12.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
+                >
+                  Start a new {CAMPAIGN_ZERO_WINDOW_DAYS}-day window
+                  <ArrowRight size={14} />
+                </button>
+                {(error || notice) && (
+                  <p
+                    className={`mt-3 rounded-xl border px-3.5 py-3 text-[12px] leading-relaxed ${
+                      error
+                        ? 'border-[var(--err)]/30 bg-[var(--err)]/10 text-[var(--err)]'
+                        : 'border-[var(--ok)]/25 bg-[var(--ok)]/8 text-[var(--ok)]'
+                    }`}
+                  >
+                    {error || notice}
+                  </p>
+                )}
+              </div>
+            ) : submitted ? (
               <div className="px-5 py-6 sm:px-7">
                 <div className="rounded-2xl border border-[var(--ok)]/25 bg-[var(--ok)]/8 p-5">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--ok)]">
@@ -330,15 +415,6 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                           {clip.url}
                         </a>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-bold ${
-                          clip.claimedViews >= CAMPAIGN_ZERO_MIN_VIEWS
-                            ? 'bg-[var(--ok)]/12 text-[var(--ok)]'
-                            : 'bg-[var(--surface-2)] text-[var(--muted)]'
-                        }`}
-                      >
-                        {clip.claimedViews.toLocaleString()} views
-                      </span>
                     </div>
                   ))}
                 </div>
@@ -373,25 +449,25 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                       <Check size={14} className="ml-auto text-[var(--ok)]" />
                     )}
                   </div>
-                  <p className="mt-1.5 pl-8 text-[12px] leading-relaxed text-[var(--muted)]">
+                  <p className="mt-1.5 pl-0 text-[12px] leading-relaxed text-[var(--muted)] sm:pl-8">
                     Follow any one of our official pages. The admin team may check that your account
                     is following back.
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2 pl-8">
+                  <div className="mt-3 flex flex-wrap gap-2 pl-0 sm:pl-8">
                     {MHOMHO_SOCIALS.map((social) => (
                       <a
                         key={social.name}
                         href={social.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1.5 text-[11px] font-semibold text-[var(--muted)] no-underline transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
+                        className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3.5 text-[11px] font-semibold text-[var(--muted)] no-underline transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
                       >
                         {social.name}
                         <ArrowUpRight size={11} />
                       </a>
                     ))}
                   </div>
-                  <label className="mt-3 ml-8 flex cursor-pointer items-start gap-2.5 text-[12px] leading-relaxed text-[var(--muted)] select-none">
+                  <label className="mt-3 ml-0 flex min-h-11 cursor-pointer items-center gap-2.5 text-[12px] leading-relaxed text-[var(--muted)] select-none sm:ml-8">
                     <input
                       type="checkbox"
                       checked={followConfirmed}
@@ -400,7 +476,7 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                         setError('');
                         setNotice('');
                       }}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--a1)]"
+                      className="h-5 w-5 shrink-0 accent-[var(--a1)]"
                     />
                     I followed a Mhomho page with {creator.handle}.
                   </label>
@@ -415,18 +491,19 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                       2
                     </span>
                     <h3 className="text-[13.5px] font-bold text-[var(--text)]">
-                      Post {CAMPAIGN_ZERO_MIN_CLIPS} clips featuring Mhomho
+                      Post clips featuring Mhomho
                     </h3>
                     <span className="ml-auto text-[10.5px] font-semibold text-[var(--faint)]">
-                      {evaluation.clipCount}/{CAMPAIGN_ZERO_MIN_CLIPS}
+                      {evaluation.clipCount}/{CAMPAIGN_ZERO_MAX_CLIPS}
                     </span>
                   </div>
-                  <p className="mt-1.5 pl-8 text-[12px] leading-relaxed text-[var(--muted)]">
-                    Use public TikTok, Instagram, YouTube or Facebook posts. Paste the link and the
-                    view count shown on the post.
+                  <p className="mt-1.5 pl-0 text-[12px] leading-relaxed text-[var(--muted)] sm:pl-8">
+                    At least one clip is required; the other two are optional. Use public TikTok,
+                    Instagram, YouTube or Facebook posts. Paste the link — we verify the live view
+                    count.
                   </p>
 
-                  <div className="mt-3 space-y-2.5 pl-8">
+                  <div className="mt-3 space-y-2.5 pl-0 sm:pl-8">
                     {clips.map((clip, index) => (
                       <div
                         key={index}
@@ -435,12 +512,8 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
                             Clip {index + 1}
+                            {index > 0 ? ' · optional' : ''}
                           </span>
-                          {Number(clip.views) >= CAMPAIGN_ZERO_MIN_VIEWS && (
-                            <span className="rounded-full bg-[var(--ok)]/12 px-2 py-0.5 text-[9.5px] font-bold text-[var(--ok)]">
-                              Qualifies
-                            </span>
-                          )}
                         </div>
                         <input
                           type="url"
@@ -448,22 +521,11 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                           value={clip.url}
                           onChange={(event) => updateClip(index, { url: event.target.value })}
                           placeholder="https://tiktok.com/@you/video/..."
-                          className="mt-2 h-10 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--faint)] focus:border-[var(--a1)]"
+                          className="mt-2 h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--faint)] focus:border-[var(--a1)]"
                           spellCheck={false}
                           autoComplete="off"
                         />
-                        <div className="mt-2 flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            inputMode="numeric"
-                            value={clip.views}
-                            onChange={(event) => updateClip(index, { views: event.target.value })}
-                            placeholder="Views"
-                            className="h-9 w-28 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-[12px] tabular-nums text-[var(--text)] outline-none transition-colors placeholder:text-[var(--faint)] focus:border-[var(--a1)]"
-                          />
-                          <span className="text-[11px] text-[var(--faint)]">views on the post</span>
-                        </div>
+                        <LinkPreviewCard url={clip.url} className="mt-2 mb-0" />
                       </div>
                     ))}
                   </div>
@@ -478,31 +540,14 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                       3
                     </span>
                     <h3 className="text-[13.5px] font-bold text-[var(--text)]">
-                      Get {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} views on one clip
+                      Views are verified by our team
                     </h3>
-                    {evaluation.hasQualifyingClip && (
-                      <Check size={14} className="ml-auto text-[var(--ok)]" />
-                    )}
                   </div>
-                  <p className="mt-1.5 pl-8 text-[12px] leading-relaxed text-[var(--muted)]">
-                    One qualifying clip is enough. The admin team verifies the live count before
-                    approving you.
+                  <p className="mt-1.5 pl-0 text-[12px] leading-relaxed text-[var(--muted)] sm:pl-8">
+                    One clip needs at least {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()} verified
+                    views. Paste the link and the admin team checks the live public count before
+                    approving you. Paid campaigns still require 1,000+ verified views per clip.
                   </p>
-                  <div className="mt-3 pl-8">
-                    <div className="flex items-center justify-between text-[10.5px] font-medium text-[var(--faint)]">
-                      <span>Best clip</span>
-                      <span className="tabular-nums text-[var(--muted)]">
-                        {evaluation.maxViews.toLocaleString()} /{' '}
-                        {CAMPAIGN_ZERO_MIN_VIEWS.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
-                      <div
-                        className="h-full rounded-full bg-gradient-mhomho transition-[width] duration-500"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
                 </section>
 
                 {(error || notice) && (
@@ -521,8 +566,8 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={busy}
-                    className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-[var(--line-strong)] text-[12.5px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--muted)] disabled:opacity-60 cursor-pointer"
+                    disabled={busy || !hasClipInput}
+                    className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-[var(--line-strong)] text-[12.5px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--muted)] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                   >
                     Save progress
                   </button>

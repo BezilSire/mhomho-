@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Card } from '../../components/Card.tsx';
 import { ProgressBar } from '../../components/ProgressBar.tsx';
 import { ListRow } from '../../components/ListRow.tsx';
@@ -57,17 +58,18 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-0 pt-4 sm:px-[18px] sm:pt-[22px]">
       {/* Back button */}
       <button
         type="button"
         onClick={onBack}
-        className="text-[13px] text-[var(--muted)] mb-2 inline-flex items-center gap-1 hover:text-[var(--text)] cursor-pointer"
+        className="press mb-2 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
       >
-        ← Campaigns
+        <ArrowLeft size={13} />
+        Campaigns
       </button>
 
-      <h2 className="text-[22px] font-extrabold leading-[1.2] mb-[14px]">
+      <h2 className="mb-3 text-[25px] font-extrabold leading-[1.15] tracking-[-0.03em]">
         {campaign.title}
       </h2>
 
@@ -75,7 +77,7 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
         <img
           src={campaign.posterUrl}
           alt=""
-          className="mb-3 h-44 w-full rounded-2xl object-cover"
+          className="mb-3 aspect-[16/9] w-full rounded-2xl object-cover"
           loading="lazy"
         />
       )}
@@ -113,17 +115,19 @@ export const CampaignDetail: React.FC<CampaignDetailProps> = ({
       </Card>
 
       {/* Do Not card */}
-      <Card>
-        <b>Do not</b>
-        <p className="text-[13px] text-[var(--muted)] mt-[6px] mb-0 leading-[1.5]">
-          {campaign.doNots.join(' ')}
-        </p>
-      </Card>
+      {campaign.doNots.length > 0 && (
+        <Card>
+          <b>Do not</b>
+          <p className="text-[13px] text-[var(--muted)] mt-[6px] mb-0 leading-[1.5]">
+            {campaign.doNots.join(' ')}
+          </p>
+        </Card>
+      )}
 
-      {/* Action CTA */}
-      <div className="mt-2 mb-4">
+      {/* Action CTA — pinned above the tab bar like a native primary action. */}
+      <div className="sticky bottom-0 z-20 -mx-4 mt-2 border-t border-[var(--line)] bg-[var(--page)]/95 px-4 pb-3 pt-3 backdrop-blur-xl">
         {errorMsg && (
-          <div className="p-3 mb-2 rounded-[10px] bg-[var(--err)]/10 text-[var(--err)] text-[13px] font-semibold border border-[var(--err)]/30">
+          <div className="mb-2 rounded-[10px] border border-[var(--err)]/30 bg-[var(--err)]/10 p-3 text-[13px] font-semibold text-[var(--err)]">
             {errorMsg}
           </div>
         )}

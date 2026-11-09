@@ -5,7 +5,12 @@
 
 const encoder = new TextEncoder();
 
-export const PASSWORD_ITERATIONS = 210_000;
+/**
+ * Cloudflare's production WebCrypto implementation rejects PBKDF2 iteration
+ * counts above 100,000. Local workerd is more permissive, so this must stay at
+ * or below the production ceiling.
+ */
+export const PASSWORD_ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const KEY_BITS = 256;
 

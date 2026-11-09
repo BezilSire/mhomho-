@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 /**
  * Integration tests run inside the real Workers runtime (workerd) with real
- * local D1 and R2 bindings supplied by Miniflare, so triggers, foreign keys and
+ * local D1 and KV bindings supplied by Miniflare, so triggers, foreign keys and
  * the append-only ledger are exercised exactly as they are in production.
  *
  * `readD1Migrations` runs in Node during config evaluation; the resulting
@@ -22,6 +22,7 @@ export default defineConfig(async () => {
             TEST_MIGRATIONS: migrations,
             ADMIN_SETUP_TOKEN: 'test-admin-setup-token-value-0001',
             ADMIN_PATH: 'ops-test-console-7f3a2c',
+            LINK_PREVIEWS_DISABLED: 'true',
           },
         },
       }),
@@ -33,7 +34,9 @@ export default defineConfig(async () => {
       // Node test run. The suite runs files in parallel, so keep enough headroom
       // for a throttling test that performs several real password hashes.
       testTimeout: 60_000,
-      hookTimeout: 30_000,
+      // Resetting D1 and re-applying migrations is occasionally slower than 30s
+      // when every test file starts in parallel on a throttled machine.
+      hookTimeout: 60_000,
     },
   };
 });

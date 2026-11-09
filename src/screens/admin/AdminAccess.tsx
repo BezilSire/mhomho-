@@ -81,7 +81,7 @@ export const AdminAccess: React.FC<AdminAccessProps> = ({ onAuthenticated, onCan
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@mhomho.co.zw"
+                placeholder="you@mhomho.work"
                 className={FIELD}
                 autoComplete="username"
                 spellCheck={false}

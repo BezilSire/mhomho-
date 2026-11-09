@@ -16,6 +16,7 @@ import {
   registerCreator,
   sessionCookie,
   setupAdmin,
+  testEnv,
   unique,
 } from './helpers.ts';
 
@@ -469,10 +470,25 @@ describe('administrator setup', () => {
 });
 
 describe('Campaign Zero', () => {
-  it('requires three distinct posts and one clip above the view floor', async () => {
+  it('requires one qualifying post, allows two optional posts and refuses empty saves', async () => {
     const creator = await registerCreator();
 
-    const tooFew = await api('/api/campaign-zero', {
+    const empty = await api('/api/campaign-zero', {
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: {
+        followConfirmed: true,
+        clips: [
+          { url: '', claimedViews: 0 },
+          { url: '', claimedViews: 0 },
+          { url: '', claimedViews: 0 },
+        ],
+      },
+    });
+    expect(empty.status).toBe(400);
+    expect(empty.body.error.message).toContain('at least one clip');
+
+    const saved = await api('/api/campaign-zero', {
       cookie: creator.cookie,
       csrf: creator.csrf,
       body: {
@@ -480,18 +496,16 @@ describe('Campaign Zero', () => {
         clips: [{ url: 'https://www.tiktok.com/@a/video/7312345678901234567', claimedViews: 5000 }],
       },
     });
-    expect(tooFew.status).toBe(200);
+    expect(saved.status).toBe(200);
 
-    const submitTooFew = await api('/api/campaign-zero/submit', {
+    const submit = await api('/api/campaign-zero/submit', {
       method: 'POST',
       cookie: creator.cookie,
       csrf: creator.csrf,
       body: {},
     });
-    expect(submitTooFew.status).toBe(400);
-    expect(submitTooFew.body.error.message).toContain('three');
+    expect(submit.status).toBe(200);
 
-    await completeCampaignZero(creator);
     const already = await api('/api/campaign-zero/submit', {
       method: 'POST',
       cookie: creator.cookie,
@@ -500,6 +514,70 @@ describe('Campaign Zero', () => {
     });
     expect(already.status).toBe(200);
     expect(already.body.alreadySubmitted).toBe(true);
+  });
+
+  it('expires after 15 days and lets the creator start a fresh attempt', async () => {
+    const creator = await registerCreator();
+    const initial = await bootstrap(creator.cookie);
+    const initialDeadline = initial.body.data.creatorsPublic[creator.accountId].campaignZero
+      .deadlineAt;
+    expect(initialDeadline).toBeTruthy();
+    expect(new Date(initialDeadline).getTime()).toBeGreaterThan(Date.now());
+
+    await testEnv.DB.prepare(
+      `UPDATE creator_profiles SET campaign_zero_deadline_at = ? WHERE account_id = ?`
+    )
+      .bind(Date.now() - 1000, creator.accountId)
+      .run();
+
+    const expiredState = await bootstrap(creator.cookie);
+    expect(
+      expiredState.body.data.creatorsPublic[creator.accountId].campaignZero.expired
+    ).toBe(true);
+
+    const expiredSave = await api('/api/campaign-zero', {
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: {
+        followConfirmed: true,
+        clips: [{ url: 'https://www.tiktok.com/@a/video/7312345678901234567', claimedViews: 5000 }],
+      },
+    });
+    expect(expiredSave.status).toBe(400);
+    expect(expiredSave.body.error.message).toContain('expired');
+
+    const restart = await api('/api/campaign-zero/restart', {
+      method: 'POST',
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: {},
+    });
+    expect(restart.status).toBe(200);
+    expect(new Date(restart.body.deadlineAt).getTime()).toBeGreaterThan(Date.now());
+
+    const restarted = await bootstrap(creator.cookie);
+    const restartedState = restarted.body.data.creatorsPublic[creator.accountId].campaignZero;
+    expect(restartedState.expired).toBe(false);
+    expect(restartedState.clips).toHaveLength(0);
+    expect(restartedState.followConfirmed).toBe(false);
+
+    const retrySave = await api('/api/campaign-zero', {
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: {
+        followConfirmed: true,
+        clips: [{ url: 'https://www.tiktok.com/@a/video/7312345678901234567', claimedViews: 1000 }],
+      },
+    });
+    expect(retrySave.status).toBe(200);
+
+    const retrySubmit = await api('/api/campaign-zero/submit', {
+      method: 'POST',
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: {},
+    });
+    expect(retrySubmit.status).toBe(200);
   });
 
   it('rejects duplicate posts and non-platform URLs', async () => {

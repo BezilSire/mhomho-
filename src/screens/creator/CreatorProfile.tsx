@@ -113,9 +113,16 @@ export const CreatorProfile: React.FC<CreatorProfileProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pt-[22px] pb-[14px]">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[22px] font-extrabold leading-[1.2] m-0">Profile</h2>
+    <div className="app-scroll flex-1 overflow-y-auto px-4 pb-10 pt-5 sm:px-[18px] sm:pt-[22px]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-[26px] font-extrabold leading-[1.12] tracking-[-0.03em]">
+            Profile
+          </h2>
+          <p className="mt-1 text-[12.5px] text-[var(--muted)]">
+            Your details, payout number and security.
+          </p>
+        </div>
         <Tag variant={creatorPublic?.status === 'approved' ? 'ok' : 'warn'}>
           {creatorPublic?.status === 'approved' ? 'Approved' : 'Under Review'}
         </Tag>
@@ -205,9 +212,10 @@ export const CreatorProfile: React.FC<CreatorProfileProps> = ({
           <input
             type="number"
             min="0"
+            inputMode="numeric"
             value={followers}
             onChange={(e) => setFollowers(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-[10px] bg-[var(--bg)] border border-[var(--line)] text-[var(--text)] font-semibold text-[14px]"
+            className="h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 text-[14px] font-semibold tabular-nums text-[var(--text)]"
           />
         </Card>
 
@@ -308,7 +316,7 @@ export const CreatorProfile: React.FC<CreatorProfileProps> = ({
           <div className="text-[13px] text-[var(--muted)] leading-[1.5] mb-3">
             Deleting your account removes your profile and signs you out. Your submitted clips and
             payment records are kept for financial auditing. Any unpaid balance is written off and
-            cannot be recovered, so withdraw first.
+            cannot be recovered, so contact us first if you are still owed a payout.
           </div>
 
           <label className="block text-[13px] font-semibold text-[var(--muted)] mb-1">

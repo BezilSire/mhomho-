@@ -182,7 +182,7 @@ describe('notifications', () => {
       csrf: admin.csrf,
       body: {
         title: 'Finish Campaign Zero',
-        message: 'Submit your three clips to unlock the dashboard.',
+        message: 'Submit your qualifying clip to unlock the dashboard.',
         audience: 'applicants',
       },
     });

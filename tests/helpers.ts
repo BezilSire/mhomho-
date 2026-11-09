@@ -182,7 +182,9 @@ export function postUrl(platform: 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook
 }
 
 /** Completes Campaign Zero so an administrator can approve the creator. */
-export async function completeCampaignZero(creator: Session): Promise<void> {
+export async function completeCampaignZero(
+  creator: Session
+): Promise<{ clipIds: string[] }> {
   const save = await api('/api/campaign-zero', {
     cookie: creator.cookie,
     csrf: creator.csrf,
@@ -207,14 +209,26 @@ export async function completeCampaignZero(creator: Session): Promise<void> {
   if (submit.status !== 200) {
     throw new Error(`Campaign Zero submit failed: ${submit.status} ${JSON.stringify(submit.body)}`);
   }
+
+  const state = await bootstrap(creator.cookie);
+  const clips = state.body?.data?.creatorsPublic?.[creator.accountId]?.campaignZero?.clips ?? [];
+  const clipIds = clips
+    .map((clip: { id?: string }) => clip.id)
+    .filter((id: string | undefined): id is string => Boolean(id));
+  if (clipIds.length === 0) throw new Error('Campaign Zero did not return clip IDs.');
+  return { clipIds };
 }
 
-export async function approveCreator(admin: Session, creatorId: string): Promise<void> {
+export async function approveCreator(
+  admin: Session,
+  creatorId: string,
+  input: { verifiedClipId: string; verifiedViews: number }
+): Promise<void> {
   const response = await api(`/api/admin/creators/${creatorId}/approve`, {
     method: 'POST',
     cookie: admin.cookie,
     csrf: admin.csrf,
-    body: {},
+    body: input,
   });
   if (response.status !== 200) {
     throw new Error(`Approve failed: ${response.status} ${JSON.stringify(response.body)}`);
@@ -227,8 +241,11 @@ export async function approvedCreator(
   options: CreatorOptions = {}
 ): Promise<Session> {
   const creator = await registerCreator(options);
-  await completeCampaignZero(creator);
-  await approveCreator(admin, creator.accountId);
+  const { clipIds } = await completeCampaignZero(creator);
+  await approveCreator(admin, creator.accountId, {
+    verifiedClipId: clipIds[0],
+    verifiedViews: 1500,
+  });
   return { ...creator, status: 'approved' };
 }
 
@@ -267,15 +284,21 @@ export async function joinCampaign(creator: Session, campaignId: string): Promis
 export async function submitClip(
   creator: Session,
   campaignId: string,
-  options: { url?: string; claimedViews?: number; proofAssetId?: string | null } = {}
+  options: {
+    url?: string;
+    platform?: 'TikTok' | 'Instagram' | 'YouTube' | 'Facebook';
+    claimedViews?: number;
+    proofAssetId?: string | null;
+  } = {}
 ): Promise<ApiResponse> {
+  const platform = options.platform ?? 'TikTok';
   return api('/api/submissions', {
     cookie: creator.cookie,
     csrf: creator.csrf,
     body: {
       campaignId,
-      platform: 'TikTok',
-      postUrl: options.url ?? postUrl('TikTok'),
+      platform,
+      postUrl: options.url ?? postUrl(platform),
       claimedViews: options.claimedViews ?? 5000,
       proofAssetId: options.proofAssetId ?? null,
     },
@@ -285,12 +308,17 @@ export async function submitClip(
 export async function verifySubmission(
   admin: Session,
   submissionId: string,
-  observedViews: number
+  observedViews: number,
+  verifiedViews?: number
 ): Promise<ApiResponse> {
   return api(`/api/admin/submissions/${submissionId}/verify`, {
     cookie: admin.cookie,
     csrf: admin.csrf,
-    body: { observedViews, evidenceNote: 'Checked the public counter manually.' },
+    body: {
+      observedViews,
+      ...(verifiedViews === undefined ? {} : { verifiedViews }),
+      evidenceNote: 'Checked the public counter manually.',
+    },
   });
 }
 
