@@ -411,6 +411,24 @@ Expected result: `28/28 checks passed.`
 | Inspect the ledger | `npx wrangler d1 execute mhomho-db --remote --command "SELECT ..."` (read-only queries). |
 | Check cron ran | Look for `campaign.auto_transition` / `campaign.auto_complete` rows in `audit_events`. |
 | Daily backup | `npx wrangler d1 export mhomho-db --remote --output backups/$(date +%F).sql` |
+| Replace a brand asset (icon, logo, splash) | Replace the file in `public/`, then bump the `?v=` query in `index.html`, `public/manifest.webmanifest` and `worker/src/blog.ts`, and bump `CACHE` in `public/sw.js` (`mhomho-shell-v3` → `v4`, …). Deploy. Without the version bump the browser keeps showing the retired mark. |
+
+### Brand assets and the favicon
+
+The favicon in the browser tab is served from `public/icon.svg` (plus the PNG
+sizes for Android and iOS). Browsers and the service worker cache favicons
+aggressively, so every brand asset URL carries a `?v=N` query. When the artwork
+changes:
+
+1. replace the file(s) in `public/`;
+2. bump `?v=N` to `?v=N+1` in `index.html`, `public/manifest.webmanifest` and
+   `worker/src/blog.ts` (the server-rendered Journal shell);
+3. bump `CACHE` in `public/sw.js` so the old precache is dropped on activation;
+4. build, deploy, then hard-reload the tab (the browser still holds the
+   previous favicon until the tab is reloaded).
+
+Brand assets are fetched network-first by the service worker, so a replaced
+icon can no longer get stuck in the cache.
 
 ### Things that will look like bugs but are not
 
