@@ -93,6 +93,19 @@ import {
   handlePublicAmbassadorProfile,
 } from './routes/ambassadors.ts';
 import { runScheduled } from './cron.ts';
+import {
+  serveBlogIndex,
+  serveBlogPost,
+  serveRobots,
+  serveRss,
+  serveSitemap,
+} from './blog.ts';
+import {
+  handleAdminBlogCreate,
+  handleAdminBlogDelete,
+  handleAdminBlogList,
+  handleAdminBlogUpdate,
+} from './routes/blog.ts';
 
 const router = new Router();
 
@@ -167,7 +180,11 @@ router
   .post('/api/admin/invites/:id/revoke', handleRevokeInvite)
   .patch('/api/admin/invite-settings', handleInviteMode)
   .patch('/api/admin/enquiries/:id', handleEnquiryStatus)
-  .patch('/api/admin/brand-waitlist/:id', handleWaitlistUpdate);
+  .patch('/api/admin/brand-waitlist/:id', handleWaitlistUpdate)
+  .get('/api/admin/blog', handleAdminBlogList)
+  .post('/api/admin/blog', handleAdminBlogCreate)
+  .patch('/api/admin/blog/:id', handleAdminBlogUpdate)
+  .delete('/api/admin/blog/:id', handleAdminBlogDelete);
 
 const CONSOLE_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'";
@@ -277,6 +294,61 @@ export default {
     // hash, so the secret URL is not present in the JavaScript bundle.
     if (url.pathname.startsWith(CONSOLE_PREFIX)) {
       return serveConsoleShell(request, env, url);
+    }
+
+    // Server-rendered journal and crawler files. These are listed in
+    // run_worker_first so static assets never shadow them.
+    const isBlogPath =
+      url.pathname === '/blog' ||
+      url.pathname === '/blog/' ||
+      url.pathname.startsWith('/blog/');
+    const isSeoFile =
+      url.pathname === '/robots.txt' ||
+      url.pathname === '/sitemap.xml' ||
+      url.pathname === '/rss.xml';
+    if (isBlogPath || isSeoFile) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return withSecurityHeaders(
+          new Response('Method not allowed', {
+            status: 405,
+            headers: { Allow: 'GET, HEAD', 'Cache-Control': 'no-store' },
+          }),
+          env
+        );
+      }
+      try {
+        let response: Response;
+        if (url.pathname === '/robots.txt') {
+          response = serveRobots(env);
+        } else if (url.pathname === '/sitemap.xml') {
+          response = await serveSitemap(env);
+        } else if (url.pathname === '/rss.xml') {
+          response = await serveRss(env);
+        } else if (url.pathname === '/blog' || url.pathname === '/blog/') {
+          response = await serveBlogIndex(env);
+        } else {
+          const slug = decodeURIComponent(url.pathname.slice('/blog/'.length)).replace(
+            /\/+$/,
+            ''
+          );
+          response = await serveBlogPost(env, slug);
+        }
+        if (request.method === 'HEAD') {
+          return new Response(null, { status: response.status, headers: response.headers });
+        }
+        return response;
+      } catch {
+        return withSecurityHeaders(
+          new Response('Journal unavailable', {
+            status: 500,
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'Cache-Control': 'no-store',
+            },
+          }),
+          env
+        );
+      }
     }
 
     if (!url.pathname.startsWith('/api/')) {

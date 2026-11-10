@@ -199,6 +199,20 @@ not part of bootstrap.
 | `GET` | `/api/admin/campaigns/:id/brand-tokens` | admin | Link metadata only; raw tokens are never returned again. |
 | `DELETE` | `/api/admin/campaigns/:id/brand-tokens/:tokenId` | admin | Revokes one link; audited. |
 | `PATCH` | `/api/admin/enquiries/:id` | admin | Funnel status. |
+| `PATCH` | `/api/admin/brand-waitlist/:id` | admin | Waitlist status and private notes. |
+| `GET` | `/api/admin/blog` | admin | Every journal article, drafts included. |
+| `POST` | `/api/admin/blog` | admin | Creates a draft or published article; slug is generated or validated for uniqueness. |
+| `PATCH` | `/api/admin/blog/:id` | admin | Edits content and publication state. |
+| `DELETE` | `/api/admin/blog/:id` | admin | Deletes an article; audited. |
+
+## 5A. Server-rendered journal
+
+`/blog`, `/blog/:slug`, `/sitemap.xml`, `/robots.txt` and `/rss.xml` are handled
+by the Worker before static assets (see `run_worker_first`). Article HTML includes
+title, description, canonical, Open Graph, Twitter Card and `BlogPosting` JSON-LD,
+so crawlers do not need to execute the SPA. The article body is Markdown rendered
+with an allowlist-safe renderer; raw HTML is escaped. Only published rows are
+visible and indexable.
 
 ## 6. Campaign lifecycle
 

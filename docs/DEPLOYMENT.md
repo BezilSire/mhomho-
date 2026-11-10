@@ -168,7 +168,7 @@ deploying code that depends on a new schema:
 npx wrangler d1 migrations apply mhomho-db --remote
 ```
 
-- `0001_init.sql` through `0012_brand_waitlist.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard. `0006` adds the 15-day Campaign Zero deadline and backfills it from each creator's sign-up time. `0007` adds single-use invite codes and seeds `creator_invite_mode=auto` with a 3,000-creator threshold; open sign-up closes automatically at that threshold, and admins can force invite-only mode early from Operations → Invites. `0008` adds the short-lived preview cache and the snapshot columns on submissions and Campaign Zero clips. `0009` adds the admin-verified Campaign Zero view count, verifier and timestamp. `0010` adds the additive Ambassador Phase 1 tables (`ambassador_applications`, `ambassador_documents`, `ambassador_profiles`, `ambassador_reviews`, `ambassador_id_sequence`); it creates no financial records and does not alter existing tables. `0012` adds the additive `brand_waitlist` table used by the public brand waitlist and the Operations → Brand waitlist screen; it creates no financial records.
+- `0001_init.sql` through `0013_blog_posts.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard. `0006` adds the 15-day Campaign Zero deadline and backfills it from each creator's sign-up time. `0007` adds single-use invite codes and seeds `creator_invite_mode=auto` with a 3,000-creator threshold; open sign-up closes automatically at that threshold, and admins can force invite-only mode early from Operations → Invites. `0008` adds the short-lived preview cache and the snapshot columns on submissions and Campaign Zero clips. `0009` adds the admin-verified Campaign Zero view count, verifier and timestamp. `0010` adds the additive Ambassador Phase 1 tables (`ambassador_applications`, `ambassador_documents`, `ambassador_profiles`, `ambassador_reviews`, `ambassador_id_sequence`); it creates no financial records and does not alter existing tables. `0012` adds the additive `brand_waitlist` table used by the public brand waitlist and the Operations → Brand waitlist screen; it creates no financial records. `0013` adds the additive `blog_posts` table backing the server-rendered Journal; it creates no financial records and does not alter existing tables.
 - The command is idempotent: applied migrations are tracked in
   `d1_migrations`.
 - For a dry inspection: `npx wrangler d1 migrations list mhomho-db --remote`.
@@ -267,6 +267,16 @@ curl -s -o /dev/null -w '%{http_code}\n' https://mhomho.work/creator-guide
 # → 200, the public guide page
 curl -sI https://mhomho.work/download/mhomho-creator-guide.pdf
 # → 200, application/pdf, Content-Disposition: attachment
+
+# 13. Journal and crawler files
+curl -sI https://mhomho.work/blog
+# → 200, text/html, server-rendered (not the SPA shell)
+curl -s https://mhomho.work/robots.txt
+# → Allow: /, Disallow: /api/ and /console/, Sitemap line
+curl -s https://mhomho.work/sitemap.xml
+# → static pages plus published /blog/:slug URLs
+curl -s https://mhomho.work/rss.xml
+# → RSS channel with the newest published articles
 ```
 
 The Android build is `work.mhomho.app` versionCode `5`, versionName `1.0.4`.
@@ -457,6 +467,8 @@ preserved in Cloudflare DNS. No payment or third-party API is configured.
 - [ ] Post-deploy checks in §9 pass.
 - [ ] Preset avatar, community leaderboard and forum smoke-tested as an approved creator.
 - [ ] Ambassador flow smoke-tested end to end: apply → admin review → approve → publish → public profile.
+- [ ] Journal smoke-tested end to end: create draft → publish → `/blog/:slug` has canonical and `BlogPosting` JSON-LD → URL appears in `/sitemap.xml`.
+- [ ] Google Search Console domain verified and `https://mhomho.work/sitemap.xml` submitted.
 - [ ] Applicant document access verified: owner and admin only; public reads rejected.
 - [ ] `/ambassadors/*` and `/envoys/*` never render on `app.mhomho.work`.
 - [x] Real test email delivered to `partnerships@mhomho.work` (the PDF is attached manually; no email provider is configured).

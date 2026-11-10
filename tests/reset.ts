@@ -44,6 +44,7 @@ const TABLES = [
   'idempotency_keys',
   'invite_codes',
   'accounts',
+  'blog_posts',
   'enquiries',
   'brand_waitlist',
   'rate_limits',

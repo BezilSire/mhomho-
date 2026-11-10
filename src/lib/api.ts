@@ -1095,6 +1095,61 @@ export async function updateBrandWaitlist(
   return result;
 }
 
+/* ------------------------------------------------------------------ */
+/* Journal                                                             */
+/* ------------------------------------------------------------------ */
+
+export type BlogPostStatus = 'draft' | 'published';
+
+export interface AdminBlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  bodyMd: string;
+  coverImageUrl: string | null;
+  tags: string[];
+  seoTitle: string | null;
+  seoDescription: string | null;
+  status: BlogPostStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogPostInput {
+  title: string;
+  slug: string | null;
+  excerpt: string;
+  bodyMd: string;
+  coverImageUrl: string | null;
+  tags: string[];
+  seoTitle: string | null;
+  seoDescription: string | null;
+  status: BlogPostStatus;
+}
+
+export async function listBlogPosts(): Promise<ApiResult<{ posts: AdminBlogPost[] }>> {
+  return request('GET', '/api/admin/blog');
+}
+
+export async function createBlogPost(
+  input: BlogPostInput
+): Promise<ApiResult<{ post: AdminBlogPost | null }>> {
+  return request('POST', '/api/admin/blog', input);
+}
+
+export async function updateBlogPost(
+  id: string,
+  input: BlogPostInput
+): Promise<ApiResult<{ post: AdminBlogPost | null }>> {
+  return request('PATCH', `/api/admin/blog/${encodeURIComponent(id)}`, input);
+}
+
+export async function deleteBlogPost(id: string): Promise<ApiResult> {
+  return request('DELETE', `/api/admin/blog/${encodeURIComponent(id)}`);
+}
+
 /**
  * Brand report links are tokenised. The server returns aggregates only; the
  * result is cached in the client projection under the token that was used.

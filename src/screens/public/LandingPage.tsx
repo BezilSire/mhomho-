@@ -183,6 +183,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               ['#partners', 'Partners'],
               ['/ambassadors/apply', 'Commercial Envoys'],
               ['/resources', 'Resources'],
+              ['/blog', 'Journal'],
               ['/creator-guide', 'Creator guide'],
             ].map(([href, label]) => (
               <a
@@ -242,6 +243,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ['#partners', 'Partners'],
                 ['/ambassadors/apply', 'Commercial Envoys'],
                 ['/resources', 'Resources'],
+                ['/blog', 'Journal'],
               ].map(([href, label]) => (
                 <a
                   key={href}
@@ -1482,6 +1484,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <BookOpen size={12} className="text-[var(--a1)]" />
                 Commercial Envoy programme
+              </a>
+              <a
+                href="/blog"
+                className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
+              >
+                <BookOpen size={12} className="text-[var(--a1)]" />
+                Journal
               </a>
               <button
                 type="button"

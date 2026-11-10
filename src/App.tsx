@@ -36,6 +36,7 @@ import { AdminCampaigns } from './screens/admin/AdminCampaigns.tsx';
 import { AdminPayouts } from './screens/admin/AdminPayouts.tsx';
 import { AdminEnquiries } from './screens/admin/AdminEnquiries.tsx';
 import { AdminBrandWaitlist } from './screens/admin/AdminBrandWaitlist.tsx';
+import { AdminBlog } from './screens/admin/AdminBlog.tsx';
 import { AdminSecurity } from './screens/admin/AdminSecurity.tsx';
 import { AdminAccess } from './screens/admin/AdminAccess.tsx';
 import { LandingPage } from './screens/public/LandingPage.tsx';
@@ -93,6 +94,7 @@ export type AdminTabId =
   | 'payouts'
   | 'waitlist'
   | 'enquiries'
+  | 'blog'
   | 'community'
   | 'invites'
   | 'support'
@@ -116,6 +118,7 @@ const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
   { id: 'payouts', label: 'Payouts' },
   { id: 'waitlist', label: 'Brand waitlist' },
   { id: 'enquiries', label: 'Brand enquiries' },
+  { id: 'blog', label: 'Journal' },
   { id: 'community', label: 'Community' },
   { id: 'invites', label: 'Invites' },
   { id: 'support', label: 'Support' },
@@ -1027,6 +1030,7 @@ export default function App() {
                 {adminTab === 'payouts' && <AdminPayouts db={db} />}
                 {adminTab === 'waitlist' && <AdminBrandWaitlist db={db} />}
                 {adminTab === 'enquiries' && <AdminEnquiries db={db} />}
+                {adminTab === 'blog' && <AdminBlog />}
                 {adminTab === 'community' && <AdminCommunity />}
                 {adminTab === 'invites' && <AdminInvites />}
                 {adminTab === 'support' && <AdminSupport />}

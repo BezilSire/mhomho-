@@ -37,7 +37,7 @@ accounts ──1:1── ambassador_profiles ──0..1── ambassador_documen
 ambassador_applications ──1:N── ambassador_reviews
 ambassador_id_sequence ── standalone single-row counter
 
-enquiries, brand_waitlist, audit_events, rate_limits, app_config, idempotency_keys, link_previews — standalone
+enquiries, brand_waitlist, blog_posts, audit_events, rate_limits, app_config, idempotency_keys, link_previews — standalone
 ```
 
 ## 2. Accounts and identity
@@ -309,6 +309,14 @@ window, best times (JSON), notes, status, `ip_hash`.
 Brand waitlist entries: brand, location, industry, contact name, contact email,
 contact phone, `status` (`new | contacted | invited | closed`), optional private
 `admin_notes`, `ip_hash`, timestamps. Admin-only in the projection.
+
+### `blog_posts`
+
+Journal articles authored in Operations. Stores `slug` (unique), title, excerpt,
+Markdown body, optional cover image, tags (JSON), optional SEO title/description,
+`status` (`draft | published`), `published_at`, `created_by` (admin account) and
+timestamps. Published rows render as server-side HTML at `/blog/:slug` and are
+included in `/sitemap.xml` and `/rss.xml`; drafts are invisible everywhere.
 
 ### `audit_events`
 
