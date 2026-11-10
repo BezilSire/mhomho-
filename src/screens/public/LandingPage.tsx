@@ -1311,39 +1311,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <SectionHeading
             title={
               <>
-                The short
+                Creator
                 <br />
-                answers.
+                questions.
               </>
             }
-            copy="Still unsure? Email support@mhomho.work and a human will reply."
+            copy="What you earn, what we check and when you get paid. Still unsure? Email support@mhomho.work and a human will reply."
           />
 
           <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {[
               {
-                q: 'What is Campaign Zero?',
-                a: 'Campaign Zero is the entry challenge for new creators. You get 15 days from sign-up. Follow a Mhomho social page, post at least 1 clip featuring Mhomho (up to 3; extras optional), and get 500+ views on one clip. Submit the links in your account and an admin verifies the views before unlocking the dashboard. Paid campaigns still require 1,000+ verified views per clip. If the window expires, start a new one and try again.',
+                q: 'Do I need followers, or pay a fee?',
+                a: 'Neither. There is no follower minimum, no joining fee and no gatekeeping. A new account with one qualifying clip earns the same $1.00 base CPM as a page with 100,000 followers. All you need is a public account on TikTok, Instagram, YouTube or Facebook.',
               },
               {
-                q: 'How does billing work?',
-                a: 'You’re billed for delivery that checks out. Every campaign is planned against a delivery target based on your budget, tracked clip by clip, and clips under 1,000 views aren’t billed.',
+                q: 'How do I join and get approved?',
+                a: 'Create your account with your name, email, handle, platform and WhatsApp number. Then clear Campaign Zero: follow a Mhomho page, post at least 1 clip featuring Mhomho (up to 3 are allowed) and reach 500+ verified views on one clip. An admin checks the live post by hand before your dashboard unlocks. You have 15 days from sign-up, and if that window closes you can start a new one and try again.',
               },
               {
-                q: 'What do I get at the end?',
-                a: 'A campaign report: the clips, view counts, spend, and a summary of what the comments said.',
+                q: 'What do I earn per clip?',
+                a: 'The base rate is $1.00 per 1,000 verified views — 1,000 views is $1.00, 10,000 is $10.00, 100,000 is $100.00. A campaign can pay a higher CPM and the brief always wins. Paid clips need 1,000+ verified views unless the brief says otherwise.',
               },
               {
-                q: 'How many creators will post my product?',
-                a: 'It depends on your budget and niche. We match creators to the category and aim to put your product in front of as many different audiences as possible.',
+                q: 'What counts as a verified view?',
+                a: 'Real views on the live public post, on the exact link you submitted, while that post stays live for 30 days. Bought views, engagement pods, private or deleted posts and views on a repost do not count. Every submission is verified manually against the live post.',
               },
               {
-                q: 'How is the creator CPM decided?',
-                a: 'The base creator rate is $1 per 1,000 verified views. Final CPM can depend on the campaign budget — larger or more complex campaigns can support a higher rate. The exact CPM is agreed before the campaign starts.',
+                q: 'Can I submit more than one clip?',
+                a: 'Campaign Zero allows up to 3 clips and needs 1. For paid campaigns, follow the brief — each campaign sets its own limit. Post from the account you applied with, keep the post public, and never delete or private it before payout.',
               },
               {
-                q: 'When do creators get paid?',
-                a: 'EcoCash payouts go out 72 hours after a campaign closes, once the clip has stayed live for the required 30 days. The minimum balance is $5.',
+                q: 'When and how do I get paid?',
+                a: 'After the campaign closes and your clip has stayed live for the required 30 days. Payouts are manual and sent directly, so there is no withdrawal button inside the app. The minimum balance is $5, and EcoCash is used in supported markets with the payout method confirmed with you.',
+              },
+              {
+                q: 'Do I need an invite code?',
+                a: 'Not yet — sign-up is open while the roster grows. Once we reach 3,000 creator accounts, or if we switch it on earlier, you will need a single-use code that we send you. If you already have one, enter it on the first step of the form.',
+              },
+              {
+                q: 'How do I track my clips and payouts?',
+                a: 'In the Mhomho Android creator app. Download it from mhomho.work, sign in with the same details, and follow every submission from posted to verified to paid, with your earnings and payout history in one place.',
+              },
+              {
+                q: 'Which countries can join?',
+                a: 'Creators from any country can join. Zambia, Tanzania and Mozambique are underway, and payouts run through EcoCash in supported markets.',
               },
             ].map((item, index) => {
               const isOpen = openFaq === index;
