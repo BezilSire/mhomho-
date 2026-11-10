@@ -276,7 +276,8 @@ ${image ? `<meta property="og:image" content="${image}" />` : ''}
 <meta name="twitter:description" content="${description}" />
 ${image ? `<meta name="twitter:image" content="${image}" />` : ''}
 <meta name="theme-color" content="#080706" />
-<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="icon" type="image/svg+xml" sizes="any" href="/icon.svg?v=2" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
 ${jsonLd}
 <style>
 :root{--page:#080706;--text:#f6f1e8;--muted:#a39c91;--faint:#6f685f;--line:rgba(246,241,232,.12);--a1:#ffcf3f;--a2:#ff9f0a;--a3:#ff6b4a}
@@ -529,7 +530,7 @@ export async function serveBlogPost(env: Env, slug: string): Promise<Response> {
           url: siteUrl(env, '/'),
           logo: {
             '@type': 'ImageObject',
-            url: siteUrl(env, '/icon-512.png'),
+            url: siteUrl(env, '/icon-512.png?v=2'),
           },
         },
         ...(coverUrl ? { image: [coverUrl] } : {}),
