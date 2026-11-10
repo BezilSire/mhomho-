@@ -25,6 +25,11 @@ import {
 } from 'lucide-react';
 import { DatabaseState } from '../../lib/firebase.ts';
 import { MhomhoLogo } from '../../components/MhomhoLogo.tsx';
+import { WhatsAppIcon } from '../../components/WhatsAppIcon.tsx';
+import {
+  MHOMHO_WHATSAPP_DISPLAY,
+  mhomhoWhatsappLink,
+} from '../../../shared/contact.ts';
 import { BrandBriefFlow, CreatorSignupFlow } from './LandingSignupFlows.tsx';
 
 export interface LandingPageProps {
@@ -1527,6 +1532,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <ArrowUpRight size={12} />
               </a>
               <span className="text-[var(--muted)]">Harare, Zimbabwe</span>
+              <a
+                href={mhomhoWhatsappLink()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
+              >
+                <WhatsAppIcon size={12} className="text-[#25D366]" />
+                {MHOMHO_WHATSAPP_DISPLAY}
+                <ArrowUpRight size={12} />
+              </a>
             </div>
           </div>
         </div>
@@ -1566,6 +1581,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Floating WhatsApp button. On mobile it sits above the persistent
+          action bar; on desktop it lives in the bottom-right corner. */}
+      <a
+        href={mhomhoWhatsappLink('Hi MHOMHO, I have a question about joining as a creator.')}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with MHOMHO on WhatsApp"
+        className="group fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-[60] grid h-14 w-14 place-items-center rounded-full bg-[#25D366] text-white shadow-[0_12px_32px_rgba(37,211,102,0.35)] ring-1 ring-white/20 transition-transform duration-200 hover:scale-105 active:scale-95 lg:right-7 lg:bottom-7"
+      >
+        <WhatsAppIcon size={28} />
+        <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text)] opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 lg:block">
+          Chat with us on WhatsApp
+        </span>
+      </a>
 
       {flow === 'creator' && (
         <CreatorSignupFlow

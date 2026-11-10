@@ -15,6 +15,11 @@ import {
   X,
 } from 'lucide-react';
 import { MhomhoLogo } from '../../components/MhomhoLogo.tsx';
+import { WhatsAppIcon } from '../../components/WhatsAppIcon.tsx';
+import {
+  MHOMHO_WHATSAPP_DISPLAY,
+  mhomhoWhatsappLink,
+} from '../../../shared/contact.ts';
 import {
   GUIDE_EDITION,
   GUIDE_PDF_URL,
@@ -593,6 +598,15 @@ export const CreatorGuidePage: React.FC<CreatorGuidePageProps> = ({
               className="text-[var(--muted)] no-underline hover:text-[var(--text)]"
             >
               {GUIDE_SUPPORT_EMAIL}
+            </a>
+            <a
+              href={mhomhoWhatsappLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
+            >
+              <WhatsAppIcon size={12} className="text-[#25D366]" />
+              {MHOMHO_WHATSAPP_DISPLAY}
             </a>
             <button
               type="button"
