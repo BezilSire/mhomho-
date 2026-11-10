@@ -313,6 +313,22 @@ export interface EnquiryDoc {
   status: 'new' | 'contacted' | 'booked' | 'closed';
 }
 
+export type BrandWaitlistStatus = 'new' | 'contacted' | 'invited' | 'closed';
+
+export interface BrandWaitlistDoc {
+  id: string;
+  brandName: string;
+  location: string;
+  industry: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: BrandWaitlistStatus;
+  adminNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type UserRole = 'creator' | 'admin' | 'business';
 
 export interface Viewer {
@@ -347,6 +363,7 @@ export interface DatabaseState {
   payouts: Record<string, PayoutDoc>;
   brandViews: Record<string, BrandViewDoc>;
   enquiries: Record<string, EnquiryDoc>;
+  brandWaitlist: Record<string, BrandWaitlistDoc>;
   totals: {
     owedCents: number;
     earnedCents: number;
@@ -373,6 +390,7 @@ export function emptyDatabaseState(): DatabaseState {
     payouts: {},
     brandViews: {},
     enquiries: {},
+    brandWaitlist: {},
     totals: null,
   };
 }
@@ -416,6 +434,7 @@ export function applyProjection(payload: Partial<DatabaseState>): void {
     payouts: payload.payouts ?? currentState.payouts,
     brandViews: payload.brandViews ?? currentState.brandViews,
     enquiries: payload.enquiries ?? currentState.enquiries,
+    brandWaitlist: payload.brandWaitlist ?? currentState.brandWaitlist,
     totals: payload.totals ?? currentState.totals,
   };
   listeners.forEach((listener) => listener());

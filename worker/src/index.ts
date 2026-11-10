@@ -35,6 +35,7 @@ import {
   handleSettlePayout,
   handleTopUpCampaign,
   handleVerifySubmission,
+  handleWaitlistUpdate,
 } from './routes/admin.ts';
 import { handleActivity } from './routes/activity.ts';
 import {
@@ -65,6 +66,7 @@ import {
   handleBrandReport,
   handleCreateBrandToken,
   handleCreateEnquiry,
+  handleJoinBrandWaitlist,
   handleListBrandTokens,
   handleRevokeBrandToken,
 } from './routes/public.ts';
@@ -145,6 +147,7 @@ router
   .post('/api/uploads/proof', handleProofUpload)
   .get('/api/assets/:id', handleAssetRead)
   .post('/api/enquiries', handleCreateEnquiry)
+  .post('/api/brand-waitlist', handleJoinBrandWaitlist)
   .get('/api/brand/:token', handleBrandReport)
   .post('/api/admin/creators/:id/approve', handleApproveCreator)
   .post('/api/admin/submissions/:id/verify', handleVerifySubmission)
@@ -163,7 +166,8 @@ router
   .post('/api/admin/invites', handleCreateInvite)
   .post('/api/admin/invites/:id/revoke', handleRevokeInvite)
   .patch('/api/admin/invite-settings', handleInviteMode)
-  .patch('/api/admin/enquiries/:id', handleEnquiryStatus);
+  .patch('/api/admin/enquiries/:id', handleEnquiryStatus)
+  .patch('/api/admin/brand-waitlist/:id', handleWaitlistUpdate);
 
 const CONSOLE_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'";

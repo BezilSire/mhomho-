@@ -168,7 +168,7 @@ export const ResourcesPage: React.FC<ResourcesPageProps> = ({
             <button
               type="button"
               onClick={onApply}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-5 text-[12.5px] font-bold text-[var(--page)] transition-transform hover:-translate-y-0.5"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-5 text-[12.5px] font-bold text-white transition-transform hover:-translate-y-0.5"
             >
               Start application
               <ArrowRight size={13} />

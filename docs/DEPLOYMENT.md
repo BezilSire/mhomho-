@@ -168,7 +168,7 @@ deploying code that depends on a new schema:
 npx wrangler d1 migrations apply mhomho-db --remote
 ```
 
-- `0001_init.sql` through `0010_ambassadors.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard. `0006` adds the 15-day Campaign Zero deadline and backfills it from each creator's sign-up time. `0007` adds single-use invite codes and seeds `creator_invite_mode=auto` with a 3,000-creator threshold; open sign-up closes automatically at that threshold, and admins can force invite-only mode early from Operations → Invites. `0008` adds the short-lived preview cache and the snapshot columns on submissions and Campaign Zero clips. `0009` adds the admin-verified Campaign Zero view count, verifier and timestamp. `0010` adds the additive Ambassador Phase 1 tables (`ambassador_applications`, `ambassador_documents`, `ambassador_profiles`, `ambassador_reviews`, `ambassador_id_sequence`); it creates no financial records and does not alter existing tables.
+- `0001_init.sql` through `0012_brand_waitlist.sql` contain schema only - no seed data, no demo accounts. `0005` adds the preset avatar key, forum tables and the observation-time index used by the monthly leaderboard. `0006` adds the 15-day Campaign Zero deadline and backfills it from each creator's sign-up time. `0007` adds single-use invite codes and seeds `creator_invite_mode=auto` with a 3,000-creator threshold; open sign-up closes automatically at that threshold, and admins can force invite-only mode early from Operations → Invites. `0008` adds the short-lived preview cache and the snapshot columns on submissions and Campaign Zero clips. `0009` adds the admin-verified Campaign Zero view count, verifier and timestamp. `0010` adds the additive Ambassador Phase 1 tables (`ambassador_applications`, `ambassador_documents`, `ambassador_profiles`, `ambassador_reviews`, `ambassador_id_sequence`); it creates no financial records and does not alter existing tables. `0012` adds the additive `brand_waitlist` table used by the public brand waitlist and the Operations → Brand waitlist screen; it creates no financial records.
 - The command is idempotent: applied migrations are tracked in
   `d1_migrations`.
 - For a dry inspection: `npx wrangler d1 migrations list mhomho-db --remote`.
@@ -459,7 +459,7 @@ preserved in Cloudflare DNS. No payment or third-party API is configured.
 - [ ] Ambassador flow smoke-tested end to end: apply → admin review → approve → publish → public profile.
 - [ ] Applicant document access verified: owner and admin only; public reads rejected.
 - [ ] `/ambassadors/*` and `/envoys/*` never render on `app.mhomho.work`.
-- [ ] Real test email delivered to `partnerships@mhomho.work` (the PDF is attached manually; no email provider is configured).
+- [x] Real test email delivered to `partnerships@mhomho.work` (the PDF is attached manually; no email provider is configured).
 - [ ] Terms (`/#/terms`) and Privacy (`/#/privacy`) pages render in a signed-out browser.
 - [ ] Backup schedule agreed.
 - [ ] Cloudflare WAF/rate limiting decision recorded.

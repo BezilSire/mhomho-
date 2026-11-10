@@ -42,6 +42,7 @@ const SOCIAL_KEYS = [
   'facebook',
   'tiktok',
   'youtube',
+  'other',
   'website',
 ] as const;
 

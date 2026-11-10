@@ -78,6 +78,11 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
   const [personalStatement, setPersonalStatement] = useState('');
   const [linkedin, setLinkedin] = useState('');
   const [instagram, setInstagram] = useState('');
+  const [xLink, setXLink] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [tiktok, setTiktok] = useState('');
+  const [youtube, setYoutube] = useState('');
+  const [otherLink, setOtherLink] = useState('');
   const [website, setWebsite] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -136,6 +141,11 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
       const socialLinks: Record<string, string> = {};
       if (linkedin.trim()) socialLinks.linkedin = linkedin.trim();
       if (instagram.trim()) socialLinks.instagram = instagram.trim();
+      if (xLink.trim()) socialLinks.x = xLink.trim();
+      if (facebook.trim()) socialLinks.facebook = facebook.trim();
+      if (tiktok.trim()) socialLinks.tiktok = tiktok.trim();
+      if (youtube.trim()) socialLinks.youtube = youtube.trim();
+      if (otherLink.trim()) socialLinks.other = otherLink.trim();
       if (website.trim()) socialLinks.website = website.trim();
 
       const applied = await applyAmbassador({
@@ -321,7 +331,7 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
                         className={FIELD}
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        placeholder="you@company.com"
+                        placeholder="you@gmail.com"
                         autoComplete="email"
                         required
                       />
@@ -478,6 +488,10 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
                     </span>
                     Public links and supporting documents
                   </h3>
+                  <p className="mb-4 text-[11.5px] leading-relaxed text-[var(--muted)]">
+                    Add any social links you use — LinkedIn, Instagram, X, Facebook, TikTok, YouTube,
+                    or another platform. Links are optional.
+                  </p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className={LABEL} htmlFor="amb-linkedin">
@@ -503,9 +517,69 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
                         placeholder="https://instagram.com/..."
                       />
                     </div>
+                    <div>
+                      <label className={LABEL} htmlFor="amb-x">
+                        X / Twitter URL
+                      </label>
+                      <input
+                        id="amb-x"
+                        className={FIELD}
+                        value={xLink}
+                        onChange={(event) => setXLink(event.target.value)}
+                        placeholder="https://x.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="amb-facebook">
+                        Facebook URL
+                      </label>
+                      <input
+                        id="amb-facebook"
+                        className={FIELD}
+                        value={facebook}
+                        onChange={(event) => setFacebook(event.target.value)}
+                        placeholder="https://facebook.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="amb-tiktok">
+                        TikTok URL
+                      </label>
+                      <input
+                        id="amb-tiktok"
+                        className={FIELD}
+                        value={tiktok}
+                        onChange={(event) => setTiktok(event.target.value)}
+                        placeholder="https://tiktok.com/@..."
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="amb-youtube">
+                        YouTube URL
+                      </label>
+                      <input
+                        id="amb-youtube"
+                        className={FIELD}
+                        value={youtube}
+                        onChange={(event) => setYoutube(event.target.value)}
+                        placeholder="https://youtube.com/@..."
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={LABEL} htmlFor="amb-other-link">
+                        Other social link
+                      </label>
+                      <input
+                        id="amb-other-link"
+                        className={FIELD}
+                        value={otherLink}
+                        onChange={(event) => setOtherLink(event.target.value)}
+                        placeholder="https://..."
+                      />
+                    </div>
                     <div className="sm:col-span-2">
                       <label className={LABEL} htmlFor="amb-website">
-                        Company or professional website
+                        Company or professional website (optional)
                       </label>
                       <input
                         id="amb-website"
@@ -514,6 +588,9 @@ export const AmbassadorApplyPage: React.FC<AmbassadorApplyPageProps> = ({
                         onChange={(event) => setWebsite(event.target.value)}
                         placeholder="https://..."
                       />
+                      <p className="mt-1 text-[10.5px] text-[var(--faint)]">
+                        Optional — include a company or professional website if you have one.
+                      </p>
                     </div>
                   </div>
 

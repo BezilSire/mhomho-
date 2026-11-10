@@ -35,6 +35,7 @@ import { AdminDashboard } from './screens/admin/AdminDashboard.tsx';
 import { AdminCampaigns } from './screens/admin/AdminCampaigns.tsx';
 import { AdminPayouts } from './screens/admin/AdminPayouts.tsx';
 import { AdminEnquiries } from './screens/admin/AdminEnquiries.tsx';
+import { AdminBrandWaitlist } from './screens/admin/AdminBrandWaitlist.tsx';
 import { AdminSecurity } from './screens/admin/AdminSecurity.tsx';
 import { AdminAccess } from './screens/admin/AdminAccess.tsx';
 import { LandingPage } from './screens/public/LandingPage.tsx';
@@ -90,6 +91,7 @@ export type AdminTabId =
   | 'queue'
   | 'campaigns'
   | 'payouts'
+  | 'waitlist'
   | 'enquiries'
   | 'community'
   | 'invites'
@@ -112,6 +114,7 @@ const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
   { id: 'queue', label: 'Clip verification' },
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'payouts', label: 'Payouts' },
+  { id: 'waitlist', label: 'Brand waitlist' },
   { id: 'enquiries', label: 'Brand enquiries' },
   { id: 'community', label: 'Community' },
   { id: 'invites', label: 'Invites' },
@@ -486,6 +489,7 @@ export default function App() {
 
   const queuePendingCount = Object.values(db.clips).filter((c) => c.status === 'submitted').length;
   const enquiriesCount = Object.values(db.enquiries).filter((e) => e.status === 'new').length;
+  const waitlistCount = Object.values(db.brandWaitlist).filter((e) => e.status === 'new').length;
   const applicantsCount = Object.values(db.creatorsPublic).filter((c) => c.status === 'applied').length;
 
   const goPublic = () => {
@@ -1008,6 +1012,7 @@ export default function App() {
                   counts={{
                     queue: queuePendingCount,
                     enquiries: enquiriesCount,
+                    waitlist: waitlistCount,
                     dashboard: applicantsCount,
                   }}
                   onChange={(id) => setAdminTab(id as AdminTabId)}
@@ -1020,6 +1025,7 @@ export default function App() {
                 {adminTab === 'queue' && <AdminVerificationQueue db={db} />}
                 {adminTab === 'campaigns' && <AdminCampaigns db={db} />}
                 {adminTab === 'payouts' && <AdminPayouts db={db} />}
+                {adminTab === 'waitlist' && <AdminBrandWaitlist db={db} />}
                 {adminTab === 'enquiries' && <AdminEnquiries db={db} />}
                 {adminTab === 'community' && <AdminCommunity />}
                 {adminTab === 'invites' && <AdminInvites />}

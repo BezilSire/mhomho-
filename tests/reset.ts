@@ -45,6 +45,7 @@ const TABLES = [
   'invite_codes',
   'accounts',
   'enquiries',
+  'brand_waitlist',
   'rate_limits',
   'app_config',
 ];

@@ -21,6 +21,7 @@ import {
   type ActivityItem,
   type BrandReportTokenDoc,
   type BrandViewDoc,
+  type BrandWaitlistStatus,
   type CampaignMemberDetail,
   type DatabaseState,
   type LinkPreview,
@@ -1069,6 +1070,29 @@ export async function createEnquiry(input: EnquiryInput): Promise<ApiResult> {
     notes: input.notes?.trim() ? input.notes.trim() : undefined,
     bestTimes: input.bestTimes ?? [],
   });
+}
+
+export interface BrandWaitlistInput {
+  brandName: string;
+  location: string;
+  industry: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  company?: string;
+}
+
+export async function joinBrandWaitlist(input: BrandWaitlistInput): Promise<ApiResult> {
+  return request('POST', '/api/brand-waitlist', input);
+}
+
+export async function updateBrandWaitlist(
+  id: string,
+  updates: { status?: BrandWaitlistStatus; notes?: string | null }
+): Promise<ApiResult> {
+  const result = await request('PATCH', `/api/admin/brand-waitlist/${encodeURIComponent(id)}`, updates);
+  if (result.success) await refreshData();
+  return result;
 }
 
 /**

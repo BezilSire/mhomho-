@@ -643,6 +643,11 @@ function ApprovedPortal({
   const [contactWhatsapp, setContactWhatsapp] = useState(profile.contactWhatsapp ?? '');
   const [linkedin, setLinkedin] = useState(profile.socialLinks.linkedin ?? '');
   const [instagram, setInstagram] = useState(profile.socialLinks.instagram ?? '');
+  const [xLink, setXLink] = useState(profile.socialLinks.x ?? '');
+  const [facebook, setFacebook] = useState(profile.socialLinks.facebook ?? '');
+  const [tiktok, setTiktok] = useState(profile.socialLinks.tiktok ?? '');
+  const [youtube, setYoutube] = useState(profile.socialLinks.youtube ?? '');
+  const [otherLink, setOtherLink] = useState(profile.socialLinks.other ?? '');
   const [website, setWebsite] = useState(profile.socialLinks.website ?? '');
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -658,6 +663,11 @@ function ApprovedPortal({
     const socialLinks: Record<string, string> = {};
     if (linkedin.trim()) socialLinks.linkedin = linkedin.trim();
     if (instagram.trim()) socialLinks.instagram = instagram.trim();
+    if (xLink.trim()) socialLinks.x = xLink.trim();
+    if (facebook.trim()) socialLinks.facebook = facebook.trim();
+    if (tiktok.trim()) socialLinks.tiktok = tiktok.trim();
+    if (youtube.trim()) socialLinks.youtube = youtube.trim();
+    if (otherLink.trim()) socialLinks.other = otherLink.trim();
     if (website.trim()) socialLinks.website = website.trim();
     const result = await updateAmbassadorProfile({
       publicName,
@@ -945,7 +955,67 @@ function ApprovedPortal({
                 placeholder="https://..."
               />
             </div>
-            <div className="sm:col-span-2">
+            <div>
+              <label className={LABEL} htmlFor="pub-x">
+                X / Twitter
+              </label>
+              <input
+                id="pub-x"
+                className={FIELD}
+                value={xLink}
+                onChange={(event) => setXLink(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className={LABEL} htmlFor="pub-facebook">
+                Facebook
+              </label>
+              <input
+                id="pub-facebook"
+                className={FIELD}
+                value={facebook}
+                onChange={(event) => setFacebook(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className={LABEL} htmlFor="pub-tiktok">
+                TikTok
+              </label>
+              <input
+                id="pub-tiktok"
+                className={FIELD}
+                value={tiktok}
+                onChange={(event) => setTiktok(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className={LABEL} htmlFor="pub-youtube">
+                YouTube
+              </label>
+              <input
+                id="pub-youtube"
+                className={FIELD}
+                value={youtube}
+                onChange={(event) => setYoutube(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className={LABEL} htmlFor="pub-other">
+                Other link
+              </label>
+              <input
+                id="pub-other"
+                className={FIELD}
+                value={otherLink}
+                onChange={(event) => setOtherLink(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
               <label className={LABEL} htmlFor="pub-website">
                 Website
               </label>

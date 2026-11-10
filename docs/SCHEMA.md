@@ -37,7 +37,7 @@ accounts ──1:1── ambassador_profiles ──0..1── ambassador_documen
 ambassador_applications ──1:N── ambassador_reviews
 ambassador_id_sequence ── standalone single-row counter
 
-enquiries, audit_events, rate_limits, app_config, idempotency_keys, link_previews — standalone
+enquiries, brand_waitlist, audit_events, rate_limits, app_config, idempotency_keys, link_previews — standalone
 ```
 
 ## 2. Accounts and identity
@@ -303,6 +303,12 @@ never to creator identity or contact data.
 
 Brand leads: business, contact, phone, niche, promo, goals (JSON), budget,
 window, best times (JSON), notes, status, `ip_hash`.
+
+### `brand_waitlist`
+
+Brand waitlist entries: brand, location, industry, contact name, contact email,
+contact phone, `status` (`new | contacted | invited | closed`), optional private
+`admin_notes`, `ip_hash`, timestamps. Admin-only in the projection.
 
 ### `audit_events`
 

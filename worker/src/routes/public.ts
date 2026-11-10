@@ -85,6 +85,61 @@ export async function handleCreateEnquiry(ctx: Ctx): Promise<Response> {
   return json({ ok: true }, 201);
 }
 
+/** Public brand waitlist. No account is created and no PII is echoed back. */
+export async function handleJoinBrandWaitlist(ctx: Ctx): Promise<Response> {
+  assertSameOrigin(ctx.request, ctx.env.APP_ORIGIN);
+
+  const ipHash = await hashIp(ctx.env, ctx.request);
+  const limit = await consumeRateLimit(ctx.env, `brand-waitlist:${ipHash}`, 5, 60 * 60);
+  if (!limit.allowed) {
+    throw tooMany('Too many waitlist requests from this connection. Try again later.', limit.retryAfterSeconds);
+  }
+
+  const input = await body<{
+    brandName: string;
+    location: string;
+    industry: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string;
+    company?: string;
+  }>(ctx, {
+    brandName: { type: 'string', required: true, min: 2, max: 160 },
+    location: { type: 'string', required: true, min: 2, max: 160 },
+    industry: { type: 'string', required: true, min: 2, max: 80 },
+    contactName: { type: 'string', required: true, min: 2, max: 120 },
+    contactEmail: { type: 'email', required: true },
+    contactPhone: { type: 'string', required: true, min: 6, max: 32 },
+    company: { type: 'string', max: 200, nullable: true },
+  });
+
+  // Honeypot: bots fill hidden fields. Respond as success without storing.
+  if (input.company) return json({ ok: true });
+
+  const now = Date.now();
+  await ctx.env.DB.prepare(
+    `INSERT INTO brand_waitlist
+       (id, brand_name, location, industry, contact_name, contact_email,
+        contact_phone, status, ip_hash, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)`
+  )
+    .bind(
+      newId('bwl'),
+      input.brandName.trim(),
+      input.location.trim(),
+      input.industry.trim(),
+      input.contactName.trim(),
+      input.contactEmail.trim(),
+      input.contactPhone.trim(),
+      ipHash,
+      now,
+      now
+    )
+    .run();
+
+  return json({ ok: true }, 201);
+}
+
 /**
  * Brand report access is token-based. Only a SHA-256 of the token is stored, and
  * the report exposes aggregates only: never creator identities, contact data or

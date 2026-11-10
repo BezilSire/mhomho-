@@ -38,6 +38,7 @@ const CAMPAIGN_STATUSES: CampaignStatus[] = [
   'cancelled',
 ];
 const ENQUIRY_STATUSES = ['new', 'contacted', 'booked', 'closed'] as const;
+const WAITLIST_STATUSES = ['new', 'contacted', 'invited', 'closed'] as const;
 
 const DAY = 86_400_000;
 const MAX_BUDGET_CENTS = 5_000_000; // $50,000.00 hard ceiling per campaign.
@@ -1143,6 +1144,58 @@ export async function handleEnquiryStatus(ctx: Ctx): Promise<Response> {
     entityType: 'enquiry',
     entityId: ctx.params.id,
     after: { status: input.status },
+    requestId: ctx.requestId,
+    ipHash: await hashIp(ctx.env, ctx.request),
+  });
+
+  return json({ ok: true });
+}
+
+/* ------------------------------------------------------------------ */
+/* Brand waitlist                                                      */
+/* ------------------------------------------------------------------ */
+
+export async function handleWaitlistUpdate(ctx: Ctx): Promise<Response> {
+  guardMutation(ctx);
+  const admin = requireAdmin(ctx);
+
+  const input = await body<{
+    status?: (typeof WAITLIST_STATUSES)[number];
+    notes?: string | null;
+  }>(ctx, {
+    status: { type: 'string', values: WAITLIST_STATUSES },
+    notes: { type: 'string', max: 2000, nullable: true },
+  });
+
+  if (input.status === undefined && input.notes === undefined) {
+    throw badRequest('Nothing to update.');
+  }
+
+  const now = Date.now();
+  const current = await ctx.env.DB.prepare(
+    `SELECT status, admin_notes FROM brand_waitlist WHERE id = ?`
+  )
+    .bind(ctx.params.id)
+    .first<Row>();
+  if (!current) throw notFound('Waitlist entry not found.');
+
+  const status = input.status ?? String(current.status);
+  const notes = input.notes === undefined ? (current.admin_notes ?? null) : input.notes;
+
+  await ctx.env.DB.prepare(
+    `UPDATE brand_waitlist SET status = ?, admin_notes = ?, updated_at = ? WHERE id = ?`
+  )
+    .bind(status, notes, now, ctx.params.id)
+    .run();
+
+  await recordAudit(ctx.env, {
+    actorId: admin.id,
+    actorRole: 'admin',
+    action: 'brand_waitlist.update',
+    entityType: 'brand_waitlist',
+    entityId: ctx.params.id,
+    before: { status: String(current.status), notes: current.admin_notes ?? null },
+    after: { status, notes },
     requestId: ctx.requestId,
     ipHash: await hashIp(ctx.env, ctx.request),
   });

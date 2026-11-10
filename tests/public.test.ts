@@ -111,6 +111,96 @@ describe('brand enquiries', () => {
   });
 });
 
+describe('brand waitlist', () => {
+  const WAITLIST = {
+    brandName: 'Harare Hair Studio',
+    location: 'Harare, Zimbabwe',
+    industry: 'Health & beauty',
+    contactName: 'Tariro Moyo',
+    contactEmail: 'tariro@example.com',
+    contactPhone: '+263771234567',
+  };
+
+  it('accepts a waitlist entry and hides it from non-admins', async () => {
+    const response = await api('/api/brand-waitlist', { body: WAITLIST });
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({ ok: true });
+
+    const admin = await setupAdmin();
+    const adminView = await api('/api/bootstrap', { cookie: admin.cookie });
+    const entries = Object.values(adminView.body.data.brandWaitlist) as Array<
+      Record<string, unknown>
+    >;
+    expect(entries).toHaveLength(1);
+    expect(entries[0].brandName).toBe(WAITLIST.brandName);
+    expect(entries[0].location).toBe(WAITLIST.location);
+    expect(entries[0].contactEmail).toBe(WAITLIST.contactEmail);
+    expect(entries[0].status).toBe('new');
+
+    const creator = await approvedCreator(admin);
+    const creatorView = await api('/api/bootstrap', { cookie: creator.cookie });
+    expect(creatorView.body.data.brandWaitlist).toEqual({});
+
+    const anonymous = await api('/api/bootstrap');
+    expect(anonymous.body.data.brandWaitlist).toEqual({});
+  });
+
+  it('rejects an invalid contact email and drops honeypot submissions', async () => {
+    const bad = await api('/api/brand-waitlist', {
+      body: { ...WAITLIST, contactEmail: 'not-an-email' },
+    });
+    expect(bad.status).toBe(400);
+
+    const honeypot = await api('/api/brand-waitlist', {
+      body: { ...WAITLIST, company: 'Spam Co' },
+    });
+    expect(honeypot.status).toBe(200);
+
+    const stored = await testEnv.DB.prepare(`SELECT COUNT(*) AS count FROM brand_waitlist`).first<{
+      count: number;
+    }>();
+    expect(Number(stored?.count)).toBe(0);
+  });
+
+  it('lets only admins change waitlist status', async () => {
+    await api('/api/brand-waitlist', { body: WAITLIST });
+    const admin = await setupAdmin();
+    const creator = await approvedCreator(admin);
+
+    const view = await api('/api/bootstrap', { cookie: admin.cookie });
+    const id = Object.keys(view.body.data.brandWaitlist)[0];
+
+    const forbidden = await api(`/api/admin/brand-waitlist/${id}`, {
+      method: 'PATCH',
+      cookie: creator.cookie,
+      csrf: creator.csrf,
+      body: { status: 'contacted' },
+    });
+    expect(forbidden.status).toBe(403);
+
+    const updated = await api(`/api/admin/brand-waitlist/${id}`, {
+      method: 'PATCH',
+      cookie: admin.cookie,
+      csrf: admin.csrf,
+      body: { status: 'contacted', notes: 'Called, will follow up next week.' },
+    });
+    expect(updated.status).toBe(200);
+
+    const after = await api('/api/bootstrap', { cookie: admin.cookie });
+    const entry = Object.values(after.body.data.brandWaitlist)[0] as Record<string, unknown>;
+    expect(entry.status).toBe('contacted');
+    expect(entry.adminNotes).toBe('Called, will follow up next week.');
+
+    const missing = await api('/api/admin/brand-waitlist/bwl_missing', {
+      method: 'PATCH',
+      cookie: admin.cookie,
+      csrf: admin.csrf,
+      body: { status: 'closed' },
+    });
+    expect(missing.status).toBe(404);
+  });
+});
+
 describe('brand report links', () => {
   it('returns reconciled aggregates and platform mix without creator identities', async () => {
     const admin = await setupAdmin();

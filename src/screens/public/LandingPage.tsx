@@ -174,7 +174,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <MhomhoLogo className="h-9 w-auto sm:h-10" />
           </a>
 
-          <div className="hidden items-center gap-5 whitespace-nowrap xl:flex">
+          <div className="hidden min-w-0 items-center gap-4 whitespace-nowrap xl:flex">
             {[
               ['#how', 'How it works'],
               ['#earnings', 'Earnings'],
@@ -189,25 +189,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 key={href}
                 href={href}
                 onClick={href === '/creator-guide' ? openGuide : undefined}
-                className="text-[12.5px] font-medium tracking-[-0.01em] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+                className="text-[12px] font-medium tracking-[-0.01em] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
               >
                 {label}
               </a>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
               onClick={onOpenSignIn}
-              className="hidden h-10 items-center rounded-full px-4 text-[12.5px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
+              className="hidden h-10 items-center whitespace-nowrap rounded-full px-3 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
             >
               Sign in
             </button>
             <a
               href={APK_DOWNLOAD_URL}
               download
-              className="press hidden h-10 items-center gap-2 rounded-full bg-[var(--a1)] px-4 text-[12px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
+              className="press hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--a1)] px-3 text-[11.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
             >
               <Download size={14} strokeWidth={2.5} />
               Download app
@@ -215,7 +215,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               onClick={openCreatorFlow}
-              className="hidden h-10 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[12.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 sm:inline-flex cursor-pointer"
+              className="hidden h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-mhomho px-4 text-[12px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 sm:inline-flex cursor-pointer"
             >
               Get paid to post
               <ArrowRight size={14} />
@@ -345,17 +345,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     For brands
                   </p>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-                    Put your product in creator feeds.
+                    Brand campaigns are opening soon.
                   </p>
                   <button
                     type="button"
                     onClick={openBrandFlow}
                     className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--text)] px-4 text-[13px] font-bold text-[var(--page)] transition-transform hover:-translate-y-0.5 cursor-pointer"
                   >
-                    Start a campaign
+                    Put my brand on waitlist
                     <ArrowRight size={15} />
                   </button>
-                  <p className="mt-2 text-[10px] text-[var(--faint)]">One brief · many feeds</p>
+                  <p className="mt-2 text-[10px] text-[var(--faint)]">Join the waitlist · no sign-up</p>
                 </div>
 
                 <div className="rounded-2xl border border-[var(--a1)]/30 bg-[var(--a1)]/[0.06] p-4">
@@ -541,7 +541,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onClick={openBrandFlow}
             className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-gradient-mhomho px-5 text-[12.5px] font-bold text-[var(--ink)] cursor-pointer"
           >
-            Start a campaign
+            Put my brand on waitlist
             <ArrowRight size={14} />
           </button>
         </div>
@@ -1223,20 +1223,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="lg:sticky lg:top-28 lg:self-start">
             <div className="glass-panel rounded-[28px] p-7 sm:p-8">
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--faint)]">
-                One-minute brief
+                Brand waitlist
               </p>
               <h3 className="font-display mt-4 text-[28px] font-semibold leading-[1.06] tracking-[-0.045em]">
-                Tell us what you sell. We’ll build the crowd.
+                Brand campaigns are coming.
               </h3>
               <p className="mt-4 text-[13.5px] leading-[1.75] text-[var(--muted)]">
-                Send a one-minute brief. We reply with a creator plan and a delivery target —
-                usually within one working day.
+                Leave your details and we’ll contact you when campaigns open in your area. No
+                sign-up, no commitment.
               </p>
               <ol className="mt-7 space-y-4">
                 {[
-                  ['Send your brief', 'Business, budget and what a win looks like.'],
-                  ['Get a plan', 'Creators, angles and a delivery target.'],
-                  ['Approve and launch', 'We run the campaign and report what was delivered.'],
+                  ['Join the waitlist', 'Brand name, location and the right contact person.'],
+                  ['We reach out', 'We confirm your details and what you want to promote.'],
+                  ['Campaigns open', 'We build the creator plan and a delivery target.'],
                 ].map(([title, copy], index) => (
                   <li key={title} className="flex items-start gap-3">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[10px] font-bold text-[var(--text)]">
@@ -1258,13 +1258,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={openBrandFlow}
                 className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 cursor-pointer"
               >
-                Start a campaign
+                Put my brand on waitlist
                 <ArrowRight size={16} />
               </button>
               <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
                 Prefer to talk first?{' '}
                 <a
-                  href={contactLink('Hi Mhomho, I’d like to talk about a campaign.')}
+                  href={contactLink('Hi Mhomho, I’d like to talk about brand campaigns.')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]"
@@ -1384,11 +1384,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Start here.
               </p>
               <h2 className="font-display mt-5 max-w-[20ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.05em] sm:text-[46px]">
-                Start with one brief.
+                Brand campaigns are coming.
               </h2>
               <p className="mt-4 max-w-[52ch] text-[14.5px] leading-relaxed text-[var(--muted)]">
-                Brands get a crowd. Creators get paid. Tell us what you’re launching and we’ll build
-                the plan.
+                Join the waitlist and we’ll contact you when brand campaigns open. Creators can
+                start getting paid now.
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
@@ -1397,7 +1397,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={openBrandFlow}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-mhomho px-6 text-[13.5px] font-bold text-[var(--ink)] cursor-pointer"
               >
-                Start a campaign
+                Put my brand on waitlist
                 <ArrowRight size={15} />
               </button>
               <button
@@ -1541,7 +1541,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onClick={openBrandFlow}
             className="press glass-panel inline-flex h-12 items-center justify-center rounded-full text-[12.5px] font-semibold text-[var(--text)] cursor-pointer"
           >
-            Start a campaign
+            Put my brand on waitlist
           </button>
         </div>
       </div>

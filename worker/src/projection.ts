@@ -21,6 +21,7 @@ const SUBMISSION_LIMIT = 400;
 const LEDGER_LIMIT = 600;
 const PAYOUT_LIMIT = 250;
 const ENQUIRY_LIMIT = 200;
+const WAITLIST_LIMIT = 500;
 
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
@@ -530,6 +531,29 @@ export async function buildBootstrap(
     }
   }
 
+  // Brand waitlist (admin only)
+  const brandWaitlist: Record<string, unknown> = {};
+  if (isAdmin) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM brand_waitlist ORDER BY created_at DESC LIMIT ${WAITLIST_LIMIT}`
+    ).all<Row>();
+    for (const row of rows.results ?? []) {
+      brandWaitlist[str(row.id)] = {
+        id: str(row.id),
+        brandName: str(row.brand_name),
+        location: str(row.location),
+        industry: str(row.industry),
+        contactName: str(row.contact_name),
+        contactEmail: str(row.contact_email),
+        contactPhone: str(row.contact_phone),
+        status: str(row.status),
+        adminNotes: row.admin_notes === null ? null : str(row.admin_notes),
+        createdAt: new Date(num(row.created_at)).toISOString(),
+        updatedAt: new Date(num(row.updated_at)).toISOString(),
+      };
+    }
+  }
+
   // Balances
   const balanceRow = account
     ? await env.DB.prepare(
@@ -598,6 +622,7 @@ export async function buildBootstrap(
     creatorsPrivate,
     brandViews: {},
     enquiries,
+    brandWaitlist,
     totals: isAdmin
       ? {
           owedCents: Math.max(0, earnedCents - paidCents - reservedCents),
