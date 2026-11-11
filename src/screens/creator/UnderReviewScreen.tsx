@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Check,
   Clock,
+  Download,
   LifeBuoy,
   Lock,
   LogOut,
@@ -27,7 +28,7 @@ import {
 import { BrandLockup, BrandMark } from '../../components/BrandMark.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { NotificationBell } from '../../components/NotificationBell.tsx';
-import { MHOMHO_SOCIALS } from '../../lib/brand.ts';
+import { MHOMHO_BRAND_CARD, MHOMHO_CAMPAIGN_ZERO_CLIPS, MHOMHO_SOCIALS } from '../../lib/brand.ts';
 
 export interface UnderReviewScreenProps {
   db: DatabaseState;
@@ -436,11 +437,70 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
               </div>
             ) : (
               <div className="space-y-6 px-5 py-6 sm:px-7">
+                {/* 0. Get the clip */}
+                <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]/60 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--a1)]/12 text-[10px] font-bold text-[var(--a1)]">
+                      1
+                    </span>
+                    <h3 className="text-[13.5px] font-bold text-[var(--text)]">
+                      Get your clip
+                    </h3>
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--muted)]">
+                    Download a Mhomho clip, add your own voice and captions, then post it from the
+                    account you applied with. You need one clip of your own that features Mhomho.
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {MHOMHO_CAMPAIGN_ZERO_CLIPS.map((clip) => (
+                      <a
+                        key={clip.id}
+                        href={clip.file}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="press flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg)]/70 px-3.5 py-3 no-underline transition-colors hover:border-[var(--line-strong)]"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-[12px] font-semibold text-[var(--text)]">
+                            {clip.label}
+                          </span>
+                          <span className="block truncate text-[11px] text-[var(--faint)]">
+                            {clip.note} · 9:16, branded, no audio
+                          </span>
+                        </span>
+                        <Download size={15} className="shrink-0 text-[var(--a1)]" />
+                      </a>
+                    ))}
+                    <a
+                      href={MHOMHO_BRAND_CARD}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="press flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg)]/70 px-3.5 py-3 no-underline transition-colors hover:border-[var(--line-strong)]"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[12px] font-semibold text-[var(--text)]">
+                          Brand card
+                        </span>
+                        <span className="block truncate text-[11px] text-[var(--faint)]">
+                          4-second cutaway · use it as B-roll
+                        </span>
+                      </span>
+                      <Download size={15} className="shrink-0 text-[var(--a1)]" />
+                    </a>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-[var(--faint)]">
+                    The clips come with Mhomho branding and no audio. Add your own voice and sound,
+                    post it from the account you applied with, and keep it public for 30 days.
+                  </p>
+                </section>
+
                 {/* 1. Follow */}
                 <section>
                   <div className="flex items-center gap-2">
                     <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--a1)]/12 text-[10px] font-bold text-[var(--a1)]">
-                      1
+                      2
                     </span>
                     <h3 className="text-[13.5px] font-bold text-[var(--text)]">
                       Follow a Mhomho page
@@ -484,11 +544,11 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
 
                 <div className="h-px bg-[var(--line)]" />
 
-                {/* 2. Clips */}
+                {/* 3. Clips */}
                 <section>
                   <div className="flex items-center gap-2">
                     <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--a1)]/12 text-[10px] font-bold text-[var(--a1)]">
-                      2
+                      3
                     </span>
                     <h3 className="text-[13.5px] font-bold text-[var(--text)]">
                       Post clips featuring Mhomho
@@ -533,11 +593,11 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
 
                 <div className="h-px bg-[var(--line)]" />
 
-                {/* 3. Views */}
+                {/* 4. Views */}
                 <section>
                   <div className="flex items-center gap-2">
                     <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--a1)]/12 text-[10px] font-bold text-[var(--a1)]">
-                      3
+                      4
                     </span>
                     <h3 className="text-[13.5px] font-bold text-[var(--text)]">
                       Views are verified by our team

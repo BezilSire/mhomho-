@@ -88,13 +88,18 @@ export const GUIDE_SECTIONS: GuideSection[] = [
             body: 'Name, email, handle and password. It takes about two minutes.',
           },
           {
+            title: 'Download your clip',
+            body:
+              'We give you three vertical Mhomho clips and a brand card in the creator app. Add your own voice and captions, then post it from the account you applied with.',
+          },
+          {
             title: 'Follow a Mhomho social page',
             body: 'Follow any official Mhomho page so we can confirm you are in the network.',
           },
           {
             title: 'Post at least 1 clip featuring Mhomho',
             body:
-              'Up to 3 clips are allowed; extras are optional. Keep every post public and live.',
+              'Up to 3 clips are allowed; extras are optional. Keep every post public and live. Use our clip as a cutaway or stitch our post — your clip, your hook, your words.',
           },
           {
             title: 'Reach 500 verified views',

@@ -56,3 +56,9 @@
   Content-Type: application/pdf
   Content-Disposition: attachment; filename="mhomho-creator-guide.pdf"
   Cache-Control: no-cache
+
+# Campaign Zero clips handed to creators. Inline so the app can preview them,
+# with a short cache so a replaced clip is picked up quickly.
+/download/*.mp4
+  Content-Type: video/mp4
+  Cache-Control: public, max-age=3600

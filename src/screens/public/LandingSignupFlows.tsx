@@ -535,9 +535,10 @@ export const CreatorSignupFlow: React.FC<CreatorSignupFlowProps> = ({
                 className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--a1)]"
               />
               <span>
-                I’ll complete Campaign Zero (follow a Mhomho page, post at least 1 clip, one at
-                500+ views) and keep clips live for 30 days. I understand paid campaigns require
-                1,000+ verified views per clip and pay $1.00 per 1,000 verified views. I agree to the{' '}
+                I’ll complete Campaign Zero (download my Mhomho clip, follow a Mhomho page, post at
+                least 1 clip of my own, one at 500+ views) and keep clips live for 30 days. I
+                understand paid campaigns require 1,000+ verified views per clip and pay $1.00 per
+                1,000 verified views. I agree to the{' '}
                 <a
                   href="#/terms"
                   target="_blank"

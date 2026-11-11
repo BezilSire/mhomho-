@@ -1332,7 +1332,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               },
               {
                 q: 'How do I join and get approved?',
-                a: 'Create your account with your name, email, handle, platform and WhatsApp number. Then clear Campaign Zero: follow a Mhomho page, post at least 1 clip featuring Mhomho (up to 3 are allowed) and reach 500+ verified views on one clip. An admin checks the live post by hand before your dashboard unlocks. You have 15 days from sign-up, and if that window closes you can start a new one and try again.',
+                a: 'Create your account with your name, email, handle, platform and WhatsApp number. Then clear Campaign Zero: download your Mhomho clip from the app, follow a Mhomho page, post it from your own account with your own voice and captions, and reach 500+ verified views on one clip. An admin checks the live post by hand before your dashboard unlocks. You have 15 days from sign-up, and if that window closes you can start a new one and try again.',
               },
               {
                 q: 'What do I earn per clip?',
