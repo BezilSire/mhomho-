@@ -17,24 +17,24 @@ export const MHOMHO_CAMPAIGN_ZERO_CLIPS = [
     id: 'clip-1',
     label: 'Clip 1',
     note: 'No follower minimum',
-    file: '/download/mhomho-campaign-zero-1.mp4',
+    file: '/download/mhomho-campaign-zero-1.mp4?v=2',
   },
   {
     id: 'clip-2',
     label: 'Clip 2',
     note: 'What Mhomho is',
-    file: '/download/mhomho-campaign-zero-2.mp4',
+    file: '/download/mhomho-campaign-zero-2.mp4?v=2',
   },
   {
     id: 'clip-3',
     label: 'Clip 3',
     note: 'How you get paid',
-    file: '/download/mhomho-campaign-zero-3.mp4',
+    file: '/download/mhomho-campaign-zero-3.mp4?v=2',
   },
 ] as const;
 
 /** Short branded card creators can use as a cutaway or stitch source. */
-export const MHOMHO_BRAND_CARD = '/download/mhomho-brand-card.mp4';
+export const MHOMHO_BRAND_CARD = '/download/mhomho-brand-card.mp4?v=2';
 
 export const MHOMHO_SOCIALS = [
   { name: 'TikTok', handle: '@mhomho', url: 'https://www.tiktok.com/@mhomho' },
