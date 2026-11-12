@@ -1,0 +1,5 @@
+# Render artifacts — regenerate with build.ps1
+build/
+*.mov
+*.mp4
+check_*.png
