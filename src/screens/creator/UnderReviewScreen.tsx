@@ -466,7 +466,7 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                             {clip.label}
                           </span>
                           <span className="block truncate text-[11px] text-[var(--faint)]">
-                            {clip.note} · 9:16, branded, no audio
+                            {clip.note} · 16:9, original sound included
                           </span>
                         </span>
                         <Download size={15} className="shrink-0 text-[var(--a1)]" />
@@ -491,8 +491,9 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                     </a>
                   </div>
                   <p className="mt-3 text-[11px] leading-relaxed text-[var(--faint)]">
-                    The clips come with Mhomho branding and no audio. Add your own voice and sound,
-                    post it from the account you applied with, and keep it public for 30 days.
+                    The clips come with Mhomho branding and the original sound. Mute it and add your
+                    own voice, or use it as a cutaway in your own clip. Post from the account you
+                    applied with and keep it public for 30 days.
                   </p>
                 </section>
 

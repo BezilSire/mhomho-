@@ -90,7 +90,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           {
             title: 'Download your clip',
             body:
-              'We give you three vertical Mhomho clips and a brand card in the creator app. Add your own voice and captions, then post it from the account you applied with.',
+              'We give you three Mhomho clips and a brand card in the creator app. Mute the sound, add your own voice and captions, then post it from the account you applied with.',
           },
           {
             title: 'Follow a Mhomho social page',

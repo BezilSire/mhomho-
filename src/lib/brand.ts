@@ -8,8 +8,9 @@
 /**
  * Campaign Zero source clips.
  *
- * Vertical 9:16 H.264, no audio, so the creator adds their own voice and
- * trending sound. Served from our own domain, not a third-party drive.
+ * 16:9 H.264 with the original sound intact. The creator mutes it and adds
+ * their own voice, or uses it as a cutaway. Served from our own domain, not
+ * a third-party drive.
  */
 export const MHOMHO_CAMPAIGN_ZERO_CLIPS = [
   {
