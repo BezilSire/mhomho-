@@ -693,6 +693,64 @@ export async function uploadProof(file: File): Promise<ApiResult<{ assetId: stri
 /* Admin actions                                                       */
 /* ------------------------------------------------------------------ */
 
+export interface AdminAsset {
+  assetId: string;
+  /** Absolute URL on the public origin, usable by crawlers. */
+  url: string;
+}
+
+const ADMIN_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+const MAX_ADMIN_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Upload an image for the Journal (cover art or an inline figure).
+ *
+ * The server sniffs the magic bytes and derives the extension; the
+ * browser-supplied filename and MIME type are advisory only.
+ */
+export async function uploadAdminAsset(file: File): Promise<ApiResult<AdminAsset>> {
+  if (file.size === 0) return { success: false, error: 'The selected file is empty.' };
+  if (file.size > MAX_ADMIN_IMAGE_BYTES) {
+    return { success: false, error: 'Images must be under 5 MB.' };
+  }
+  if (!ADMIN_IMAGE_TYPES.includes(file.type as (typeof ADMIN_IMAGE_TYPES)[number])) {
+    return { success: false, error: 'Images must be a PNG, JPEG or WebP file.' };
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': file.type,
+    Accept: 'application/json',
+  };
+  const csrf = getCsrfToken();
+  if (!csrf) return { success: false, error: 'Sign in again before uploading.' };
+  headers['X-CSRF-Token'] = csrf;
+
+  let response: Response;
+  try {
+    response = await fetch('/api/admin/assets', {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: file,
+    });
+  } catch {
+    return { success: false, error: 'Upload failed. Check your connection and try again.' };
+  }
+
+  const payload = (await parseEnvelope(response)) as ApiEnvelope<unknown> & {
+    assetId?: string;
+    url?: string;
+  };
+  if (!response.ok) {
+    return { success: false, error: errorMessage(payload, response.status), status: response.status };
+  }
+  if (!payload.assetId || !payload.url) {
+    return { success: false, error: 'The upload was not accepted.' };
+  }
+  return { success: true, data: { assetId: payload.assetId, url: payload.url } };
+}
+
 export interface ApproveCreatorInput {
   verifiedClipId: string;
   verifiedViews: number;

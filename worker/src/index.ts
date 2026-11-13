@@ -22,7 +22,7 @@ import {
   handleSubmitClip,
   handleUpdateProfile,
 } from './routes/creator.ts';
-import { handleProofUpload, handleAssetRead } from './routes/assets.ts';
+import { handleProofUpload, handleAssetRead, handlePublicAssetRead, handleAdminAssetUpload } from './routes/assets.ts';
 import {
   handleApproveCreator,
   handleCampaignMembers,
@@ -158,7 +158,9 @@ router
   .post('/api/campaign-zero/restart', handleRestartCampaignZero)
   .patch('/api/profile', handleUpdateProfile)
   .post('/api/uploads/proof', handleProofUpload)
+  .post('/api/admin/assets', handleAdminAssetUpload)
   .get('/api/assets/:id', handleAssetRead)
+  .get('/api/public/assets/:id', handlePublicAssetRead)
   .post('/api/enquiries', handleCreateEnquiry)
   .post('/api/brand-waitlist', handleJoinBrandWaitlist)
   .get('/api/brand/:token', handleBrandReport)

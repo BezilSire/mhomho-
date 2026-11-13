@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card } from '../../components/Card.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { Button } from '../../components/Button.tsx';
+import { Image as ImageIcon, Upload, X } from 'lucide-react';
 import {
   AdminBlogPost,
   BlogPostInput,
@@ -10,7 +11,9 @@ import {
   deleteBlogPost,
   listBlogPosts,
   updateBlogPost,
+  uploadAdminAsset,
 } from '../../lib/api.ts';
+import { prepareImage } from '../../lib/image.ts';
 
 interface Draft {
   id: string | null;
@@ -68,6 +71,28 @@ const fieldClass =
 
 const labelClass = 'mb-1.5 block text-[11.5px] font-bold uppercase tracking-[0.08em] text-[var(--faint)]';
 
+/**
+ * Uploads one image and hands back its public URL.
+ *
+ * The browser downscales first (see lib/image.ts) so a phone photo never
+ * trips the server limit, then the server sniffs the real type and stores it
+ * in the asset bucket. The URL is absolute so Google can fetch it for the
+ * Open Graph card.
+ */
+async function uploadImage(file: File): Promise<string> {
+  const prepared = await prepareImage(file);
+  try {
+    const result = await uploadAdminAsset(prepared.file);
+    if (!result.success) {
+      throw new Error(result.error ?? 'The upload was not accepted.');
+    }
+    if (!result.data) throw new Error('The upload was not accepted.');
+    return result.data.url;
+  } finally {
+    URL.revokeObjectURL(prepared.previewUrl);
+  }
+}
+
 const Editor: React.FC<{
   draft: Draft;
   saving: boolean;
@@ -79,6 +104,58 @@ const Editor: React.FC<{
   const update = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
   const words = wordCount(draft.bodyMd);
   const isPublished = draft.status === 'published';
+
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const inlineInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState<'cover' | 'inline' | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [showUrlField, setShowUrlField] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  const handleCoverFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError('');
+    setUploading('cover');
+    try {
+      const url = await uploadImage(file);
+      update({ coverImageUrl: url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'The upload failed.');
+    } finally {
+      setUploading(null);
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  };
+
+  const handleInlineFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError('');
+    setUploading('inline');
+    try {
+      const url = await uploadImage(file);
+      const textarea = bodyRef.current;
+      const markdown = `\n![Image](${url})\n`;
+      if (textarea) {
+        const start = textarea.selectionStart ?? draft.bodyMd.length;
+        const end = textarea.selectionEnd ?? start;
+        const next = `${draft.bodyMd.slice(0, start)}${markdown}${draft.bodyMd.slice(end)}`;
+        update({ bodyMd: next });
+        requestAnimationFrame(() => {
+          const caret = start + markdown.length;
+          textarea.focus();
+          textarea.setSelectionRange(caret, caret);
+        });
+      } else {
+        update({ bodyMd: `${draft.bodyMd}${markdown}` });
+      }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'The upload failed.');
+    } finally {
+      setUploading(null);
+      if (inlineInputRef.current) inlineInputRef.current.value = '';
+    }
+  };
 
   return (
     <Card>
@@ -144,11 +221,29 @@ const Editor: React.FC<{
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="blog-body">
-            Article
-          </label>
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <label className={labelClass} htmlFor="blog-body" style={{ marginBottom: 0 }}>
+              Article
+            </label>
+            <button
+              type="button"
+              onClick={() => inlineInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1.5 text-[11px] font-semibold text-[var(--muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] cursor-pointer"
+            >
+              <ImageIcon size={12} className="text-[var(--a1)]" />
+              {uploading === 'inline' ? 'Uploading…' : 'Insert image'}
+            </button>
+            <input
+              ref={inlineInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => void handleInlineFile(event.target.files?.[0])}
+            />
+          </div>
           <textarea
             id="blog-body"
+            ref={bodyRef}
             className={`${fieldClass} min-h-[320px] resize-y font-mono text-[12.5px] leading-relaxed`}
             value={draft.bodyMd}
             maxLength={60000}
@@ -156,23 +251,106 @@ const Editor: React.FC<{
             onChange={(event) => update({ bodyMd: event.target.value })}
           />
           <p className="mt-1 text-[11px] text-[var(--faint)]">
-            Markdown: ## headings, **bold**, *italic*, [links](url), lists, quotes and code blocks.
+            Markdown: ## headings, **bold**, *italic*, [links](url), images, lists, quotes and code
+            blocks.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass} htmlFor="blog-cover">
-              Cover image URL
+            <label className={labelClass} htmlFor="blog-cover-upload">
+              Cover image
             </label>
+            <div
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                void handleCoverFile(event.dataTransfer.files?.[0]);
+              }}
+            >
+              {draft.coverImageUrl ? (
+                <div className="overflow-hidden rounded-[12px] border border-[var(--line)]">
+                  <img
+                    src={draft.coverImageUrl}
+                    alt="Cover preview"
+                    className="aspect-[1200/630] w-full bg-[var(--surface)] object-cover"
+                  />
+                  <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <span className="truncate text-[11px] text-[var(--faint)]">
+                      Used for the social card and the article header.
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => coverInputRef.current?.click()}
+                        className="text-[11px] font-semibold text-[var(--a1)] cursor-pointer"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update({ coverImageUrl: '' })}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--muted)] cursor-pointer hover:text-[var(--text)]"
+                      >
+                        <X size={11} />
+                        Remove
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-[12px] border border-dashed px-4 py-7 text-center transition-colors cursor-pointer ${
+                    dragging
+                      ? 'border-[var(--a1)] bg-[var(--a1)]/10'
+                      : 'border-[var(--line-strong)] bg-[var(--surface)] hover:border-[var(--a1)]'
+                  }`}
+                >
+                  <Upload size={16} className="text-[var(--a1)]" />
+                  <span className="text-[12px] font-semibold text-[var(--text)]">
+                    {uploading === 'cover' ? 'Uploading…' : 'Drop an image or choose a file'}
+                  </span>
+                  <span className="text-[11px] text-[var(--faint)]">
+                    PNG, JPEG or Webp. Resized to 1600px automatically.
+                  </span>
+                </button>
+              )}
+            </div>
             <input
-              id="blog-cover"
-              className={fieldClass}
-              value={draft.coverImageUrl}
-              maxLength={500}
-              placeholder="https://…"
-              onChange={(event) => update({ coverImageUrl: event.target.value })}
+              ref={coverInputRef}
+              id="blog-cover-upload"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => void handleCoverFile(event.target.files?.[0])}
             />
+            {uploadError && (
+              <p className="mt-1 text-[11px] font-medium text-[var(--err)]">{uploadError}</p>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowUrlField((value) => !value)}
+              className="mt-2 text-[11px] font-semibold text-[var(--muted)] underline underline-offset-2 cursor-pointer hover:text-[var(--text)]"
+            >
+              {showUrlField ? 'Hide the link field' : 'Or use an image link instead'}
+            </button>
+            {showUrlField && (
+              <input
+                id="blog-cover"
+                className={`${fieldClass} mt-2`}
+                value={draft.coverImageUrl}
+                maxLength={500}
+                placeholder="https://…"
+                onChange={(event) => update({ coverImageUrl: event.target.value })}
+              />
+            )}
           </div>
           <div>
             <label className={labelClass} htmlFor="blog-tags">

@@ -2,7 +2,7 @@ import type { Ctx } from '../context.ts';
 import type { Env } from '../env.ts';
 import { maxUploadBytes } from '../env.ts';
 import { recordAudit } from '../audit.ts';
-import { newId } from '../auth.ts';
+import { newId, requireAdmin } from '../auth.ts';
 import { sha256Hex } from '../crypto.ts';
 import { badRequest, forbidden, json, notFound, tooMany } from '../http.ts';
 import { requireAccount } from '../auth.ts';
@@ -117,6 +117,82 @@ export async function handleProofUpload(ctx: Ctx): Promise<Response> {
   });
 
   return json({ ok: true, assetId }, 201);
+}
+
+/**
+ * Admin image upload for the Journal.
+ *
+ * The file type is sniffed from magic bytes, never taken from the request
+ * header, and the extension is derived server-side. The stored asset is
+ * public so Google and social crawlers can fetch it for the Open Graph card,
+ * and the browser can render it inside the article.
+ */
+export async function handleAdminAssetUpload(ctx: Ctx): Promise<Response> {
+  guardMutation(ctx);
+  const admin = requireAdmin(ctx);
+
+  const limit = await consumeRateLimit(ctx.env, `admin-upload:${admin.id}`, 60, 60 * 60);
+  if (!limit.allowed) {
+    throw tooMany('Too many uploads. Try again shortly.', limit.retryAfterSeconds);
+  }
+
+  const maxBytes = maxUploadBytes(ctx.env);
+  const declared = Number(ctx.request.headers.get('Content-Length') ?? '0');
+  if (declared > maxBytes) {
+    throw badRequest(`Images must be under ${formatMb(maxBytes)} MB.`);
+  }
+
+  const buffer = await ctx.request.arrayBuffer();
+  if (buffer.byteLength === 0) throw badRequest('The uploaded file is empty.');
+  if (buffer.byteLength > maxBytes) {
+    throw badRequest(`Images must be under ${formatMb(maxBytes)} MB.`);
+  }
+
+  const bytes = new Uint8Array(buffer);
+  const sniffed = sniffImage(bytes);
+  if (!sniffed) {
+    throw badRequest('Images must be a PNG, JPEG or WebP file.');
+  }
+
+  const now = Date.now();
+  const month = new Date(now).toISOString().slice(0, 7);
+  const assetId = newId('asset');
+  const objectKey = `journal/${month}/${assetId}.${sniffed.extension}`;
+
+  await ctx.env.PROOFS.put(objectKey, buffer);
+
+  const checksum = await sha256Hex(bytesToBase64(bytes));
+
+  await ctx.env.DB.prepare(
+    `INSERT INTO campaign_assets
+       (id, campaign_id, owner_id, kind, object_key, original_name, content_type, size_bytes,
+        checksum_sha256, visibility, status, created_at, ready_at)
+     VALUES (?, NULL, ?, 'brand_material', ?, ?, ?, ?, ?, 'public', 'ready', ?, ?)`
+  ).bind(
+    assetId,
+    admin.id,
+    objectKey,
+    `journal-cover.${sniffed.extension}`,
+    sniffed.contentType,
+    bytes.byteLength,
+    checksum,
+    now,
+    now
+  ).run();
+
+  await recordAudit(ctx.env, {
+    actorId: admin.id,
+    actorRole: 'admin',
+    action: 'asset.upload',
+    entityType: 'campaign_asset',
+    entityId: assetId,
+    after: { contentType: sniffed.contentType, sizeBytes: bytes.byteLength, scope: 'journal' },
+    requestId: ctx.requestId,
+    ipHash: await hashIp(ctx.env, ctx.request),
+  });
+
+  const origin = ctx.env.APP_ORIGIN.replace(/\/+$/, '');
+  return json({ ok: true, assetId, url: `${origin}/api/public/assets/${assetId}` }, 201);
 }
 
 export async function handleAssetRead(ctx: Ctx): Promise<Response> {
