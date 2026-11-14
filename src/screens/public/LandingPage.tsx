@@ -1542,6 +1542,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {MHOMHO_WHATSAPP_DISPLAY}
                 <ArrowUpRight size={12} />
               </a>
+              <a
+                href="https://www.startuplist.africa/startups/mhomho"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block w-fit no-underline opacity-80 transition-opacity hover:opacity-100"
+              >
+                <img
+                  src="/badges/listed-on-startuplist-africa-light.png"
+                  alt="Listed on StartupList Africa"
+                  width={244}
+                  height={56}
+                  loading="lazy"
+                  onError={(event) => {
+                    // The badge host challenges non-browser requests, so the
+                    // mirrored copy is primary and their CDN is the fallback.
+                    const image = event.currentTarget;
+                    if (!image.src.includes('startuplist.africa/badges')) {
+                      image.src =
+                        'https://www.startuplist.africa/badges/listed-on-startuplist-africa-light.png';
+                    }
+                  }}
+                />
+              </a>
             </div>
           </div>
         </div>
