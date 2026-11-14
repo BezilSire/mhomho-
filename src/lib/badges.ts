@@ -21,6 +21,14 @@ export interface ListingBadge {
 
 export const LISTING_BADGES: ListingBadge[] = [
   {
+    id: 'african-startup-magazine',
+    label: 'Featured on African Startup Magazine',
+    href: 'https://africastartupmagazine.com/startup/1f672ac9-c0fc-4148-8383-2c1244936984',
+    src: '/badges/african-startup-magazine.jpg',
+    width: 800,
+    height: 184,
+  },
+  {
     id: 'au-startups',
     label: 'Listed on AU Startups',
     href: 'https://au-startups.com/startups/mhomho',

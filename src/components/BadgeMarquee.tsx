@@ -38,6 +38,7 @@ export const BadgeMarquee: React.FC<{ className?: string }> = ({ className = '' 
               height={badge.height}
               loading="lazy"
               decoding="async"
+              className="h-9 w-auto rounded-md sm:h-11"
               onError={(event) => {
                 // The mirrored copy is primary; the listing site is the fallback.
                 const image = event.currentTarget;
