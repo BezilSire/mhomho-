@@ -171,16 +171,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     >
       {/* ============================== NAV ============================== */}
       <nav className="safe-top glass-nav sticky top-0 z-50 border-b border-[var(--line)]">
-        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-4 sm:px-8">
+        <div className="mx-auto flex h-[68px] w-full max-w-[1360px] items-center gap-6 px-4 sm:px-8">
           <a
             href="#top"
-            className="flex items-center text-inherit no-underline"
+            className="flex shrink-0 items-center text-inherit no-underline"
             aria-label="Mhomho Media home"
           >
-            <MhomhoLogo className="h-9 w-auto sm:h-10" />
+            <MhomhoLogo className="h-8 w-auto sm:h-9" />
           </a>
 
-          <div className="hidden min-w-0 items-center gap-4 whitespace-nowrap xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-x-[18px] whitespace-nowrap xl:flex">
             {[
               ['#how', 'How it works'],
               ['#earnings', 'Earnings'],
@@ -189,43 +189,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               ['#partners', 'Partners'],
               ['/ambassadors/apply', 'Commercial Envoys'],
               ['/resources', 'Resources'],
-              ['/blog', 'Journal'],
+              ['/blog', 'Blog'],
               ['/creator-guide', 'Creator guide'],
             ].map(([href, label]) => (
               <a
                 key={href}
                 href={href}
                 onClick={href === '/creator-guide' ? openGuide : undefined}
-                className="text-[12px] font-medium tracking-[-0.01em] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+                className="text-[11px] font-medium tracking-[0.01em] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
               >
                 {label}
               </a>
             ))}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={onOpenSignIn}
-              className="hidden h-10 items-center whitespace-nowrap rounded-full px-3 text-[12px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
+              className="hidden h-10 items-center whitespace-nowrap rounded-full px-3 text-[11.5px] font-semibold text-[var(--muted)] transition-colors hover:text-[var(--text)] sm:inline-flex cursor-pointer"
             >
               Sign in
             </button>
             <a
               href={APK_DOWNLOAD_URL}
               download
-              className="press hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--a1)] px-3 text-[11.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
+              className="press hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--a1)] px-3.5 text-[11px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5 sm:inline-flex"
             >
-              <Download size={14} strokeWidth={2.5} />
+              <Download size={13} strokeWidth={2.5} />
               Download app
             </a>
             <button
               type="button"
               onClick={openCreatorFlow}
-              className="hidden h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-mhomho px-4 text-[12px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 sm:inline-flex cursor-pointer"
+              className="hidden h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-mhomho px-4 text-[11.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 sm:inline-flex cursor-pointer"
             >
               Get paid to post
-              <ArrowRight size={14} />
+              <ArrowRight size={13} />
             </button>
             <button
               type="button"
@@ -240,7 +240,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         {navOpen && (
-          <div className="app-scroll max-h-[calc(100dvh-64px-env(safe-area-inset-top))] overflow-y-auto border-t border-[var(--line)] bg-[var(--page)]/95 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl xl:hidden">
+          <div className="app-scroll max-h-[calc(100dvh-68px-env(safe-area-inset-top))] overflow-y-auto border-t border-[var(--line)] bg-[var(--page)]/95 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl xl:hidden">
             <div className="flex flex-col gap-1">
               {[
                 ['#how', 'How it works'],
@@ -249,7 +249,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ['#partners', 'Partners'],
                 ['/ambassadors/apply', 'Commercial Envoys'],
                 ['/resources', 'Resources'],
-                ['/blog', 'Journal'],
+                ['/blog', 'Blog'],
               ].map(([href, label]) => (
                 <a
                   key={href}
@@ -1510,7 +1510,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="inline-flex items-center gap-1.5 text-[var(--muted)] no-underline hover:text-[var(--text)]"
               >
                 <BookOpen size={12} className="text-[var(--a1)]" />
-                Journal
+                Blog
               </a>
               <button
                 type="button"

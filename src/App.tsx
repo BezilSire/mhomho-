@@ -118,7 +118,7 @@ const ADMIN_NAV: { id: AdminTabId; label: string }[] = [
   { id: 'payouts', label: 'Payouts' },
   { id: 'waitlist', label: 'Brand waitlist' },
   { id: 'enquiries', label: 'Brand enquiries' },
-  { id: 'blog', label: 'Journal' },
+  { id: 'blog', label: 'Blog' },
   { id: 'community', label: 'Community' },
   { id: 'invites', label: 'Invites' },
   { id: 'support', label: 'Support' },

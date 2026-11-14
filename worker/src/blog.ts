@@ -264,7 +264,7 @@ function pageShell(options: {
 <meta name="description" content="${description}" />
 <meta name="robots" content="${robots}" />
 <link rel="canonical" href="${canonical}" />
-<link rel="alternate" type="application/rss+xml" title="MHOMHO Journal RSS" href="/rss.xml" />
+<link rel="alternate" type="application/rss+xml" title="MHOMHO Blog RSS" href="/rss.xml" />
 <meta property="og:site_name" content="MHOMHO" />
 <meta property="og:title" content="${title}" />
 <meta property="og:description" content="${description}" />
@@ -332,7 +332,7 @@ footer{border-top:1px solid var(--line);padding:30px 0 48px;color:var(--faint);f
     <a class="brand" href="/">MHOMHO</a>
     <nav class="nav-links" aria-label="Main">
       <a href="/">Home</a>
-      <a href="/blog">Journal</a>
+      <a href="/blog">Blog</a>
       <a href="/resources">Resources</a>
       <a href="/ambassadors/apply">Commercial Envoy</a>
     </nav>
@@ -342,7 +342,7 @@ footer{border-top:1px solid var(--line);padding:30px 0 48px;color:var(--faint);f
 <footer>
   <div class="footer-inner">
     <span>© ${new Date().getUTCFullYear()} MHOMHO Media</span>
-    <span><a href="/blog">Journal</a> · <a href="/resources">Resources</a> · <a href="/ambassadors/apply">Commercial Envoy</a></span>
+    <span><a href="/blog">Blog</a> · <a href="/resources">Resources</a> · <a href="/ambassadors/apply">Commercial Envoy</a></span>
   </div>
 </footer>
 </body>
@@ -401,7 +401,7 @@ export async function serveBlogIndex(env: Env): Promise<Response> {
 
   const canonical = siteUrl(env, '/blog');
   const body = `<section class="hero">
-  <p class="eyebrow">MHOMHO Journal</p>
+  <p class="eyebrow">MHOMHO Blog</p>
   <h1>Ideas for the people who move crowds.</h1>
   <p class="lede">Playbooks, case notes and straight talk on creator marketing, brand distribution and earning from content across Africa.</p>
 </section>
@@ -414,7 +414,7 @@ export async function serveBlogIndex(env: Env): Promise<Response> {
 
   return html(
     pageShell({
-      title: 'MHOMHO Journal — creator marketing and brand distribution in Africa',
+      title: 'MHOMHO Blog — creator marketing and brand distribution in Africa',
       description:
         'Playbooks, case notes and practical advice on creator marketing, brand campaigns and earning from content across Zimbabwe and Africa.',
       canonical,
@@ -423,7 +423,7 @@ export async function serveBlogIndex(env: Env): Promise<Response> {
       jsonLd: {
         '@context': 'https://schema.org',
         '@type': 'Blog',
-        name: 'MHOMHO Journal',
+        name: 'MHOMHO Blog',
         url: canonical,
         description:
           'Playbooks, case notes and practical advice on creator marketing and brand distribution across Africa.',
@@ -452,11 +452,11 @@ export async function serveBlogPost(env: Env, slug: string): Promise<Response> {
   <p class="eyebrow">404</p>
   <h1>That article isn’t here.</h1>
   <p class="lede">It may have moved, or it hasn’t been published yet.</p>
-  <p style="margin-top:24px"><a class="btn" href="/blog">Back to the Journal</a></p>
+  <p style="margin-top:24px"><a class="btn" href="/blog">Back to the Blog</a></p>
 </section>`;
     return html(
       pageShell({
-        title: 'Article not found — MHOMHO Journal',
+        title: 'Article not found — MHOMHO Blog',
         description: 'This article could not be found.',
         canonical: siteUrl(env, '/blog'),
         body,
@@ -472,7 +472,7 @@ export async function serveBlogPost(env: Env, slug: string): Promise<Response> {
   const title = str(row.title);
   const excerpt = str(row.excerpt);
   const bodyMd = str(row.body_md);
-  const seoTitle = str(row.seo_title) || `${title} — MHOMHO Journal`;
+  const seoTitle = str(row.seo_title) || `${title} — MHOMHO Blog`;
   const seoDescription = str(row.seo_description) || excerpt;
   const cover = str(row.cover_image_url) || null;
   const coverUrl = cover ? safeUrl(cover) : null;
@@ -483,7 +483,7 @@ export async function serveBlogPost(env: Env, slug: string): Promise<Response> {
 
   const body = `<article>
   <header class="hero">
-    <p class="eyebrow"><a href="/blog" style="color:inherit;text-decoration:none">Journal</a> / ${escapeHtml(
+    <p class="eyebrow"><a href="/blog" style="color:inherit;text-decoration:none">Blog</a> / ${escapeHtml(
       tags[0] ?? 'Article'
     )}</p>
     <h1>${escapeHtml(title)}</h1>
@@ -626,7 +626,7 @@ export async function serveRss(env: Env): Promise<Response> {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>MHOMHO Journal</title>
+    <title>MHOMHO Blog</title>
     <link>${escapeHtml(siteUrl(env, '/blog'))}</link>
     <description>Creator marketing and brand distribution across Africa.</description>
     <language>en</language>
