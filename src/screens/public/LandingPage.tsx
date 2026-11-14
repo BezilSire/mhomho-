@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { DatabaseState } from '../../lib/firebase.ts';
 import { MhomhoLogo } from '../../components/MhomhoLogo.tsx';
+import { BadgeMarquee } from '../../components/BadgeMarquee.tsx';
 import { WhatsAppIcon } from '../../components/WhatsAppIcon.tsx';
 import {
   MHOMHO_WHATSAPP_DISPLAY,
@@ -441,6 +442,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         />
 
         <div className="relative mx-auto w-full max-w-[1400px] px-5 sm:px-8">
+          <BadgeMarquee className="mb-8 sm:mb-10" />
+
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--a1)]">
@@ -1542,53 +1545,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {MHOMHO_WHATSAPP_DISPLAY}
                 <ArrowUpRight size={12} />
               </a>
-              <div className="mt-1 flex flex-col items-start gap-2">
-                <a
-                  href="https://au-startups.com/startups/mhomho"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block w-fit no-underline opacity-85 transition-opacity hover:opacity-100"
-                >
-                  <img
-                    src="/badges/au-startups-logo-192.png"
-                    alt="Listed on AU Startups"
-                    width={192}
-                    height={43}
-                    loading="lazy"
-                    onError={(event) => {
-                      // The mirrored copy is primary; their CDN is the fallback.
-                      const image = event.currentTarget;
-                      if (!image.src.includes('au-startups.com/_next/image')) {
-                        image.src =
-                          'https://au-startups.com/_next/image?url=%2Fbrand%2Flogo-320.png&w=192&q=75';
-                      }
-                    }}
-                  />
-                </a>
-                <a
-                  href="https://www.startuplist.africa/startups/mhomho"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block w-fit no-underline opacity-85 transition-opacity hover:opacity-100"
-                >
-                  <img
-                    src="/badges/listed-on-startuplist-africa-light.png"
-                    alt="Listed on StartupList Africa"
-                    width={244}
-                    height={56}
-                    loading="lazy"
-                    onError={(event) => {
-                      // The badge host challenges non-browser requests, so the
-                      // mirrored copy is primary and their CDN is the fallback.
-                      const image = event.currentTarget;
-                      if (!image.src.includes('startuplist.africa/badges')) {
-                        image.src =
-                          'https://www.startuplist.africa/badges/listed-on-startuplist-africa-light.png';
-                      }
-                    }}
-                  />
-                </a>
-              </div>
             </div>
           </div>
         </div>

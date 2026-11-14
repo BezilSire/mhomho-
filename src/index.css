@@ -290,6 +290,15 @@ button {
   animation-play-state: paused;
 }
 
+/* Floating listing badges */
+.badge-marquee-track {
+  animation: marquee 26s linear infinite;
+  will-change: transform;
+}
+.badge-marquee-wrap:hover .badge-marquee-track {
+  animation-play-state: paused;
+}
+
 /* Ambient orb drift. Uses `translate` so it composes with the parallax transform. */
 @keyframes orb-drift {
   0% { translate: 0 0; }
@@ -301,10 +310,11 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .rise, .lift, .float-card, .ticker-track, .orb-drift {
+  .rise, .lift, .float-card, .ticker-track, .badge-marquee-track, .orb-drift {
     animation: none;
     transition: none;
   }
   .lift:hover { transform: none; }
   .marquee-wrap:hover .ticker-track { animation-play-state: running; }
+  .badge-marquee-wrap:hover .badge-marquee-track { animation-play-state: running; }
 }
