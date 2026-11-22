@@ -466,7 +466,7 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                             {clip.label}
                           </span>
                           <span className="block truncate text-[11px] text-[var(--faint)]">
-                            {clip.note} · 16:9, original sound included
+                            {clip.note} · {clip.meta}
                           </span>
                         </span>
                         <Download size={15} className="shrink-0 text-[var(--a1)]" />

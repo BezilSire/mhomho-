@@ -8,27 +8,33 @@
 /**
  * Campaign Zero source clips.
  *
- * 16:9 H.264 with the original sound intact. The creator mutes it and adds
- * their own voice, or uses it as a cutaway. Served from our own domain, not
- * a third-party drive.
+ * Delivered exactly as rendered: H.264 with the original sound intact. The
+ * creator mutes it and adds their own voice, or uses it as a cutaway. Served
+ * from our own domain, not a third-party drive.
+ *
+ * The brand video is the raw brand film, vertical, untouched — no re-encode,
+ * no captions, no overlays.
  */
 export const MHOMHO_CAMPAIGN_ZERO_CLIPS = [
   {
     id: 'clip-1',
     label: 'Clip 1',
     note: 'No follower minimum',
+    meta: '16:9 · original sound included',
     file: '/download/mhomho-campaign-zero-1.mp4?v=3',
   },
   {
-    id: 'clip-2',
-    label: 'Clip 2',
+    id: 'brand-video',
+    label: 'Brand video',
     note: 'What Mhomho is',
-    file: '/download/mhomho-campaign-zero-2.mp4?v=3',
+    meta: '9:16 vertical · original sound included',
+    file: '/download/mhomho-brand-video.mp4?v=4',
   },
   {
     id: 'clip-3',
     label: 'Clip 3',
     note: 'How you get paid',
+    meta: '16:9 · original sound included',
     file: '/download/mhomho-campaign-zero-3.mp4?v=3',
   },
 ] as const;
