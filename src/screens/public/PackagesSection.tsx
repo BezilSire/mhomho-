@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, Eye, Sparkles, Users, Wallet } from 'lucide-react';
+import { ArrowRight, Check, Eye, Info, Sparkles, Users, Wallet } from 'lucide-react';
 import {
   CAMPAIGN_PACKAGES,
+  MIN_CAMPAIGN_BUDGET_CENTS,
   formatViewTarget,
   formatWholeDollars,
   planCampaign,
@@ -10,8 +11,8 @@ import {
 import { formatCents } from '../../../shared/money.ts';
 import { BrandBriefFlow } from './LandingSignupFlows.tsx';
 
-const QUICK_BUDGETS = [50, 100, 150, 300, 500, 1000];
-const MIN_BUDGET = 50;
+const MIN_BUDGET = MIN_CAMPAIGN_BUDGET_CENTS / 100;
+const QUICK_BUDGETS = [150, 250, 500, 1000];
 const MAX_BUDGET = 2000;
 const MAX_TYPED_BUDGET = 1_000_000;
 
@@ -112,6 +113,8 @@ export const PackagesSection: React.FC = () => {
   const budgetCents = Math.round(budget * 100);
   const plan = useMemo(() => planCampaign(budgetCents), [budgetCents]);
   const sliderValue = Math.min(MAX_BUDGET, Math.max(MIN_BUDGET, Math.round(budget || MIN_BUDGET)));
+  const planActive = budget >= MIN_BUDGET;
+  const belowMinimum = budget > 0 && budget < MIN_BUDGET;
 
   const choosePackage = (pkg: CampaignPackage) => {
     setBudgetInput(String(pkg.budgetCents / 100));
@@ -142,12 +145,12 @@ export const PackagesSection: React.FC = () => {
             </h2>
           </div>
           <p className="max-w-[46ch] text-[14px] leading-[1.75] text-[var(--muted)] sm:text-[15px]">
-            One all-in price. The view target and creator plan are built in — no platform fee added
-            on top.
+            One all-in price. Campaigns start at $150 — the view target and creator plan are built
+            in, with no platform fee added on top.
           </p>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {CAMPAIGN_PACKAGES.map((pkg) => (
             <PackageCard key={pkg.id} pkg={pkg} onSelect={choosePackage} />
           ))}
@@ -176,13 +179,22 @@ export const PackagesSection: React.FC = () => {
                 Enter a budget and see the verified-view target and the crowd needed to deliver it.
               </p>
 
-              <label
-                htmlFor="campaign-budget"
-                className="mt-7 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]"
+              <div className="mt-7 flex items-end justify-between gap-3">
+                <label
+                  htmlFor="campaign-budget"
+                  className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]"
+                >
+                  Campaign budget
+                </label>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--faint)]">
+                  Minimum ${MIN_BUDGET}
+                </span>
+              </div>
+              <div
+                className={`mt-2 flex h-14 items-center gap-2 rounded-2xl border bg-[var(--bg)] px-4 transition-colors focus-within:border-[var(--a1)] ${
+                  belowMinimum ? 'border-[var(--warn)]/60' : 'border-[var(--line)]'
+                }`}
               >
-                Campaign budget
-              </label>
-              <div className="mt-2 flex h-14 items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--bg)] px-4 transition-colors focus-within:border-[var(--a1)]">
                 <span className="font-display text-[22px] font-semibold text-[var(--faint)]">$</span>
                 <input
                   id="campaign-budget"
@@ -230,6 +242,19 @@ export const PackagesSection: React.FC = () => {
                   );
                 })}
               </div>
+
+              {belowMinimum && (
+                <p
+                  role="status"
+                  className="mt-4 flex items-start gap-2 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn)]/[0.08] px-3.5 py-3 text-[12px] leading-relaxed text-[var(--warn)]"
+                >
+                  <Info size={14} className="mt-0.5 shrink-0" />
+                  <span>
+                    Our minimum campaign is <b>${MIN_BUDGET}</b>. Increase the budget to see your
+                    plan.
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="relative flex flex-col justify-between gap-6 border-t border-[var(--line)] bg-[var(--bg)]/70 p-6 sm:p-9 lg:border-l lg:border-t-0">
@@ -240,7 +265,7 @@ export const PackagesSection: React.FC = () => {
 
                 <div className="mt-5">
                   <p className="font-display text-[52px] font-semibold leading-[0.9] tracking-[-0.06em] text-gradient sm:text-[64px]">
-                    {formatViewTarget(plan.viewTarget)}
+                    {planActive ? formatViewTarget(plan.viewTarget) : '—'}
                   </p>
                   <p className="mt-2 text-[12px] font-medium uppercase tracking-[0.15em] text-[var(--faint)]">
                     verified views
@@ -254,7 +279,7 @@ export const PackagesSection: React.FC = () => {
                       Creators to recruit
                     </dt>
                     <dd className="font-display mt-1.5 text-[24px] font-semibold leading-none tracking-[-0.03em] text-[var(--text)]">
-                      {plan.creatorsToRecruit}
+                      {planActive ? plan.creatorsToRecruit : '—'}
                     </dd>
                   </div>
                   <div>
@@ -273,15 +298,16 @@ export const PackagesSection: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setPlanOpen(true)}
-                  disabled={plan.budgetCents <= 0}
+                  disabled={!planActive}
                   className="press inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   Plan my campaign
                   <ArrowRight size={15} />
                 </button>
                 <p className="mt-3 text-center text-[10.5px] leading-relaxed text-[var(--faint)]">
-                  Opens a short form and saves your plan to our team’s waitlist. No payment, no
-                  commitment.
+                  {belowMinimum
+                    ? 'Increase your budget to the $150 minimum to continue.'
+                    : 'Opens a short form and saves your plan to our team’s waitlist. No payment, no commitment.'}
                 </p>
               </div>
             </div>

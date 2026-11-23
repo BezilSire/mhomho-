@@ -167,9 +167,9 @@ describe('brand waitlist', () => {
     expect(entry.creatorsToRecruit).toBe(125);
   });
 
-  it('rejects a plan budget below the minimum', async () => {
+  it('rejects a plan budget below the $150 minimum', async () => {
     const response = await api('/api/brand-waitlist', {
-      body: { ...WAITLIST, budgetCents: 50 },
+      body: { ...WAITLIST, budgetCents: 14_900 },
     });
     expect(response.status).toBe(400);
   });

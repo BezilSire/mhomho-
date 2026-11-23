@@ -18,6 +18,9 @@
 /** What the business pays per 1,000 verified views, in integer cents. */
 export const BRAND_PRICE_PER_THOUSAND_CENTS = 150;
 
+/** Smallest campaign MHOMHO accepts, in integer cents ($150). */
+export const MIN_CAMPAIGN_BUDGET_CENTS = 15_000;
+
 /** What creators collectively earn per 1,000 verified views, in integer cents. */
 export const CREATOR_RATE_PER_THOUSAND_CENTS = 100;
 
@@ -122,40 +125,28 @@ export interface CampaignPackage {
 /** Public package table. Derived figures are computed, never hand-typed. */
 export const CAMPAIGN_PACKAGES: readonly CampaignPackage[] = [
   {
-    id: 'launch',
-    name: 'Launch',
-    tagline: 'A first push into the feed.',
-    budgetCents: 5_000,
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    tagline: 'Find your first crowd.',
-    budgetCents: 10_000,
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    tagline: 'The full campaign.',
+    id: 'village',
+    name: 'Village',
+    tagline: 'Our minimum. Start close to home.',
     budgetCents: 15_000,
+  },
+  {
+    id: 'town',
+    name: 'Town',
+    tagline: 'Reach the whole town.',
+    budgetCents: 25_000,
+  },
+  {
+    id: 'city',
+    name: 'City',
+    tagline: 'Take over the city.',
+    budgetCents: 50_000,
     featured: true,
   },
   {
-    id: 'scale',
-    name: 'Scale',
-    tagline: 'Keep the timeline busy.',
-    budgetCents: 30_000,
-  },
-  {
-    id: 'dominate',
-    name: 'Dominate',
-    tagline: 'Own the conversation.',
-    budgetCents: 50_000,
-  },
-  {
-    id: 'elite',
-    name: 'Elite',
-    tagline: 'Every feed, all month.',
+    id: 'nation',
+    name: 'Nation',
+    tagline: 'Every feed, countrywide.',
     budgetCents: 100_000,
   },
 ] as const;

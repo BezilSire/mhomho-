@@ -115,7 +115,7 @@ export async function handleJoinBrandWaitlist(ctx: Ctx): Promise<Response> {
     contactPhone: { type: 'string', required: true, min: 6, max: 32 },
     company: { type: 'string', max: 200, nullable: true },
     packageName: { type: 'string', max: 40, nullable: true },
-    budgetCents: { type: 'int', min: 100, max: 100_000_000, nullable: true },
+    budgetCents: { type: 'int', min: 15_000, max: 100_000_000, nullable: true },
   });
 
   // Honeypot: bots fill hidden fields. Respond as success without storing.
