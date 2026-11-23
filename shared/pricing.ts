@@ -119,6 +119,8 @@ export interface CampaignPackage {
   name: string;
   tagline: string;
   budgetCents: number;
+  /** How long the campaign runs, in days. */
+  durationDays: number;
   featured?: boolean;
 }
 
@@ -129,18 +131,21 @@ export const CAMPAIGN_PACKAGES: readonly CampaignPackage[] = [
     name: 'Village',
     tagline: 'Our minimum. Start close to home.',
     budgetCents: 15_000,
+    durationDays: 14,
   },
   {
     id: 'town',
     name: 'Town',
     tagline: 'Reach the whole town.',
     budgetCents: 25_000,
+    durationDays: 30,
   },
   {
     id: 'city',
     name: 'City',
     tagline: 'Take over the city.',
     budgetCents: 50_000,
+    durationDays: 45,
     featured: true,
   },
   {
@@ -148,6 +153,7 @@ export const CAMPAIGN_PACKAGES: readonly CampaignPackage[] = [
     name: 'Nation',
     tagline: 'Every feed, countrywide.',
     budgetCents: 100_000,
+    durationDays: 60,
   },
 ] as const;
 
@@ -161,4 +167,11 @@ export function formatWholeDollars(cents: number): string {
 export function formatViewTarget(views: number): string {
   const value = Math.max(0, Math.floor(Number(views) || 0));
   return value.toLocaleString('en-US');
+}
+
+/** `2 weeks` for a fortnight, otherwise `30 days`. */
+export function formatDuration(days: number): string {
+  const value = Math.max(1, Math.floor(Number(days) || 0));
+  if (value % 7 === 0 && value < 30) return `${value / 7} weeks`;
+  return `${value} days`;
 }

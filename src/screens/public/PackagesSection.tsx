@@ -1,8 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, Eye, Info, Sparkles, Users, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Eye, Info, Sparkles, Users, Wallet } from 'lucide-react';
 import {
   CAMPAIGN_PACKAGES,
   MIN_CAMPAIGN_BUDGET_CENTS,
+  formatDuration,
   formatViewTarget,
   formatWholeDollars,
   planCampaign,
@@ -66,8 +67,12 @@ const PackageCard: React.FC<{
       </div>
 
       <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--muted)]">{pkg.tagline}</p>
+      <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--muted)]">
+        <CalendarDays size={12} className="text-[var(--a1)]" />
+        Runs for {formatDuration(pkg.durationDays)}
+      </p>
 
-      <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-[var(--line)] pt-4">
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--line)] pt-4">
         <div>
           <dt className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--faint)]">
             <Eye size={11} className="text-[var(--a1)]" />
@@ -88,18 +93,34 @@ const PackageCard: React.FC<{
         </div>
       </dl>
 
-      <button
-        type="button"
-        onClick={() => onSelect(pkg)}
-        className={`mt-5 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-[12px] font-bold transition-transform hover:-translate-y-0.5 cursor-pointer ${
-          featured
-            ? 'bg-gradient-mhomho text-[var(--ink)]'
-            : 'border border-[var(--line-strong)] text-[var(--text)] hover:border-[var(--muted)]'
-        }`}
-      >
-        Choose {pkg.name}
-        <ArrowRight size={13} />
-      </button>
+      <ul className="mt-4 space-y-2 border-t border-[var(--line)] pt-4">
+        {['Free business landing page', 'Campaign tracking & reporting', 'Free consultation'].map(
+          (item) => (
+            <li
+              key={item}
+              className="flex items-start gap-2 text-[11.5px] leading-relaxed text-[var(--muted)]"
+            >
+              <Check size={12} className="mt-[2px] shrink-0 text-[var(--a1)]" />
+              {item}
+            </li>
+          )
+        )}
+      </ul>
+
+      <div className="mt-auto pt-5">
+        <button
+          type="button"
+          onClick={() => onSelect(pkg)}
+          className={`inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-[12px] font-bold transition-transform hover:-translate-y-0.5 cursor-pointer ${
+            featured
+              ? 'bg-gradient-mhomho text-[var(--ink)]'
+              : 'border border-[var(--line-strong)] text-[var(--text)] hover:border-[var(--muted)]'
+          }`}
+        >
+          Choose {pkg.name}
+          <ArrowRight size={13} />
+        </button>
+      </div>
     </article>
   );
 };

@@ -8,6 +8,7 @@ import {
   calculateRecruitTarget,
   calculateViewTarget,
   campaignEconomics,
+  formatDuration,
   planCampaign,
   rawViewTarget,
 } from '../shared/pricing.ts';
@@ -44,6 +45,17 @@ describe('campaign pricing model', () => {
       ['City', 500, 333_000, 417],
       ['Nation', 1000, 666_000, 833],
     ]);
+  });
+
+  it('publishes the agreed campaign durations', () => {
+    expect(CAMPAIGN_PACKAGES.map((pkg) => [pkg.name, pkg.durationDays])).toEqual([
+      ['Village', 14],
+      ['Town', 30],
+      ['City', 45],
+      ['Nation', 60],
+    ]);
+    expect(formatDuration(14)).toBe('2 weeks');
+    expect(formatDuration(45)).toBe('45 days');
   });
 
   it('never promises views it cannot pay for', () => {
