@@ -28,7 +28,7 @@ import {
 import { BrandLockup, BrandMark } from '../../components/BrandMark.tsx';
 import { Tag } from '../../components/Tag.tsx';
 import { NotificationBell } from '../../components/NotificationBell.tsx';
-import { MHOMHO_BRAND_CARD, MHOMHO_CAMPAIGN_ZERO_CLIPS, MHOMHO_SOCIALS } from '../../lib/brand.ts';
+import { MHOMHO_CAMPAIGN_ZERO_CLIPS, MHOMHO_SOCIALS } from '../../lib/brand.ts';
 
 export interface UnderReviewScreenProps {
   db: DatabaseState;
@@ -472,23 +472,6 @@ export const UnderReviewScreen: React.FC<UnderReviewScreenProps> = ({
                         <Download size={15} className="shrink-0 text-[var(--a1)]" />
                       </a>
                     ))}
-                    <a
-                      href={MHOMHO_BRAND_CARD}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="press flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg)]/70 px-3.5 py-3 no-underline transition-colors hover:border-[var(--line-strong)]"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-[12px] font-semibold text-[var(--text)]">
-                          Brand card
-                        </span>
-                        <span className="block truncate text-[11px] text-[var(--faint)]">
-                          4-second cutaway · use it as B-roll
-                        </span>
-                      </span>
-                      <Download size={15} className="shrink-0 text-[var(--a1)]" />
-                    </a>
                   </div>
                   <p className="mt-3 text-[11px] leading-relaxed text-[var(--faint)]">
                     The clips come with Mhomho branding and the original sound. Mute it and add your

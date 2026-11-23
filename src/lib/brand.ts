@@ -31,16 +31,13 @@ export const MHOMHO_CAMPAIGN_ZERO_CLIPS = [
     file: '/download/mhomho-brand-video.mp4?v=4',
   },
   {
-    id: 'clip-3',
-    label: 'Clip 3',
+    id: 'earn-money',
+    label: 'Earn money with Mhomho',
     note: 'How you get paid',
-    meta: '16:9 · original sound included',
-    file: '/download/mhomho-campaign-zero-3.mp4?v=3',
+    meta: '9:16 vertical · voiceover included',
+    file: '/download/mhomho-earn-money.mp4?v=1',
   },
 ] as const;
-
-/** Short branded card creators can use as a cutaway or stitch source. */
-export const MHOMHO_BRAND_CARD = '/download/mhomho-brand-card.mp4?v=3';
 
 export const MHOMHO_SOCIALS = [
   { name: 'TikTok', handle: '@mhomho', url: 'https://www.tiktok.com/@mhomho' },
