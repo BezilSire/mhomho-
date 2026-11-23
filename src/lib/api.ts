@@ -1138,6 +1138,9 @@ export interface BrandWaitlistInput {
   contactEmail: string;
   contactPhone: string;
   company?: string;
+  /** Optional plan from the packages calculator. Amounts are integer cents. */
+  packageName?: string;
+  budgetCents?: number;
 }
 
 export async function joinBrandWaitlist(input: BrandWaitlistInput): Promise<ApiResult> {

@@ -1,7 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowRight, Check, Eye, Sparkles, Users, Wallet } from 'lucide-react';
-import { WhatsAppIcon } from '../../components/WhatsAppIcon.tsx';
-import { mhomhoWhatsappLink } from '../../../shared/contact.ts';
 import {
   CAMPAIGN_PACKAGES,
   formatViewTarget,
@@ -10,6 +8,7 @@ import {
   type CampaignPackage,
 } from '../../../shared/pricing.ts';
 import { formatCents } from '../../../shared/money.ts';
+import { BrandBriefFlow } from './LandingSignupFlows.tsx';
 
 const QUICK_BUDGETS = [50, 100, 150, 300, 500, 1000];
 const MIN_BUDGET = 50;
@@ -106,6 +105,7 @@ const PackageCard: React.FC<{
 
 export const PackagesSection: React.FC = () => {
   const [budgetInput, setBudgetInput] = useState('150');
+  const [planOpen, setPlanOpen] = useState(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
 
   const budget = parseBudgetInput(budgetInput);
@@ -118,11 +118,7 @@ export const PackagesSection: React.FC = () => {
     calculatorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const whatsappMessage =
-    `Hi MHOMHO, I'd like to plan a campaign.\n` +
-    `Budget: ${formatCents(plan.budgetCents)}\n` +
-    `Target: ${formatViewTarget(plan.viewTarget)} verified views\n` +
-    `Planned creators: ${plan.creatorsToRecruit}`;
+  const matchedPackage = CAMPAIGN_PACKAGES.find((pkg) => pkg.budgetCents === plan.budgetCents);
 
   return (
     <section
@@ -267,31 +263,43 @@ export const PackagesSection: React.FC = () => {
                       Campaign budget
                     </dt>
                     <dd className="font-display mt-1.5 text-[24px] font-semibold leading-none tracking-[-0.03em] text-[var(--text)]">
-                      {formatCents(plan.budgetCents)}
+                      {formatCents(plan.budgetCents, false)}
                     </dd>
                   </div>
                 </dl>
               </div>
 
               <div>
-                <a
-                  href={mhomhoWhatsappLink(whatsappMessage)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="press inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13.5px] font-bold text-[var(--ink)] no-underline transition-transform hover:-translate-y-0.5"
+                <button
+                  type="button"
+                  onClick={() => setPlanOpen(true)}
+                  disabled={plan.budgetCents <= 0}
+                  className="press inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[13.5px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 >
-                  <WhatsAppIcon size={17} />
                   Plan my campaign
                   <ArrowRight size={15} />
-                </a>
+                </button>
                 <p className="mt-3 text-center text-[10.5px] leading-relaxed text-[var(--faint)]">
-                  Opens WhatsApp with your plan filled in. No payment, no commitment.
+                  Opens a short form and saves your plan to our team’s waitlist. No payment, no
+                  commitment.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {planOpen && (
+        <BrandBriefFlow
+          plan={{
+            packageName: matchedPackage?.name ?? null,
+            budgetCents: plan.budgetCents,
+            viewTarget: plan.viewTarget,
+            creatorsToRecruit: plan.creatorsToRecruit,
+          }}
+          onClose={() => setPlanOpen(false)}
+        />
+      )}
     </section>
   );
 };

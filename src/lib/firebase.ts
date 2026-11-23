@@ -323,6 +323,11 @@ export interface BrandWaitlistDoc {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
+  /** Optional campaign plan saved from the website calculator. */
+  packageName: string | null;
+  budgetCents: number | null;
+  viewTarget: number | null;
+  creatorsToRecruit: number | null;
   status: BrandWaitlistStatus;
   adminNotes: string | null;
   createdAt: string;

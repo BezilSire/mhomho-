@@ -5,6 +5,7 @@ import { newId, requireAdmin } from '../auth.ts';
 import { conflict, forbidden, json, notFound, assertSameOrigin, tooMany } from '../http.ts';
 import { consumeRateLimit } from '../rateLimit.ts';
 import { calculateGuaranteedViews } from '../../../shared/money.ts';
+import { planCampaign } from '../../../shared/pricing.ts';
 import { getCampaignByIdOrThrow } from '../repo.ts';
 import { body, guardMutation, hashIp } from './helpers.ts';
 
@@ -103,6 +104,8 @@ export async function handleJoinBrandWaitlist(ctx: Ctx): Promise<Response> {
     contactEmail: string;
     contactPhone: string;
     company?: string;
+    packageName?: string | null;
+    budgetCents?: number | null;
   }>(ctx, {
     brandName: { type: 'string', required: true, min: 2, max: 160 },
     location: { type: 'string', required: true, min: 2, max: 160 },
@@ -111,17 +114,23 @@ export async function handleJoinBrandWaitlist(ctx: Ctx): Promise<Response> {
     contactEmail: { type: 'email', required: true },
     contactPhone: { type: 'string', required: true, min: 6, max: 32 },
     company: { type: 'string', max: 200, nullable: true },
+    packageName: { type: 'string', max: 40, nullable: true },
+    budgetCents: { type: 'int', min: 100, max: 100_000_000, nullable: true },
   });
 
   // Honeypot: bots fill hidden fields. Respond as success without storing.
   if (input.company) return json({ ok: true });
 
+  // The plan is recomputed from the budget, never trusted from the browser.
+  const plan = input.budgetCents ? planCampaign(input.budgetCents) : null;
+
   const now = Date.now();
   await ctx.env.DB.prepare(
     `INSERT INTO brand_waitlist
        (id, brand_name, location, industry, contact_name, contact_email,
-        contact_phone, status, ip_hash, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)`
+        contact_phone, package_name, budget_cents, view_target, creators_to_recruit,
+        status, ip_hash, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)`
   )
     .bind(
       newId('bwl'),
@@ -131,6 +140,10 @@ export async function handleJoinBrandWaitlist(ctx: Ctx): Promise<Response> {
       input.contactName.trim(),
       input.contactEmail.trim(),
       input.contactPhone.trim(),
+      plan ? (input.packageName?.trim() || 'Custom') : null,
+      plan ? plan.budgetCents : null,
+      plan ? plan.viewTarget : null,
+      plan ? plan.creatorsToRecruit : null,
       ipHash,
       now,
       now

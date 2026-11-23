@@ -546,6 +546,11 @@ export async function buildBootstrap(
         contactName: str(row.contact_name),
         contactEmail: str(row.contact_email),
         contactPhone: str(row.contact_phone),
+        packageName: row.package_name === null ? null : str(row.package_name),
+        budgetCents: row.budget_cents === null ? null : num(row.budget_cents),
+        viewTarget: row.view_target === null ? null : num(row.view_target),
+        creatorsToRecruit:
+          row.creators_to_recruit === null ? null : num(row.creators_to_recruit),
         status: str(row.status),
         adminNotes: row.admin_notes === null ? null : str(row.admin_notes),
         createdAt: new Date(num(row.created_at)).toISOString(),

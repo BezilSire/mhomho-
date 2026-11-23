@@ -8,6 +8,8 @@ import {
   BrandWaitlistStatus,
 } from '../../lib/firebase.ts';
 import { updateBrandWaitlist } from '../../lib/api.ts';
+import { formatCents } from '../../../shared/money.ts';
+import { formatViewTarget } from '../../../shared/pricing.ts';
 
 export interface AdminBrandWaitlistProps {
   db: DatabaseState;
@@ -89,6 +91,29 @@ const WaitlistCard: React.FC<{ entry: BrandWaitlistDoc; onChanged: () => void }>
           </a>
         </div>
       </div>
+
+      {entry.budgetCents !== null && (
+        <div className="mt-3 rounded-xl border border-[var(--a1)]/25 bg-[var(--a1)]/[0.06] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--a1)]">
+              Campaign plan{entry.packageName ? ` · ${entry.packageName}` : ''}
+            </p>
+            <p className="text-[13px] font-bold text-[var(--text)]">
+              {formatCents(entry.budgetCents, false)}
+            </p>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[var(--muted)]">
+            <div>
+              <span className="text-[var(--faint)]">View target:</span>{' '}
+              <b className="text-[var(--text)]">{formatViewTarget(entry.viewTarget ?? 0)}</b>
+            </div>
+            <div>
+              <span className="text-[var(--faint)]">Creators:</span>{' '}
+              <b className="text-[var(--text)]">{entry.creatorsToRecruit ?? 0}</b>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <a

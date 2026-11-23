@@ -145,6 +145,35 @@ describe('brand waitlist', () => {
     expect(anonymous.body.data.brandWaitlist).toEqual({});
   });
 
+  it('stores a calculator plan with the waitlist entry, recomputed server-side', async () => {
+    const response = await api('/api/brand-waitlist', {
+      body: {
+        ...WAITLIST,
+        packageName: 'Growth',
+        budgetCents: 15_000,
+        // A forged figure must never be trusted or stored.
+        viewTarget: 999_999,
+      },
+    });
+    expect(response.status).toBe(201);
+
+    const admin = await setupAdmin();
+    const view = await api('/api/bootstrap', { cookie: admin.cookie });
+    const entry = Object.values(view.body.data.brandWaitlist)[0] as Record<string, unknown>;
+
+    expect(entry.packageName).toBe('Growth');
+    expect(entry.budgetCents).toBe(15_000);
+    expect(entry.viewTarget).toBe(100_000);
+    expect(entry.creatorsToRecruit).toBe(125);
+  });
+
+  it('rejects a plan budget below the minimum', async () => {
+    const response = await api('/api/brand-waitlist', {
+      body: { ...WAITLIST, budgetCents: 50 },
+    });
+    expect(response.status).toBe(400);
+  });
+
   it('rejects an invalid contact email and drops honeypot submissions', async () => {
     const bad = await api('/api/brand-waitlist', {
       body: { ...WAITLIST, contactEmail: 'not-an-email' },

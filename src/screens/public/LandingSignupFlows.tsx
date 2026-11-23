@@ -7,6 +7,8 @@ import {
   X,
 } from 'lucide-react';
 import { fetchSignupConfig, joinBrandWaitlist, registerCreator } from '../../lib/api.ts';
+import { formatCents } from '../../../shared/money.ts';
+import { formatViewTarget } from '../../../shared/pricing.ts';
 
 const SUPPORT_EMAIL = 'support@mhomho.work';
 
@@ -572,11 +574,20 @@ export const CreatorSignupFlow: React.FC<CreatorSignupFlowProps> = ({
   );
 };
 
-interface BrandBriefFlowProps {
-  onClose: () => void;
+export interface BrandPlanSummary {
+  packageName: string | null;
+  budgetCents: number;
+  viewTarget: number;
+  creatorsToRecruit: number;
 }
 
-export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
+interface BrandBriefFlowProps {
+  onClose: () => void;
+  /** The plan chosen in the packages calculator, saved with the waitlist lead. */
+  plan?: BrandPlanSummary | null;
+}
+
+export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose, plan = null }) => {
   const [form, setForm] = useState({
     brandName: '',
     location: '',
@@ -629,6 +640,8 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
         contactEmail: form.contactEmail.trim(),
         contactPhone: form.contactPhone.trim(),
         company,
+        packageName: plan?.packageName ?? undefined,
+        budgetCents: plan?.budgetCents ?? undefined,
       });
 
       if (!result.success) {
@@ -646,8 +659,10 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
 
   return (
     <FlowShell
-      eyebrow="For brands"
-      title={sent ? "You're on the list" : 'Join the brand waitlist'}
+      eyebrow={plan ? 'Plan my campaign' : 'For brands'}
+      title={
+        sent ? "You're on the list" : plan ? 'Save your campaign plan' : 'Join the brand waitlist'
+      }
       onClose={sent ? onClose : requestClose}
       footer={
         sent ? (
@@ -667,11 +682,19 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
               disabled={submitting}
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-mhomho text-[14px] font-bold text-[var(--ink)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
             >
-              {submitting ? 'Adding your brand…' : 'Put my brand on waitlist'}
+              {submitting
+                ? plan
+                  ? 'Saving your plan…'
+                  : 'Adding your brand…'
+                : plan
+                ? 'Save my campaign plan'
+                : 'Put my brand on waitlist'}
               <ArrowRight size={16} />
             </button>
             <p className="mt-3 text-center text-[11.5px] text-[var(--faint)]">
-              No sign-up. We’ll contact you when brand campaigns open.
+              {plan
+                ? 'No payment. We’ll confirm the plan with you first.'
+                : 'No sign-up. We’ll contact you when brand campaigns open.'}
             </p>
           </div>
         )
@@ -686,8 +709,10 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
             Thanks {form.contactName.split(' ')[0] || 'there'} — you’re on the waitlist.
           </h3>
           <p className="mt-2 max-w-[44ch] text-[14px] leading-[1.7] text-[var(--muted)]">
-            We’ve saved {form.brandName}. We’ll reach out on {form.contactEmail} or{' '}
-            {form.contactPhone} when brand campaigns open in your area.
+            We’ve saved {form.brandName}
+            {plan ? ` and your ${formatCents(plan.budgetCents, false)} campaign plan` : ''}. We’ll reach
+            out on {form.contactEmail} or {form.contactPhone}
+            {plan ? ' to confirm the details.' : ' when brand campaigns open in your area.'}
           </p>
 
           <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--bg)] p-4">
@@ -697,6 +722,14 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
                 ['Location', form.location],
                 ['Industry', form.industry],
                 ['Contact', form.contactName],
+                ...(plan
+                  ? [
+                      ['Package', plan.packageName ?? 'Custom'],
+                      ['Budget', formatCents(plan.budgetCents, false)],
+                      ['View target', formatViewTarget(plan.viewTarget)],
+                      ['Creators', String(plan.creatorsToRecruit)],
+                    ]
+                  : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-6">
                   <dt className="shrink-0 text-[var(--faint)]">{label}</dt>
@@ -709,9 +742,41 @@ export const BrandBriefFlow: React.FC<BrandBriefFlowProps> = ({ onClose }) => {
       ) : (
         <form id="brand-waitlist-form" onSubmit={handleSubmit}>
           <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">
-            Brand campaigns aren’t open yet. Leave your details and we’ll contact you when they
-            are.
+            {plan
+              ? 'Leave your details and we’ll save this campaign plan for the team. No payment yet.'
+              : 'Brand campaigns aren’t open yet. Leave your details and we’ll contact you when they are.'}
           </p>
+
+          {plan && (
+            <div className="mt-5 rounded-xl border border-[var(--a1)]/25 bg-[var(--a1)]/[0.06] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--a1)]">
+                  {plan.packageName ? `${plan.packageName} package` : 'Custom plan'}
+                </p>
+                <p className="font-display text-[17px] font-semibold text-[var(--text)]">
+                  {formatCents(plan.budgetCents, false)}
+                </p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--line)] pt-3">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--faint)]">
+                    Verified views
+                  </p>
+                  <p className="font-display mt-1 text-[18px] font-semibold text-[var(--text)]">
+                    {formatViewTarget(plan.viewTarget)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--faint)]">
+                    Creators
+                  </p>
+                  <p className="font-display mt-1 text-[18px] font-semibold text-[var(--text)]">
+                    {plan.creatorsToRecruit}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div>
