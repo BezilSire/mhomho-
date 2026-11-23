@@ -32,6 +32,7 @@ import {
   mhomhoWhatsappLink,
 } from '../../../shared/contact.ts';
 import { BrandBriefFlow, CreatorSignupFlow } from './LandingSignupFlows.tsx';
+import { PackagesSection } from './PackagesSection.tsx';
 
 export interface LandingPageProps {
   db: DatabaseState;
@@ -180,9 +181,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <MhomhoLogo className="h-8 w-auto sm:h-9" />
           </a>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-x-[18px] whitespace-nowrap xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-x-[14px] whitespace-nowrap xl:flex 2xl:gap-x-[18px]">
             {[
               ['#how', 'How it works'],
+              ['#packages', 'Packages'],
               ['#earnings', 'Earnings'],
               ['#creators', 'For creators'],
               ['#brands', 'For brands'],
@@ -244,6 +246,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-col gap-1">
               {[
                 ['#how', 'How it works'],
+                ['#packages', 'Packages'],
                 ['#creators', 'For creators'],
                 ['#brands', 'For brands'],
                 ['#partners', 'Partners'],
@@ -705,6 +708,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </section>
+
+      <PackagesSection />
 
       {/* ============================== THE CROWD ============================== */}
       <section id="crowd" className="scroll-mt-24 border-b border-[var(--line)] py-20 sm:py-32">
@@ -1468,6 +1473,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </a>
               <a href="#how" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 How it works
+              </a>
+              <a href="#packages" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
+                Campaign packages
               </a>
               <a href="#earnings" className="text-[var(--muted)] no-underline hover:text-[var(--text)]">
                 Creator earnings
